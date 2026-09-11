@@ -4,6 +4,7 @@
 
 | 实验 | 代码入口 | 结果与解释 |
 |---|---|---|
+| 09-11 原始模型基线，正在运行 | [零样本评测](../code/medworld_baselines/README.md) | [Table 1 / Table 2 实时报告](../code/medworld_baselines/runs/raw_models_20260911/REPORT.md)、[固定协议与限制](../research_notes/0911_raw_model_baseline_sweep.md) |
 | 当前 4＋4 slots，四任务 | [Stage 1](../code/medworld_stage1/README.md) | [运行报告](../code/medworld_stage1/runs/slot44_20260911/REPORT.md)、[数据与设置](../research_notes/0911_stage1_slot44_run.md) |
 | 当前无 slots，四任务 | 同一 Stage 1 训练循环，`slots=0` | [运行报告及比较](../code/medworld_stage1/runs/qwen08_noslots_20260911/REPORT.md)、[对照定义](../research_notes/0911_qwen08_noslots_baseline.md) |
 | 09-10 旧 Stage 1 | `legacy` 变体；8 slots，报告生成 | [历史指标](../research_notes/0911_stage1_downstream_results.md) |

@@ -1,5 +1,6 @@
 {
   "experiments": [
+    {"id": "raw-models-0911", "task": "Table 1 + Table 2 / pretrained zero-shot sweep", "method": "Qwen3.5 0.8/4/9/27B-FP8 + MedGemma 4/27B", "role": "current", "run": "code/medworld_baselines/runs/raw_models_20260911", "status": "coordinator_status.json", "report": "REPORT.md"},
     {"id": "stage1-slot44-0911", "task": "Table 2 / four current tasks", "method": "Ours, 4+4 slots", "role": "current", "run": "code/medworld_stage1/runs/slot44_20260911", "status": "joint/status.json", "report": "REPORT.md"},
     {"id": "stage1-noslots-0911", "task": "Table 2 / four current tasks", "method": "Qwen0.8B, full tokens", "role": "current", "run": "code/medworld_stage1/runs/qwen08_noslots_20260911", "status": "joint/status.json", "report": "REPORT.md"},
     {"id": "stage1-eight-slots-0910", "task": "Historical Stage 1; diagnosis was report generation", "method": "Joint + frozen encoder", "role": "historical", "run": "code/medworld_stage1/runs/overnight_20260910", "status": "joint/status.json", "report": "REPORT.md"},
