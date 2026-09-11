@@ -78,6 +78,8 @@ def launch(a):
     atomic_json(root/'config.json',cfg)
     source = root/'source'
     source.mkdir(exist_ok=True)
+    shutil.copytree(ROOT.parent/'medworld_common', source/'medworld_common',
+                    ignore=shutil.ignore_patterns('__pycache__'), dirs_exist_ok=True)
     for path in ROOT.glob('*.py'):
         shutil.copy2(path,source/path.name)
     shutil.copytree(ROOT/'tests',source/'tests',dirs_exist_ok=True)

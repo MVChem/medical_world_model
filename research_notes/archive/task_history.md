@@ -1,3 +1,7 @@
+# 历史任务原文（原根目录 TODO.md）
+
+本文件保存各日期的原始需求，不作为当前待办或执行授权入口。当前事项见 [TODO.md](../../docs/TODO.md)，项目结构见 [README.md](../../README.md)。
+
 # 0811 construct mimic example
 I have mimic data under /home/data1/data/MIMIC
 

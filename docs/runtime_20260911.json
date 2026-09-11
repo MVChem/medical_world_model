@@ -1,0 +1,21 @@
+{
+  "recorded": "2026-09-11",
+  "python": "3.12.9",
+  "executable": "/home/data2/chk/workspace/2026/.venv/bin/python",
+  "packages": {
+    "torch": "2.11.0+cu129",
+    "transformers": "5.12.1",
+    "peft": "0.19.1",
+    "numpy": "1.26.4",
+    "scipy": "1.17.1",
+    "scikit-learn": "1.9.0",
+    "scikit-image": "0.26.0",
+    "Pillow": "12.2.0",
+    "matplotlib": "3.11.0",
+    "timm": "1.0.24",
+    "einops": "0.8.2",
+    "pytest": "9.0.3"
+  },
+  "optional_dependencies": "code/medworld_table1/requirements-optional.txt",
+  "clinical_scoring": "code/medworld_table1/requirements-metrics.txt"
+}

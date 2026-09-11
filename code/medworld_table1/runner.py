@@ -19,6 +19,8 @@ def launch(args):
     atomic_json(root / 'config.json', cfg)
     source = root / 'source'
     source.mkdir()
+    shutil.copytree(ROOT.parent / 'medworld_common', source / 'medworld_common',
+                    ignore=shutil.ignore_patterns('__pycache__'))
     for file in ROOT.glob('*.py'):
         shutil.copy2(file, source / file.name)
     shutil.copy2(ROOT / 'README.md', root / 'protocol.md')

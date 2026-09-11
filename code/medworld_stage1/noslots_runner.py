@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from bootstrap import atomic_json, digest
+from snapshot import create_snapshot, source_hashes
 
 
 def read(p):
@@ -51,7 +52,7 @@ def render(run,phase):
            '计划各 24,000 次 optimizer 更新，每任务 6,000 次。Baseline 跟随主实验实际步数；不会因为晚启动而按同一时刻提前截断。',
            f'早期比较固定在 {cfg["matched_preview_step"]} 步；最终比较使用相同步数的 final checkpoint。','',
            '[训练状态](joint/status.json) · [训练日志](joint.log) · [公平性核验](joint/fairness_audit.json) · [配置](config.json)','']
-    for label,name in [('第3176步验证','early'),('最终测试','final')]:
+    for label,name in [(f'第{cfg["matched_preview_step"]}步验证','early'),('最终测试','final')]:
         m=read(run/f'comparison_{name}.json')
         if not m:lines +=[f'{label}：等待相同步数的两份结果。',''];continue
         lines +=[f'**{label}**，step={m["step"]}，split={m["split"]}。','',
@@ -68,7 +69,9 @@ def main(args):
     os.umask(0o077)
     run=args.run.resolve();source=run/'source';cfg=read(run/'config.json')
     if (run/'runner_status.json').exists():raise FileExistsError('Coordinator already has state')
-    atomic_json(run/'source_manifest.json',{p.name:digest(p) for p in source.glob('*.py')})
+    if not source.exists():
+        create_snapshot(run)
+    atomic_json(run/'source_manifest.json',source_hashes(source))
     def available(preferred):
         result=subprocess.check_output(['nvidia-smi','--query-gpu=index,memory.used','--format=csv,noheader,nounits'],text=True)
         usage={int(s.split(',')[0]):int(s.split(',')[1]) for s in result.strip().splitlines()}
@@ -87,7 +90,8 @@ def main(args):
     preview=None;phase='training';refpath=Path(cfg['reference_run']);alignment_error=None
     while True:
         if preview is None and (run/'joint/checkpoint_matched_early.pt').exists():
-            gpu=available([g for g in [4,5,6,7] if g!=args.train_gpu])
+            candidates = [cfg['preview_gpu']] if 'preview_gpu' in cfg else [5,6,7]
+            gpu=available([g for g in candidates if g!=args.train_gpu])
             if gpu is not None:
                 preview=launch('early',gpu,[source/'noslots_evaluation.py','--checkpoint',run/'joint/checkpoint_matched_early.pt',
                     '--out',run/'early','--split','validate','--limit','0','--qa-limit','128'])

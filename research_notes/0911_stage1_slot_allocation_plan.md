@@ -2,6 +2,8 @@
 
 日期：2026-09-11。状态：供审阅的下一轮计划；本文件创建时，新分组尚未实现，也未启动新训练。
 
+后续执行：该分组已实现并启动，见 [运行记录](0911_stage1_slot44_run.md)。用户随后授权补充 [相同步数的无 slots 对照](0911_qwen08_noslots_baseline.md)。下文保留计划创建时的决定，当前状态见 [实验索引](../experiments/README.md)。
+
 目标是让同一组 8 个状态 slots 保留当前胸片和报告中的临床语义、解剖空间信息，并支持 classification、disease recognition、segmentation、super resolution。用户已确认下表的读取范围，并决定本轮先不做消融，只实现、训练和评估这一套配置。
 
 上一轮实际结果单独整理在 [下游任务指标汇总](0911_stage1_downstream_results.md)。上一轮所有任务读取全部 8 个 slots，文本分支做的是报告生成，其指标不属于本计划的 Disease recognition。

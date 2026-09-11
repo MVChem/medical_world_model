@@ -9,6 +9,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from bootstrap import ROOT, PILOT, PROJECT, atomic_json, digest
+from snapshot import create_snapshot
 
 
 def read(path):
@@ -76,16 +77,8 @@ def main(args):
     if (run/'runner_status.json').exists():raise FileExistsError('Use a fresh coordinator directory')
     cfg=json.loads(args.config.read_text())
     atomic_json(run/'config.json',cfg)
-    source=run/'source';source.mkdir(exist_ok=True)
-    for p in ROOT.glob('*.py'):shutil.copy2(p,source/p.name)
-    for name in ['model.py','common.py']:shutil.copy2(PILOT/name,source/name)
-    bootstrap=(source/'bootstrap.py').read_text()
-    bootstrap=bootstrap.replace('PROJECT = ROOT.parent.parent',f'PROJECT = Path({str(PROJECT)!r})')
-    bootstrap=bootstrap.replace("PILOT = ROOT.parent / 'medworld_table1'",f'PILOT = Path({str(PILOT)!r})')
-    bootstrap=bootstrap.replace('from common import',"sys.path.insert(0, str(ROOT))\nfrom common import")
-    (source/'bootstrap.py').write_text(bootstrap)
+    source=create_snapshot(run)
     shutil.copy2(args.config,source/'config.json')
-    atomic_json(run/'source_manifest.json',{p.name:digest(p) for p in source.glob('*.py')})
     memory=subprocess.check_output(['nvidia-smi','--query-gpu=index,memory.used','--format=csv,noheader,nounits'],text=True)
     for row in memory.strip().splitlines():
         index,used=map(int,row.split(','))
