@@ -1,0 +1,37 @@
+# Local source repository. Existing paper/upstream repositories stay independent.
+/26iclr/
+/code/Clin-JEPA/
+/code/VLA-JEPA/
+/code/VLA-JEPA-reference/
+/code/ChestXRayAnatomySegmentation/
+/code/vjepa2/
+
+# Runtime data, downloaded dependencies, weights and generated artifacts.
+**/runs/
+**/data/
+**/weights/
+**/checkpoints/
+**/vendor/
+**/metric_vendor/
+**/assets/
+/results/
+/related_works/*.pdf
+/imgs/
+**/*output*/
+**/__pycache__/
+**/*.pyc
+**/.venv
+**/.pytest_cache/
+**/.ruff_cache/
+**/*.egg-info/
+*.pt
+*.pth
+*.safetensors
+*.npy
+*.npz
+*.log
+.env
+.env.*
+*.tmp
+/code/MIMIC_example/curated_pairs.json
+/code/MIMIC_example/representative_pairs_10.json

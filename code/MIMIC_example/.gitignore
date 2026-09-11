@@ -1,0 +1,11 @@
+__pycache__/
+tests/__pycache__/
+.ruff_cache/
+example_output/
+linked_output/
+representative_output_10/
+representative_linked_output_10/
+.example_output.staging-*/
+.example_output.backup-*/
+.representative_output_10.staging-*/
+.representative_output_10.backup-*/
