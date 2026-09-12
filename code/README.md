@@ -6,6 +6,8 @@
 |---|---|---|
 | [medworld_stage1](medworld_stage1/README.md) | Table 2：分类、疾病识别、分割、SR | 当前开发主线 |
 | [medworld_table1](medworld_table1/README.md) | Table 1：未来状态／报告／finding 预测，DirectQwen 对照 | 保留纵向实验 |
+| [medworld_baselines](medworld_baselines/README.md) | 六个原始 Qwen／MedGemma 的未来预测、分类、报告和派生 QA | 09-11 零样本评测已完成 |
+| [medworld_dense_baselines](medworld_dense_baselines/README.md) | 冻结 VLM 的分割、×4 SR、解剖定位 heads 与独立方向评测 | 09-12 队列已启动 |
 | `medworld_common` | 共享 Qwen 加载、LoRA、状态 encoder、报告 decoder、保存与随机种子工具 | 两个实验共用 |
 | [mimic_cxr_iv_linked](mimic_cxr_iv_linked/README.md) | CXR＋IV 连接、筛选、审计及本地 VLM 作业 | 数据管线 |
 | [MIMIC_example](MIMIC_example/README.md) | 时间配对、示例和数据约束 | 早期数据工具 |

@@ -4,23 +4,30 @@
 
 ## 当前决定与执行
 
-**2026-09-11：4＋4 slots 主模型和无 slots 四任务对照均已启动。** 步数和最新结果以运行报告为准。计划、执行记录、原始指标分开保留，旧文档中的“尚未训练”“先不做消融”等描述属于当时状态。
+**2026-09-12：4＋4 slots／无 slots 的匹配训练与六模型零样本评测均已完成，冻结 VLM 密集任务队列已启动。** 已完成分数和负结果见下方实验小结；在跑状态以本地报告为准。旧文档中的“尚未训练”“先不做消融”等描述属于当时状态。
 
 | 文档 | 用途 |
 |---|---|
+| [09-12 实验小结与结果表](0912_recent_experiments_summary.md) | 已完成的匹配比较、六模型零样本分数、负结果与在跑快照；GitHub 可读 |
+| [六模型零样本评测](0911_raw_model_baseline_sweep.md) | 未来预测／当前分类、报告、派生 QA 的固定协议 |
+| [冻结 VLM 密集任务](0912_frozen_vlm_dense_baselines.md) | 六主干、三分支、20 epochs、分割／×4 SR／解剖定位与独立方向队列 |
 | [4＋4 slots 计划](0911_stage1_slot_allocation_plan.md) | 当前任务分配和模型设计 |
 | [4＋4 执行记录](0911_stage1_slot44_run.md) | 实际数据接入、派生 QA、训练配置与指标解释 |
 | [无 slots 对照](0911_qwen08_noslots_baseline.md) | 与旧 DirectQwen／shuffle 的区别、相同步数协议 |
 | [Table 2 方法讨论](0911_table2_top_conference_review.md) | 精简后的候选方法和论文依据 |
-| [Table 1 指标与来源](0910_table1_metrics_and_data_sources.md) | 未来预测评价口径 |
+| [Table 1 四组八指标](0911_future_state_evaluation_redesign.md) | 已确认并写入论文的指标方案、文献依据和实现缺口 |
+| [Table 1 旧指标与来源](0910_table1_metrics_and_data_sources.md) | 早期实验评分解释与 MIMIC 数据来源 |
 | [数据总览](0910_dataset_summary.md) | 数据规模、变化与时间分布 |
 
-当前论文 Results 使用简短 setup、Table 1 future prediction、Table 2 downstream tasks；指标仍待正式实验填写。
+当前论文 Results 使用简短 setup、Table 1 future prediction、Table 2 downstream tasks。Table 1 已固定为临床状态、病情演变、报告内容、概率可靠性四组，每组两项指标；结果仍待正式实验填写。
+
+原始 VLM 评测已得到其中七项指标，论文主表未回填；Direction 的新增 82 对子集另有输入和参考协议，不能直接当作原 297 对的第八列。
 
 ## 历史实验和数据审计
 
 | 文档 | 内容 |
 |---|---|
+| [Table 1／2 扩展候选](0911_table_expansion_proposal.md) | 保留方案讨论过程；候选方法与计划任务不代表已完成实验 |
 | [旧 Stage 1 指标](0911_stage1_downstream_results.md) | 09-10 运行；diagnosis 当时是报告生成 |
 | [旧四任务计划](0910_stage1_four_task_plan.md) | 4＋4 分组之前的设计 |
 | [纵向实验结果复盘](0910_overnight_results_comparison.md) | 新旧配对实验与误差分析 |

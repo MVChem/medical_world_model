@@ -32,6 +32,17 @@ CUDA_VISIBLE_DEVICES='' /home/data2/chk/workspace/2026/.venv/bin/python \
 
 GPU 的真实数据检查入口：`code/medworld_stage1/slot44_check.py`、`noslots_check.py`。先用 `--help` 查看参数，并指定空闲 GPU。冻结权重检查、四任务短训练、保存恢复都使用独立检查目录。检查产生的更新不继承到正式模型。
 
+原始 VLM 评测与冻结 VLM 密集任务的协议检查：
+
+```bash
+CUDA_VISIBLE_DEVICES='' /home/data2/chk/workspace/2026/.venv/bin/python \
+  -m unittest discover -s code/medworld_baselines/tests -v
+CUDA_VISIBLE_DEVICES='' /home/data2/chk/workspace/2026/.venv/bin/python \
+  code/medworld_dense_baselines/test_contract.py -v
+```
+
+前者检查源时点输入、概率评分和 QA 失败计分；后者检查空间特征、梯度、microbatch 权重、方向解析及本地已准备数据的划分／LR 缓存。无本地数据时，数据核验项会跳过。2026-09-12 归档前共 13 项通过，包含本地数据核验；这不等于完整训练或最终效果验收。
+
 ## 恢复与实验来源
 
 恢复时用运行目录自身的源码、原配置、原 run 路径和 checkpoint。已启动的 09-11 实验仍执行整理前的源码快照。整理后的开发代码对新实验生效。

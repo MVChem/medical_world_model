@@ -1,6 +1,6 @@
 # MedWorld-JEPA
 
-医疗多模态状态表示与未来预测研究。当前使用 Qwen3.5-0.8B，论文以两个问题组织实验：**Table 1：未来预测；Table 2：当前状态的四个下游任务**。
+医疗多模态状态表示与未来预测研究。主模型使用 Qwen3.5-0.8B，论文以两个问题组织实验：**Table 1：未来预测；Table 2：当前状态的下游任务**。已有四任务训练，并在补充原始 VLM 与冻结主干的下游适配基线。
 
 ## 从这里开始
 
@@ -15,11 +15,11 @@
 
 ## 当前实验
 
-2026-09-11 的 Stage 1 主实验采用 **4＋4 slots**：分类读前 4 个，疾病识别读全部 8 个，分割和超分读后 4 个。无 slots 对照保留相同视觉前端、Qwen 骨干和任务 heads，直接读取完整图文 tokens；两边匹配训练样本顺序和 optimizer 更新数，上限各 24,000 步。
+**[09-12 实验小结与结果表](research_notes/0912_recent_experiments_summary.md)** 汇总最近的已完成结果、失败尝试和在跑任务，可直接在 GitHub 阅读。
 
-- [Ours：4＋4 slots，运行报告](code/medworld_stage1/runs/slot44_20260911/REPORT.md)
-- [Qwen0.8B：无 slots，运行报告与同一步数比较](code/medworld_stage1/runs/qwen08_noslots_20260911/REPORT.md)
-- [本轮数据与实现说明](research_notes/0911_stage1_slot44_run.md) · [无 slots 对照定义](research_notes/0911_qwen08_noslots_baseline.md)
+- **4＋4 slots／无 slots：已完成匹配训练与最终测试。** slots 的分类指标较高，疾病列表 F1 和分割 Dice 较低，SR 差距很小。[训练与数据](research_notes/0911_stage1_slot44_run.md) · [对照定义](research_notes/0911_qwen08_noslots_baseline.md)。
+- **六个原始 Qwen／MedGemma：零样本评测已完成。** 包含未来预测、当前分类／报告和派生 QA；官方 VQA 与原测试集 Direction 仍缺合格数据。[评测协议](research_notes/0911_raw_model_baseline_sweep.md)。
+- **冻结 VLM＋下游 heads：09-12 已启动。** 比较原图、V-JEPA、V-JEPA＋adapter 分支，补充分割、×4 SR、解剖区域定位及独立方向评测。[运行设置与边界](research_notes/0912_frozen_vlm_dense_baselines.md)。
 
 README 不固定记录训练步数。查看实时状态：
 
@@ -27,7 +27,7 @@ README 不固定记录训练步数。查看实时状态：
 python scripts/project_status.py
 ```
 
-本轮疾病识别使用本地 Chest ImaGenome 派生问答；分割衡量 CXAS 伪标签一致性；SR 使用合成 ×2 退化。历史报告生成分数和这轮疾病列表 F1 含义不同。论文结果表保留空值，待正式协议和相同步数结果确认后填写。
+09-11 四任务中的疾病识别使用本地 Chest ImaGenome 派生问答，分割衡量 CXAS 伪标签一致性，SR 使用合成 ×2 退化；09-12 密集基线另测 ×4 SR 和人工两肺分割。历史报告生成分数与疾病列表 F1 含义不同。论文结果表保留空值，待各任务正式协议与对应结果核对后填写。
 
 ## 目录与存放规则
 
@@ -37,7 +37,9 @@ medical_world_model/
 ├── code/                    自有代码、独立第三方仓库及本地运行目录
 │   ├── medworld_common/     公共 Qwen 组件与运行工具
 │   ├── medworld_stage1/     Table 2：当前状态四任务
-│   └── medworld_table1/     Table 1：未来预测
+│   ├── medworld_table1/     Table 1：未来预测
+│   ├── medworld_baselines/ 原始 VLM 零样本评测
+│   └── medworld_dense_baselines/ 冻结 VLM 的密集任务适配
 ├── experiments/             实验索引和机器可读登记表
 ├── docs/                    当前 TODO、环境和复现实验说明
 ├── research_notes/          按日期保留的计划、讨论和实验解释

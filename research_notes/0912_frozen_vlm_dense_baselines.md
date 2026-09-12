@@ -1,5 +1,7 @@
 # 0912：六个冻结 VLM 的下游头与方向评测
 
+[09-12 实验小结](0912_recent_experiments_summary.md)记录了本轮启动状态、Bicubic 参考及此前已完成的结果；本页保留完整运行协议。在跑任务的最终分数仍以本地矩阵为准。
+
 运行目录：`code/medworld_dense_baselines/runs/dense_20260912`。
 完整矩阵预览：`preview/full_tables.md`。只生成预览，不修改论文 Table 1/2。
 用户把时间目标延长到 **2026-09-14（周一）08:00，Asia/Shanghai**。
