@@ -1,6 +1,8 @@
 # 0912：六个冻结 VLM 的下游头与方向评测
 
-[09-12 实验小结](0912_recent_experiments_summary.md)记录了本轮启动状态、Bicubic 参考及此前已完成的结果；本页保留完整运行协议。在跑任务的最终分数仍以本地矩阵为准。
+**09-13 完成核对：** 本轮协调器于 2026-09-12 09:26 启动，12:14 完成全部 55 项，42 个任务头均训练 20 epochs。最终分数、时间证据和表格来源见 [Table 1／2 结果溯源](0913_table1_table2_results_provenance.md)。
+
+[09-12 实验小结](0912_recent_experiments_summary.md)记录了截至当天 09:56 的启动状态、Bicubic 参考及此前已完成的结果；本页保留完整运行协议。
 
 运行目录：`code/medworld_dense_baselines/runs/dense_20260912`。
 完整矩阵预览：`preview/full_tables.md`。只生成预览，不修改论文 Table 1/2。

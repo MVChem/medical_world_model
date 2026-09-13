@@ -10,16 +10,16 @@
 | 当前实验与历史对照 | [实验索引](experiments/README.md) |
 | 训练、评估和代码模块 | [code/README.md](code/README.md) |
 | 最新计划、讨论决定、数据说明 | [research_notes/README.md](research_notes/README.md) |
-| 运行环境、检查和本地 Git | [开发说明](docs/DEVELOPMENT.md) |
-| 接下来要做的事 | [TODO.md](docs/TODO.md) |
+| 运行环境、检查和本地 Git | [开发说明](research_notes/DEVELOPMENT.md) |
+| 接下来要做的事 | [TODO.md](research_notes/TODO.md) |
 
 ## 当前实验
 
-**[09-12 实验小结与结果表](research_notes/0912_recent_experiments_summary.md)** 汇总最近的已完成结果、失败尝试和在跑任务，可直接在 GitHub 阅读。
+**[Table 1／2 结果来源与实验时间](research_notes/0913_table1_table2_results_provenance.md)** 记录 09-11／12 实验的完成时间、原始表格路径和分割／×4 SR 最终分数；此前的结果与失败尝试见 [09-12 实验小结](research_notes/0912_recent_experiments_summary.md)。
 
 - **4＋4 slots／无 slots：已完成匹配训练与最终测试。** slots 的分类指标较高，疾病列表 F1 和分割 Dice 较低，SR 差距很小。[训练与数据](research_notes/0911_stage1_slot44_run.md) · [对照定义](research_notes/0911_qwen08_noslots_baseline.md)。
 - **六个原始 Qwen／MedGemma：零样本评测已完成。** 包含未来预测、当前分类／报告和派生 QA；官方 VQA 与原测试集 Direction 仍缺合格数据。[评测协议](research_notes/0911_raw_model_baseline_sweep.md)。
-- **冻结 VLM＋下游 heads：09-12 已启动。** 比较原图、V-JEPA、V-JEPA＋adapter 分支，补充分割、×4 SR、解剖区域定位及独立方向评测。[运行设置与边界](research_notes/0912_frozen_vlm_dense_baselines.md)。
+- **冻结 VLM＋下游 heads：09-12 12:14 已完成 55/55 项。** 比较原图、V-JEPA、V-JEPA＋adapter 分支，完成分割、×4 SR、解剖区域定位及独立方向评测。[运行设置与边界](research_notes/0912_frozen_vlm_dense_baselines.md)。
 
 README 不固定记录训练步数。查看实时状态：
 
@@ -41,8 +41,7 @@ medical_world_model/
 │   ├── medworld_baselines/ 原始 VLM 零样本评测
 │   └── medworld_dense_baselines/ 冻结 VLM 的密集任务适配
 ├── experiments/             实验索引和机器可读登记表
-├── docs/                    当前 TODO、环境和复现实验说明
-├── research_notes/          按日期保留的计划、讨论和实验解释
+├── research_notes/          研究记录、当前 TODO、环境和复现实验说明
 ├── 26iclr/                  论文、论文配图；独立 Git 仓库
 ├── results/                 数据审计、病例展示等导出产物
 └── related_works/           参考文献笔记与本地 PDF

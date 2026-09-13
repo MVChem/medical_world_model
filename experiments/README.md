@@ -6,7 +6,7 @@
 
 | 实验 | 代码入口 | 结果与解释 |
 |---|---|---|
-| 09-12 冻结 VLM 密集基线，队列已启动 | [密集任务适配](../code/medworld_dense_baselines/README.md) | [本地矩阵预览](../code/medworld_dense_baselines/runs/dense_20260912/preview/full_tables.md)、[固定协议与限制](../research_notes/0912_frozen_vlm_dense_baselines.md) |
+| 09-12 冻结 VLM 密集基线，55/55 已完成 | [密集任务适配](../code/medworld_dense_baselines/README.md) | [结果与实验时间](../research_notes/0913_table1_table2_results_provenance.md)、[本地完整矩阵](../code/medworld_dense_baselines/runs/dense_20260912/preview/full_tables.md)、[固定协议与限制](../research_notes/0912_frozen_vlm_dense_baselines.md) |
 | 09-11 原始模型基线，已完成 | [零样本评测](../code/medworld_baselines/README.md) | [本地 Table 1 / Table 2 报告](../code/medworld_baselines/runs/raw_models_20260911/REPORT.md)、[固定协议与限制](../research_notes/0911_raw_model_baseline_sweep.md) |
 | 09-11 4＋4 slots，四任务已完成 | [Stage 1](../code/medworld_stage1/README.md) | [本地运行报告](../code/medworld_stage1/runs/slot44_20260911/REPORT.md)、[数据与设置](../research_notes/0911_stage1_slot44_run.md) |
 | 09-11 无 slots，四任务已完成 | 同一 Stage 1 训练循环，`slots=0` | [本地运行报告及比较](../code/medworld_stage1/runs/qwen08_noslots_20260911/REPORT.md)、[对照定义](../research_notes/0911_qwen08_noslots_baseline.md) |
