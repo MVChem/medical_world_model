@@ -1,15 +1,35 @@
-# Frozen VLM dense baselines
+# Frozen VLM dense baselines and visual-slot probes
 
 Independent downstream probes for the six locally available Qwen3.5 / MedGemma
-checkpoints. This experiment does not load a trained world-model checkpoint or
-modify `26iclr/tables/table1_future.tex` or `table2_downstream.tex`.
+checkpoints. Results are recorded per run; manuscript tables are maintained in
+[Table 1](../../27cvpr/tables/table1_future.tex) and
+[Table 2](../../27cvpr/tables/table2_downstream.tex).
 
-The active run is `runs/dense_20260912`. Read `preview/full_tables.md` for the
-original Table 1/2 rows, completed zero-shot measurements, and new trained-head
-rows. `preview/preview.md` documents the dense experiment and queue in detail.
+## September 13: frozen multidepth visual slots
+
+This separate experiment extracts four fixed slots from different depths of each
+checkpoint's native vision encoder, corresponding to visual slots 5–8. Only the
+segmentation and ×4 SR decoders are trained, with a matched image-only control.
+The [fixed protocol](../../research_notes/0913_frozen_multidepth_slots.md) defines
+the representation, data, training budget, and supplementary shuffled-slot controls.
+
+- Code: [extraction](frozen_slots_extract.py), [training](frozen_slots_train.py),
+  [queue](frozen_slots_queue.py), and [reporting](frozen_slots_report.py).
+- Run: `runs/frozen_slots_20260913/`; [report](runs/frozen_slots_20260913/REPORT.md),
+  [queue status](runs/frozen_slots_20260913/status.json), and
+  [saved protocol](runs/frozen_slots_20260913/protocol.json).
+
+## September 12: frozen VLM dense baselines
+
+This run is `runs/dense_20260912`. Read
+[full_tables.md](runs/dense_20260912/preview/full_tables.md) for the original
+Table 1/2 rows, completed zero-shot measurements, and trained-head rows.
+[preview.md](runs/dense_20260912/preview/preview.md) documents the dense experiment
+and queue in detail. The [experiment record](../../research_notes/0912_frozen_vlm_dense_baselines.md)
+and the sections below describe this September 12 protocol.
 Empty cells mean unmeasured/pending, never zero.
 
-## Protocol
+### Protocol
 
 - VLMs are frozen. Extract final **language-model image-token** hidden states,
   preserving the native image token grid, and select 8 by 8 spatial bin centers
@@ -61,7 +81,7 @@ The task heads are independent: grounding training cannot change a VLM or the
 segmentation/SR heads. Patient splits are disjoint **within each task**. Head
 training does not establish absence of overlap with a backbone's pretraining.
 
-## Metrics
+### Metrics
 
 Grounding uses normalized xyxy box IoU, mean IoU and fraction IoU >= .5.
 Segmentation uses threshold .5, per-image/per-organ hard Dice on the valid ROI;
@@ -70,7 +90,7 @@ skimage SSIM (`data_range=1`, default uniform 7x7 window), full valid image ROI,
 no border shaving. Dense confidence intervals use 1,000 patient-cluster bootstrap
 samples. Every test record is saved; a missing record causes evaluation to fail.
 
-## Running
+### Running
 
 Use `/home/data2/chk/workspace/2026/.venv/bin/python`. The installed Transformers
 5.12.1 requires a compatible kernel loader for native FP8. The tested local

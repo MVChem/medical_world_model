@@ -86,5 +86,5 @@ Future R@1 采用已选定的 4 候选方案，仅覆盖 376 对、123 位患者
 - [详细实验复盘与完整表格](0909_experiment_review_and_plan.md)
 - [配对质量审计](0909_pair_quality_audit.md)；[全量连接规模](0909_mimic_linked_cohort_capacity.md)
 - [六组真实示例 HTML](../results/mimic_linked_examples_20260909/index.html)；[前三组预览](../results/mimic_linked_examples_20260909/preview.png)
-- [原 Appendix Figure 1](../26iclr/ppt/ppt/appendix_fig_v3.pdf)；[导出图片](../results/appendix_fig1_original.png)
+- [原 Appendix Figure 1](../27cvpr/ppt/ppt/appendix_fig_v3.pdf)；[导出图片](../results/appendix_fig1_original.png)
 - [此前讨论 ZIP](../results/medworld_jepa_discussion_20260909.zip)：旧版本归档，未加入本次摘要及后续数据审计，不视为最新材料。

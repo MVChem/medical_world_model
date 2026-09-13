@@ -1,7 +1,7 @@
 # Linked MIMIC current-state -> future-state example
 
 This directory contains a small, runnable MIMIC-CXR example for the transition
-unit proposed in `../../26iclr`, plus a separate linker that attaches
+unit described in the [manuscript](../../27cvpr/README.md), plus a separate linker that attaches
 retrospective MIMIC-IV v3.1 context for audit and appendix figures:
 
 ```text

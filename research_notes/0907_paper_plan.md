@@ -2,7 +2,7 @@
 
 2026-09-08 更新 Results；保留 0907 的 Methods 整理。Table 1 评价 MIMIC-CXR 上的未来状态与临床报告预测，采用 Future R@1、Finding AUPRC、Transition F1、RadGraph F1、CheXbert F1 五项指标，并记录各方法的输出接口、可比范围和待定实现。本文作为后续整篇论文写作与讨论的工作稿，Introduction 的 paper plan 留待补充。
 
-整理以当前 [Methods 正文](../26iclr/sections/4_method.tex)、[Task Definition](../26iclr/sections/3_problem_formulation.tex) 和 [新版 Fig. 1](../26iclr/imgs/fig1.pdf) 为准，结合 [0906 方法讨论稿](0906_methods.md) 中的设计理由与问题澄清，沿用 [0829 设计 brief](0829_ideas.md) 中“科学问题 → 模块与公式 → 监督 → 验证”的组织方式。实验接口参照当前 [Experiments](../26iclr/sections/5_experiments.tex) 和 [附录协议](../26iclr/sections/b_protocol_details.tex)。
+整理以当前 [Methods 正文](../27cvpr/sections/4_method.tex)、[Task Definition](../27cvpr/sections/3_problem_formulation.tex) 和 [新版 Fig. 1](../27cvpr/imgs/fig1.pdf) 为准，结合 [0906 方法讨论稿](0906_methods.md) 中的设计理由与问题澄清，沿用 [0829 设计 brief](0829_ideas.md) 中“科学问题 → 模块与公式 → 监督 → 验证”的组织方式。实验接口参照当前 [Experiments](../27cvpr/sections/5_experiments.tex) 和 [附录协议](../27cvpr/sections/b_protocol_details.tex)。
 
 本文区分三种状态：**当前主方案**指已经明确并写入正文的设计；**待定实现**指接口已明确、具体配置尚未选择；**候选扩展**指曾讨论但尚未纳入主方案的方向。方法已经写入论文不等于训练与实验已经完成。最新接口变更同时记录在 [0907_methods_revision.md](0907_methods_revision.md)。
 
@@ -113,7 +113,7 @@ Overview 用一段话串起整图：
 
 > 当前图文和真实随访图文沿用同一种多模态编码设计。JEPA 提取空间特征，经 visual adapter 转为 VLM 的视觉输入；报告经原生 tokenizer 与 embedding 转为文本输入。两种证据与 learned input slots 一起送入 VLM，同一组槽位位置的输出 hidden states 构成 state tokens。任务 decoder 从当前 state 读取信息，空间任务额外读取原始影像，由 decoder 自己提取图像特征；LWM 从当前 state 和 horizon 预测未来 state，并与真实随访经 VLM 编码的 stop-gradient 目标计算损失。第一阶段用任务监督建立状态，第二阶段学习状态转移并继续调整当前状态编码路径。
 
-[Fig. 1](../26iclr/imgs/fig1.pdf) 的可编辑源为 [fig1_v7.pptx](../26iclr/ppt/ppt/fig1_v7.pptx)，与公式的对应关系如下：
+[Fig. 1](../27cvpr/imgs/fig1.pdf) 的可编辑源为 [fig1_v7.pptx](../27cvpr/ppt/ppt/fig1_v7.pptx)，与公式的对应关系如下：
 
 | 图中路径或模块 | 对应含义 |
 |---|---|
@@ -402,7 +402,7 @@ S^*_{t^+}
 
 #### 2.3.5 纵向数据与候选扩展的边界
 
-主要纵向来源是 MIMIC-CXR 的同患者当前—随访观测对。已有 [附录病例图](../26iclr/ppt/ppt/appendix_fig_v3.pdf) 展示变化、稳定随访和多次检查的形式；它们是实际数据示例，不是预测结果。可用 pair 数、不同时间间隔和模态组合的分布仍需统计。
+主要纵向来源是 MIMIC-CXR 的同患者当前—随访观测对。已有 [附录病例图](../27cvpr/ppt/ppt/appendix_fig_v3.pdf) 展示变化、稳定随访和多次检查的形式；它们是实际数据示例，不是预测结果。可用 pair 数、不同时间间隔和模态组合的分布仍需统计。
 
 保留以下候选方向，但不写成当前 LWM 的组成部分：
 
@@ -582,7 +582,7 @@ VLA-JEPA 是 VLM 与 latent world model 结合及分阶段适配的重要参考�
 
 ### 2.6 引用安排与支持范围
 
-以下是当前 Methods 已使用的引用。参考文献用于解释相关设计先例，不能替代本文组合方案的实验验证。BibTeX 条目见 [main.bib](../26iclr/main.bib)。
+以下是当前 Methods 已使用的引用。参考文献用于解释相关设计先例，不能替代本文组合方案的实验验证。BibTeX 条目见 [main.bib](../27cvpr/main.bib)。
 
 | 文献 / BibTeX key | 放置位置与作用 | 需要保持的边界 |
 |---|---|---|
@@ -665,12 +665,12 @@ CT/NLST、MRI/OASIS 等扩展队列、医学 JEPA 再预训练、CT→X-ray 迁�
 
 当前正文对应文件：
 
-- [Task Definition](../26iclr/sections/3_problem_formulation.tex)：由 Methods 内部载入，对应正文 3.1。
-- [Methods](../26iclr/sections/4_method.tex)：Overview、Fig. 1 与正文 3.2–3.4。
-- [Experiments](../26iclr/sections/5_experiments.tex)：与方法一致的 Claims A–C 及候选消融。
-- [Implementation appendix](../26iclr/sections/b_protocol_details.tex)：实现待定项、时间与监督规则、目标空间匹配、评价协议。
-- [Fig. 1 可编辑 PPT](../26iclr/ppt/ppt/fig1_v7.pptx)：输入影像直连空间 decoder 的箭头与标签。
-- [当前论文 PDF](../26iclr/main.pdf)：可对照阅读 Methods 的完整英文表述。
+- [Task Definition](../27cvpr/sections/3_problem_formulation.tex)：由 Methods 内部载入，对应正文 3.1。
+- [Methods](../27cvpr/sections/4_method.tex)：Overview、Fig. 1 与正文 3.2–3.4。
+- [Experiments](../27cvpr/sections/5_experiments.tex)：与方法一致的 Claims A–C 及候选消融。
+- [Implementation appendix](../27cvpr/sections/b_protocol_details.tex)：实现待定项、时间与监督规则、目标空间匹配、评价协议。
+- [Fig. 1 可编辑 PPT](../27cvpr/ppt/ppt/fig1_v7.pptx)：输入影像直连空间 decoder 的箭头与标签。
+- [当前论文 PDF](../27cvpr/main.pdf)：可对照阅读 Methods 的完整英文表述。
 
 后续 Introduction plan 可写入第 1 节，再围绕这里已经明确的任务定义、模块分工、两阶段动机和待验证问题组织论证。
 

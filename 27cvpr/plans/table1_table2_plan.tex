@@ -1,0 +1,82 @@
+\RequirePackage{fix-cm}
+\documentclass[10pt,letterpaper]{article}
+\usepackage[textwidth=6.875in,textheight=8.875in,top=1in]{geometry}
+\usepackage{times,fancyhdr}
+\usepackage{amsmath,amssymb,booktabs,array,float,microtype}
+\usepackage[table]{xcolor}
+\usepackage{hyperref}
+\hypersetup{hidelinks,pdftitle={MedWorld-JEPA: Table 1 and Table 2 experiment plan}}
+
+% Standalone single-column plan with the CVPR text width and Times fonts.
+\pagestyle{fancy}
+\fancyhead{}
+\fancyhead[L]{\footnotesize MedWorld-JEPA \quad / \quad Experiment plan}
+\fancyhead[R]{\footnotesize CVPR 2026 working draft}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\raggedbottom
+\newcommand{\tbd}{\textcolor{black!55}{TBD}}
+\newcommand{\na}{\textcolor{black!45}{---}}
+\newcommand{\method}{MedWorld-JEPA}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+\begin{document}
+{\Large\bfseries Table 1 plan: future prediction}\par
+Predict the unobserved follow-up from the current radiograph, current report,
+source-available clinical history, and requested horizon. Ten methods/settings
+are evaluated across four dimensions, with two metrics each; zero-shot rows
+are marked explicitly.
+
+\input{plans/tables/table1_future_plan}
+
+\textbf{Planned scoring interface.}
+For each finding, score the fixed candidate answers \texttt{Yes} and \texttt{No}
+from the VLM's conditional token likelihoods:
+\[
+ s_k=\frac{\exp(\ell_{\mathrm{Yes},k})}
+ {\exp(\ell_{\mathrm{Yes},k})+\exp(\ell_{\mathrm{No},k})}.
+\]
+Here $\ell$ is the candidate answer's log-likelihood, scored at the same answer
+boundary. No extra classification head is required for this interface.
+Representation forecasters use supervised finding heads; the interface and
+training regime will be disclosed per row. AP/AUROC assess ranking; Brier/ECE
+assess the same scores as probability predictions. The main table uses raw scores;
+any calibration uses validation data only and is reported separately.
+
+\textbf{Evaluation plan.}
+All rows share patient splits, per-metric reference masks, and clinical scorers.
+Transition F1 averages supported finding-specific onset/resolution events.
+Direction F1 measures improved/stable/worsened persistent findings using reviewed,
+source-anchored annotations; stable references remain eligible for false changes.
+Report fidelity uses RadGraph partial F1 and GREEN. Brier and ten-bin classwise
+ECE are macro-averaged over findings. Onset/resolution breakdowns, retrieval,
+CheXbert F1, horizon analyses, coverage, and patient-bootstrap intervals are
+supplementary. Direction-label validation and new scorers remain pending.
+
+\clearpage
+{\Large\bfseries Table 2 plan: six downstream tasks}\par
+Evaluate current-image understanding, language readout, localization, and
+reconstruction. The six task families are classification, standard VQA,
+current report generation, phrase grounding, organ segmentation, and spatial
+$4\times$ super-resolution.
+
+\input{plans/tables/table2_downstream_plan}
+
+\textbf{Data.}
+Use MIMIC-CXR for classification, reports and synthetic SR;
+\href{https://physionet.org/content/mimic-ext-mimic-cxr-vqa/1.0.0/}{MIMIC-CXR-VQA}
+for standard question answering;
+\href{https://physionet.org/content/ms-cxr/1.1.0/}{MS-CXR} for phrase grounding;
+and CXAS pseudo-labels plus a separate human-mask test for segmentation.
+Classification uses macro AUROC/AP; reports use RadGraph partial and
+CheXbert macro-positive F1. Spatial $4\times$ SR has $1/16$ of the HR pixel count.
+
+\textbf{Input and training plan.}
+Use images plus task questions/phrases and withhold the same-exam target report.
+Adapt Ours and no-slots to this setting; exclude test patients across all training
+tasks and stages. Report VQA Verify/Choose/Query and whole-image/region slices
+separately. Added readouts require training; current report-assisted four-task
+scores are not entries in this plan.
+
+\end{document}

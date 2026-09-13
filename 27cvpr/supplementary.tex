@@ -1,0 +1,25 @@
+% Build main.tex first to resolve references to its tables.
+\RequirePackage{fix-cm}
+\documentclass[10pt,twocolumn,letterpaper]{article}
+\usepackage[review]{cvpr}
+\usepackage{xr-hyper}
+\input{paper_config}
+\input{preamble}
+\externaldocument[main-][nocite]{main}
+\title{\papertitle}
+\author{Anonymous Authors}
+
+\begin{document}
+\maketitlesupplementary
+\appendix
+\renewcommand{\thefigure}{S\arabic{figure}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\theequation}{S\arabic{equation}}
+\input{sections/b_protocol_details}
+\FloatBarrier
+{
+\small
+\bibliographystyle{ieeenat_fullname}
+\bibliography{main}
+}
+\end{document}

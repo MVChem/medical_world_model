@@ -12,7 +12,7 @@
 
 完整矩阵的生成逻辑见 [report.py](../code/medworld_dense_baselines/report.py)。它读取 `results/baseline_matrix_preview_20260912/table1.csv`、`table2.csv` 中的计划行与旧零样本结果，再读取 `dense_20260912/<model>/` 下的新指标，输出 `preview/full_tables.md`。分数的最终核对依据是各任务的原始 JSON。
 
-论文当前本地源码是 [Table 1](../27cvpr/tables/table1_future.tex) 和 [Table 2](../27cvpr/tables/table2_downstream.tex)。截至本次核对，论文主表仍保留 `TBD`，运行结果没有自动回填。历史笔记中的论文路径 `26iclr/` 对应旧目录名，当前工作区使用 `27cvpr/`；这些链接供本地工作区查看。
+论文当前本地源码是 [Table 1](../27cvpr/tables/table1_future.tex) 和 [Table 2](../27cvpr/tables/table2_downstream.tex)。截至本次核对，论文主表仍保留 `TBD`，运行结果没有自动回填；这些链接供本地工作区查看。
 
 `runs/` 下的原始数据、预测和日志不随研究笔记上传；本页保存聚合分数和来源，便于日后查看。
 

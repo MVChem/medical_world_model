@@ -1,0 +1,19 @@
+% Shared manuscript packages and notation. cvpr.sty supplies Times, amsmath,
+% amssymb, graphicx, booktabs, xcolor, numbered natbib, and cleveref.
+\ifdefined\pdfminorversion\pdfminorversion=7\fi
+\usepackage{array}
+\usepackage{placeins}
+\usepackage{microtype}
+% Report small overflows during draft builds; this does not change layout.
+\hfuzz=0.1pt
+\vfuzz=0.1pt
+\definecolor{cvprblue}{rgb}{0.21,0.49,0.74}
+\usepackage[pagebackref,breaklinks,colorlinks,allcolors=cvprblue]{hyperref}
+
+\newcommand{\method}{MedWorld-JEPA}
+\newcommand{\tbd}{\textcolor{black!55}{TBD}}
+\newcommand{\na}{\textcolor{black!45}{---}}
+\newcommand{\tbdpair}{}
+\newcommand{\pending}[1]{\textcolor{gray}{[TBD: #1]}}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}

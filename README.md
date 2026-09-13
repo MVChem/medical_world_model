@@ -6,12 +6,13 @@
 
 | 内容 | 入口 |
 |---|---|
-| 论文与编译方法 | [26iclr/README.md](26iclr/README.md)，主文件 [main.tex](26iclr/main.tex) |
+| CVPR 2027 论文与编译方法 | [27cvpr/README.md](27cvpr/README.md)，主文件 [main.tex](27cvpr/main.tex)；暂用 CVPR 2026 官方模板 |
+| 各目录放什么、如何对应 | [目录说明](research_notes/PROJECT_STRUCTURE.md) |
 | 当前实验与历史对照 | [实验索引](experiments/README.md) |
 | 训练、评估和代码模块 | [code/README.md](code/README.md) |
 | 最新计划、讨论决定、数据说明 | [research_notes/README.md](research_notes/README.md) |
 | 运行环境、检查和本地 Git | [开发说明](research_notes/DEVELOPMENT.md) |
-| 接下来要做的事 | [TODO.md](research_notes/TODO.md) |
+| 历史待办（Deprecated，已停用） | [TODO.md](research_notes/TODO.md)，仅保留快照 |
 
 ## 当前实验
 
@@ -41,16 +42,18 @@ medical_world_model/
 │   ├── medworld_baselines/ 原始 VLM 零样本评测
 │   └── medworld_dense_baselines/ 冻结 VLM 的密集任务适配
 ├── experiments/             实验索引和机器可读登记表
-├── research_notes/          研究记录、当前 TODO、环境和复现实验说明
-├── 26iclr/                  论文、论文配图；独立 Git 仓库
+├── research_notes/          研究记录、历史待办、环境和复现实验说明
+├── 27cvpr/                  CVPR 2027 工作稿、补充材料和配图；暂用 2026 模板
 ├── results/                 数据审计、病例展示等导出产物
+├── scripts/                 跨实验状态查询与诊断工具
+├── imgs/                    目前仅有空的 ppt/、scripts/、source/ 子目录
 └── related_works/           参考文献笔记与本地 PDF
 ```
 
-训练权重、缓存、日志和预测继续保留在原实验的 `runs/`、`data/`、`weights/` 下，便于已有实验恢复。新实验必须使用新运行目录；运行目录中的 `source/` 是该次实验的冻结源码，开发修改在 `code/` 中进行。论文配图以 `26iclr/ppt/` 和 `26iclr/imgs/` 为准。
+训练权重、缓存、日志和预测继续保留在原实验的 `runs/`、`data/`、`weights/` 下，便于已有实验恢复。新实验必须使用新运行目录；运行目录中的 `source/` 是该次实验的冻结源码，开发修改在 `code/` 中进行。CVPR 工作稿的论文配图位于 `27cvpr/ppt/` 和 `27cvpr/imgs/`。
 
 ## 版本管理
 
-项目根目录的 Git 管理自有代码、配置、文档和实验登记表。远端仓库为 [MVChem/medical_world_model](https://github.com/MVChem/medical_world_model)。数据、模型、实验产物和第三方仓库不纳入该 Git。`26iclr/` 保留原有独立 Git，其已有稿件修改单独管理。
+项目根目录的 Git 管理自有代码、配置、文档、实验登记表和 `27cvpr/` 论文源码。远端仓库为 [MVChem/medical_world_model](https://github.com/MVChem/medical_world_model)。数据、模型、实验产物和第三方仓库不纳入该 Git。
 
 整理前的版本标记为 `before-project-cleanup-20260911`。Git 历史不替代实验的源码快照、原始指标和数据文件。

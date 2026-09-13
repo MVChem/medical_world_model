@@ -1,0 +1,31 @@
+% CVPR 2027 working draft using the official CVPR 2026 author kit.
+% Template provenance and upgrade instructions: TEMPLATE.md.
+\RequirePackage{fix-cm}
+\documentclass[10pt,twocolumn,letterpaper]{article}
+\usepackage[review]{cvpr}
+\input{paper_config}
+\input{preamble}
+\title{\papertitle}
+\author{Anonymous Authors}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+\input{sections/0_abstract}
+\end{abstract}
+
+\input{sections/1_introduction}
+\input{sections/2_related_work}
+\input{sections/4_method}
+\input{sections/6_results_analysis}
+\input{sections/7_discussion}
+\input{sections/8_conclusion}
+\FloatBarrier
+
+{
+\small
+\bibliographystyle{ieeenat_fullname}
+\bibliography{main}
+}
+% Evaluation details and longitudinal examples are in supplementary.tex.
+\end{document}

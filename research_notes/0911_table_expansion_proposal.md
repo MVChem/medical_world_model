@@ -1,12 +1,12 @@
 # Table 1 / Table 2 扩展方案（2026-09-11）
 
-这是候选实验设计，不是已完成结果。依据当前 `26iclr/sections/6_results_analysis.tex`、Table 1 评测代码和官方模型/数据说明整理。
+这是候选实验设计，不是已完成结果。依据当前 `27cvpr/sections/6_results_analysis.tex`、Table 1 评测代码和官方模型/数据说明整理。
 
-后续已按用户要求精简：Table 1 / Table 2 各 10 行，每类选两个参照，最后保留一个匹配 baseline 和 Ours；删除表内分类分组标题。新版已写入论文正文，统一源码为 `../26iclr/tables/table1_future.tex` 与 `../26iclr/tables/table2_downstream.tex`，最终名单见 `../26iclr/plans/README.md`。下文保留此前扩展候选池供参考，不能将 14–21 行版本视为当前主表。
+后续已按用户要求精简：Table 1 / Table 2 各 10 行，每类选两个参照，最后保留一个匹配 baseline 和 Ours；删除表内分类分组标题。新版已写入论文正文，统一源码为 `../27cvpr/tables/table1_future.tex` 与 `../27cvpr/tables/table2_downstream.tex`，最终名单见 `../27cvpr/plans/README.md`。下文保留此前扩展候选池供参考，不能将 14–21 行版本视为当前主表。
 
-此前扩展阶段讨论的范围是：Table 1 约 12–15 个方法/训练设置；Table 2 采用分类、标准 VQA、当前报告生成、病灶定位、器官分割和空间 ×4 超分六类任务。用户明确移除时序变化理解，变化预测保留在 Table 1。随后方法行经过上述精简；两页计划表位于 `../26iclr/plans/table1_table2_plan.pdf`。新增模型行与新增任务列各自回答不同问题，不把同一 VQA 的多个指标计成多个独立任务。
+此前扩展阶段讨论的范围是：Table 1 约 12–15 个方法/训练设置；Table 2 采用分类、标准 VQA、当前报告生成、病灶定位、器官分割和空间 ×4 超分六类任务。用户明确移除时序变化理解，变化预测保留在 Table 1。随后方法行经过上述精简；两页计划表位于 `../27cvpr/plans/table1_table2_plan.pdf`。新增模型行与新增任务列各自回答不同问题，不把同一 VQA 的多个指标计成多个独立任务。
 
-**09-12 执行入口：** 实际已完成的六模型零样本评测、4＋4／无 slots 比较与新密集任务队列见[实验小结](0912_recent_experiments_summary.md)。Table 1 最终四组八指标见[评价方案](0911_future_state_evaluation_redesign.md)；下文旧五指标和候选模型池保留为讨论历史，不作为当前执行清单。`26iclr/` 为独立仓库，论文／计划路径仅在本地联合工作区可读。
+**09-12 执行入口：** 实际已完成的六模型零样本评测、4＋4／无 slots 比较与新密集任务队列见[实验小结](0912_recent_experiments_summary.md)。Table 1 最终四组八指标见[评价方案](0911_future_state_evaluation_redesign.md)；下文旧五指标和候选模型池保留为讨论历史，不作为当前执行清单。
 
 ## 当前基础
 

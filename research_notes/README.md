@@ -4,11 +4,12 @@
 
 ## 项目维护与复现
 
-2026-09-13 将原文档目录的四个文件统一迁入本目录，开发说明、当前待办和实验记录从这里进入。
+2026-09-13 将原文档目录的四个文件统一迁入本目录，开发说明和实验记录从这里进入。同日停用 `TODO.md`，仅保留历史快照；后续计划和决定继续写入带日期的研究笔记。
 
 | 文档 | 用途 |
 |---|---|
-| [当前事项](TODO.md) | 待办、数据接入和结果归档进度 |
+| [目录说明](PROJECT_STRUCTURE.md) | 论文、代码、笔记、实验记录与导出产物的实际位置及存放规则 |
+| [历史待办（Deprecated）](TODO.md) | 已停用，不再更新或作为任务安排依据 |
 | [本地开发与复现](DEVELOPMENT.md) | 环境、协议检查、源码快照与 Git 操作 |
 | [09-11 环境快照](runtime_20260911.json) | 当时的 Python 与包版本，非通用安装锁文件 |
 | [09-11 项目整理记录](PROJECT_CLEANUP_20260911.md) | 代码整理与验证，以及 09-13 文档迁移记录 |
@@ -20,6 +21,10 @@
 | 文档 | 用途 |
 |---|---|
 | [Table 1／2 结果来源与实验时间](0913_table1_table2_results_provenance.md) | 聊天中表格的具体路径、09-11／12 实验时间、18 行分割／×4 SR 最终分数，以及与新旧 slots 实验的区别 |
+| [09-13 冻结多层视觉 slots 对照](0913_frozen_multidepth_slots.md) | 第 5–8 个 slots 固定，只训练分割／×4 SR decoder；六个视觉塔与匹配 image-only 基线 |
+| [8 个多层 slots 方法小图 prompt](0912_multiscale_slots_figure_prompt.md) | 紧凑版：VLM 原生视觉与融合特征经轻量 adapter 对齐为八个 slots；沿用 fig1 字体 |
+| [特征上采样与 VLM hidden states 源码核对](0912_feature_upsampling_vlm_code_review.md) | FeatUp／UPLiFT 的实现，以及 LISA、S1-Omni-Image、HealthGPT、PURE 如何连接下游解码器 |
+| [09-12 slots 训练研究计划](0912_slots_training_research_plan.md) | 两次聊天总结；联系 FeatUp／UPLiFT，说明 8 slots 联合训练、冻结对照与特征取点 |
 | [09-12 实验小结与结果表](0912_recent_experiments_summary.md) | 已完成的匹配比较、六模型零样本分数、负结果与在跑快照；GitHub 可读 |
 | [六模型零样本评测](0911_raw_model_baseline_sweep.md) | 未来预测／当前分类、报告、派生 QA 的固定协议 |
 | [冻结 VLM 密集任务](0912_frozen_vlm_dense_baselines.md) | 六主干、三分支、20 epochs、分割／×4 SR／解剖定位与独立方向队列 |

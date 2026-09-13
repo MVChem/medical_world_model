@@ -1,0 +1,45 @@
+% Shared by main.tex and the plan: six tasks, ten methods, no category rows.
+\begin{table*}[t]
+\caption{Planned comparison on six downstream tasks. All results are pending;
+higher is better. $\mathrm{ZS}$ denotes no benchmark-specific adaptation.}
+\label{tab:downstream_tasks}
+\centering
+\begingroup
+\small
+\setlength{\tabcolsep}{1.5pt}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabular}{@{}L{0.273\linewidth}*{12}{C{0.053\linewidth}}@{}}
+\toprule
+ & \multicolumn{2}{c}{Classification}
+ & \multicolumn{2}{c}{VQA}
+ & \multicolumn{2}{c}{Report gen.}
+ & \multicolumn{2}{c}{Grounding}
+ & \multicolumn{2}{c}{Segmentation}
+ & \multicolumn{2}{c}{SR $4\times$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}\cmidrule(lr){12-13}
+Method & AUC & AP & Acc. & $\mu$F1 & RG & CB & mIoU & A@.5 & \shortstack{Dice\\pseudo} & \shortstack{Dice\\human} & PSNR & SSIM \\
+\midrule
+Qwen2.5-VL-7B$^{\mathrm{ZS}}$ & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \na & \na & \na & \na \\
+LLaVA-v1.6-7B$^{\mathrm{ZS}}$ & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \na & \na & \na & \na \\
+LLaVA-Med-v1.5-7B$^{\mathrm{ZS}}$ & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \na & \na & \na & \na \\
+CheXagent-8B$^{\mathrm{ZS}}$ & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \na & \na & \na & \na \\
+DINOv2 + heads & \tbd & \tbd & \na & \na & \na & \na & \na & \na & \tbd & \tbd & \tbd & \tbd \\
+CheXWorld + heads & \tbd & \tbd & \na & \na & \na & \na & \na & \na & \tbd & \tbd & \tbd & \tbd \\
+MAIRA-2 & \na & \na & \na & \na & \tbd & \tbd & \tbd & \tbd & \na & \na & \na & \na \\
+SwinIR (CXR-adapted) & \na & \na & \na & \na & \na & \na & \na & \na & \na & \na & \tbd & \tbd \\
+\midrule
+Qwen3.5-0.8B no-slots & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\textbf{\method{} (Ours)} & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\bottomrule
+\end{tabular}
+\endgroup\par
+\vspace{3pt}
+\begin{minipage}{\linewidth}\fontsize{8}{9.5}\selectfont
+TBD: pending; ---: not evaluated with this interface. DINOv2/CheXWorld use frozen
+encoders and supervised heads; MAIRA-2 uses its native reporting/grounding interface.
+The no-slots baseline and Ours use matched six-task supervision and decoders.
+RG/CB: RadGraph/CheXbert F1; $\mu$F1: micro F1; A@.5: box accuracy at IoU $\geq0.5$.
+Pseudo/human Dice are separate tests. Grounding conversion and matching,
+human-mask data, and pretraining overlap will be specified before final evaluation.
+\end{minipage}
+\end{table*}

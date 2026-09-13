@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610">
+  <title>MedWorld-JEPA structured patient state</title>
+  <desc>Editable architecture figure showing typed current-state tokens, objective routing, task queries, and a future-only target-side branch with EMA learned encoders.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#37474F"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#008A63"/>
+    </marker>
+    <style>
+      .font { font-family: "DejaVu Sans Condensed", "Arial Narrow", sans-serif; fill: #263238; }
+      .title { font-size: 27px; font-weight: 700; }
+      .head { font-size: 22px; font-weight: 700; }
+      .body { font-size: 20px; }
+      .route { font-size: 18px; font-weight: 700; }
+      .small { font-size: 18px; }
+      .tiny { font-size: 17px; }
+      .edge { fill: none; stroke: #37474F; stroke-width: 2.4; marker-end: url(#arrow); }
+      .targetEdge { fill: none; stroke: #008A63; stroke-width: 2.4; stroke-dasharray: 7 5; marker-end: url(#arrowGreen); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="610" fill="#FFFFFF"/>
+
+  <!-- Current branch -->
+  <rect x="18" y="18" width="830" height="315" rx="16" fill="#FAFBFC" stroke="#CFD8DC" stroke-width="2"/>
+  <text x="38" y="49" class="font title">Current branch</text>
+  <text x="300" y="49" class="font small" fill="#607D8B" style="fill:#607D8B">available at or before t</text>
+
+  <rect x="38" y="82" width="145" height="104" rx="11" fill="#FFFFFF" stroke="#607D8B" stroke-width="1.8"/>
+  <text x="110" y="108" text-anchor="middle" class="font body" font-weight="700">Current study</text>
+  <text x="110" y="136" text-anchor="middle" class="font body">XR · CT · MRI</text>
+  <text x="110" y="163" text-anchor="middle" class="font small">image / volume</text>
+
+  <rect x="38" y="215" width="145" height="75" rx="11" fill="#FFFFFF" stroke="#B05A91" stroke-width="1.8"/>
+  <text x="110" y="244" text-anchor="middle" class="font small" font-weight="700">Report + history</text>
+  <text x="110" y="269" text-anchor="middle" class="font small">timestamps ≤ t</text>
+
+  <rect x="224" y="91" width="166" height="95" rx="12" fill="#E5F2FA" stroke="#0072B2" stroke-width="2.5"/>
+  <text x="307" y="121" text-anchor="middle" class="font small" font-weight="700">Trainable 2D / 3D</text>
+  <text x="307" y="149" text-anchor="middle" class="font head">JEPA encoder</text>
+  <text x="307" y="173" text-anchor="middle" class="font small">physical geometry</text>
+
+  <rect x="433" y="74" width="151" height="78" rx="11" fill="#E5F2FA" stroke="#0072B2" stroke-width="2.3"/>
+  <text x="508" y="103" text-anchor="middle" class="font body" font-weight="700">Dense features</text>
+  <text x="508" y="131" text-anchor="middle" class="font body">D<tspan baseline-shift="sub" font-size="17">t</tspan><tspan baseline-shift="super" font-size="17">1:L</tspan></text>
+
+  <rect x="610" y="67" width="217" height="235" rx="13" fill="#FFFFFF" stroke="#7B4F80" stroke-width="2.5"/>
+  <text x="718" y="91" text-anchor="middle" class="font body" font-weight="700">Structured current</text>
+  <text x="718" y="111" text-anchor="middle" class="font body" font-weight="700">patient state</text>
+  <text x="718" y="130" text-anchor="middle" class="font small">fixed-size · no horizon</text>
+
+  <rect x="627" y="143" width="82" height="40" rx="8" fill="#F4EDF5" stroke="#7B4F80" stroke-width="1.7"/>
+  <text x="668" y="168" text-anchor="middle" class="font body" font-weight="700">global</text>
+  <rect x="724" y="143" width="86" height="40" rx="8" fill="#EAF4FA" stroke="#0072B2" stroke-width="1.7"/>
+  <text x="767" y="168" text-anchor="middle" class="font body" font-weight="700">anatomy</text>
+  <rect x="627" y="195" width="82" height="40" rx="8" fill="#FBEAF3" stroke="#B05A91" stroke-width="1.7"/>
+  <text x="668" y="220" text-anchor="middle" class="font tiny" font-weight="700">pathology</text>
+  <rect x="724" y="195" width="86" height="40" rx="8" fill="#FFF1E2" stroke="#D97706" stroke-width="1.7"/>
+  <text x="767" y="220" text-anchor="middle" class="font body" font-weight="700">lesion</text>
+  <rect x="662" y="248" width="115" height="43" rx="9" fill="#F0E9F7" stroke="#6F42A1" stroke-width="2.2"/>
+  <text x="719" y="274" text-anchor="middle" class="font body" font-weight="700">trajectory</text>
+
+  <path class="edge" d="M183 133 H224"/>
+  <path class="edge" d="M390 133 H433"/>
+  <path class="edge" d="M584 113 H610"/>
+  <path class="edge" d="M183 252 H598 V204 H610"/>
+
+  <!-- Target branch -->
+  <rect x="870" y="18" width="312" height="315" rx="16" fill="#F5FBF8" stroke="#008A63" stroke-width="2.2" stroke-dasharray="8 6"/>
+  <text x="890" y="49" class="font title" style="fill:#007A59">Target-side branch</text>
+  <text x="1160" y="70" text-anchor="end" class="font small" style="fill:#007A59">EMA learners · stop gradient</text>
+
+  <rect x="892" y="82" width="123" height="82" rx="10" fill="#FFFFFF" stroke="#008A63" stroke-width="1.8"/>
+  <text x="953" y="111" text-anchor="middle" class="font small" font-weight="700">Future study</text>
+  <text x="953" y="136" text-anchor="middle" class="font body">X<tspan baseline-shift="sub" font-size="17">t+h</tspan> / R<tspan baseline-shift="sub" font-size="17">t+h</tspan></text>
+  <text x="953" y="157" text-anchor="middle" class="font tiny">target-only</text>
+
+  <rect x="1038" y="82" width="123" height="82" rx="10" fill="#E5F5EF" stroke="#008A63" stroke-width="2.2"/>
+  <text x="1099" y="105" text-anchor="middle" class="font small" font-weight="700">EMA encoder</text>
+  <text x="1099" y="128" text-anchor="middle" class="font tiny" font-weight="700">+ tokenizer</text>
+  <text x="1099" y="150" text-anchor="middle" class="font tiny">same state space</text>
+
+  <rect x="915" y="211" width="220" height="78" rx="11" fill="#FFFFFF" stroke="#008A63" stroke-width="2.2"/>
+  <text x="1025" y="239" text-anchor="middle" class="font head">Future targets</text>
+  <text x="1025" y="264" text-anchor="middle" class="font small">pathology · lesion</text>
+  <text x="1025" y="283" text-anchor="middle" class="font tiny">trajectory · event targets</text>
+  <path class="targetEdge" d="M1015 123 H1038"/>
+  <path class="targetEdge" d="M1099 164 V211"/>
+  <rect x="950" y="301" width="150" height="24" rx="12" fill="#DDF3EA" stroke="#008A63" stroke-width="1.5"/>
+  <text x="1025" y="318" text-anchor="middle" class="font tiny" font-weight="700" style="fill:#007A59">future loss target</text>
+  <path class="targetEdge" d="M1025 289 V301"/>
+
+  <!-- Objective routing -->
+  <rect x="18" y="353" width="596" height="238" rx="16" fill="#FBFCFD" stroke="#CFD8DC" stroke-width="2"/>
+  <text x="38" y="385" class="font title">Objective routing</text>
+
+  <rect x="39" y="410" width="160" height="34" rx="8" fill="#E5F2FA" stroke="#0072B2" stroke-width="1.5"/>
+  <text x="119" y="432" text-anchor="middle" class="font route">Volume JEPA</text>
+  <text x="220" y="432" class="font body">→ dense + anatomy</text>
+
+  <rect x="39" y="456" width="160" height="34" rx="8" fill="#FBEAF3" stroke="#B05A91" stroke-width="1.5"/>
+  <text x="119" y="478" text-anchor="middle" class="font route">Report / finding</text>
+  <text x="220" y="478" class="font body">→ pathology</text>
+
+  <rect x="39" y="502" width="160" height="34" rx="8" fill="#FFF1E2" stroke="#D97706" stroke-width="1.5"/>
+  <text x="119" y="524" text-anchor="middle" class="font route">Localized targets</text>
+  <text x="220" y="524" class="font body">→ lesion</text>
+
+  <rect x="39" y="548" width="160" height="34" rx="8" fill="#F0E9F7" stroke="#6F42A1" stroke-width="1.7"/>
+  <text x="119" y="570" text-anchor="middle" class="font small" font-weight="700">True patient time</text>
+  <text x="220" y="570" class="font body">→ trajectory</text>
+
+  <text x="415" y="426" class="font small">masked spatial targets</text>
+  <text x="415" y="472" class="font small">disease · site · severity</text>
+  <text x="415" y="518" class="font small">box · mask · region text</text>
+  <text x="415" y="570" class="font small">fine future · no leakage</text>
+
+  <!-- Task queries -->
+  <rect x="638" y="353" width="544" height="238" rx="16" fill="#FFFCF7" stroke="#E69F00" stroke-width="2"/>
+  <text x="658" y="385" class="font title">Task queries</text>
+  <text x="1160" y="385" text-anchor="end" class="font small" fill="#8A5A00" style="fill:#8A5A00">queries read; do not write</text>
+
+  <rect x="660" y="409" width="143" height="35" rx="17" fill="#FFFFFF" stroke="#D89A00" stroke-width="1.8"/>
+  <text x="731" y="432" text-anchor="middle" class="font route">CLS</text>
+  <text x="831" y="432" class="font body">pathology + trajectory + global</text>
+
+  <rect x="660" y="455" width="143" height="35" rx="17" fill="#FFFFFF" stroke="#D89A00" stroke-width="1.8"/>
+  <text x="731" y="478" text-anchor="middle" class="font route">SEG</text>
+  <text x="831" y="478" class="font body">dense + anatomy + lesion</text>
+
+  <rect x="660" y="501" width="143" height="35" rx="17" fill="#FFFFFF" stroke="#D89A00" stroke-width="1.8"/>
+  <text x="731" y="524" text-anchor="middle" class="font route">RETRIEVAL</text>
+  <text x="831" y="524" class="font body">global + pathology</text>
+
+  <rect x="660" y="547" width="143" height="35" rx="17" fill="#FFF0D7" stroke="#D97706" stroke-width="2.2"/>
+  <text x="731" y="570" text-anchor="middle" class="font route">FORECAST(h)</text>
+  <text x="831" y="570" class="font body">pathology + lesion + trajectory</text>
+
+</svg>

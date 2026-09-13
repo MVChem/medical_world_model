@@ -28,7 +28,7 @@ State Representation 首先单独介绍 **Shared Multimodal State Encoding（当
 
 编码接口兼容仅影像、仅文本等输入组合，便于后续利用不完整数据扩大训练规模。这些组合可以在 Results 中作为缺失模态消融，具体是否开展和如何训练留待实验安排，不作为当前主要任务逐项展开。
 
-Task Definition 后用一段简短的 **Overview** 引出 [Fig. 1](../26iclr/imgs/fig1.pdf)，再展开后续模块。Overview 的主线可以写成：
+Task Definition 后用一段简短的 **Overview** 引出 [Fig. 1](../27cvpr/imgs/fig1.pdf)，再展开后续模块。Overview 的主线可以写成：
 
 > 我们提出 MedWorld-JEPA，一个同时建模当前状态与未来演化的 latent world model。同一套多模态编码流程分别处理当前图文与真实随访图文：JEPA 提取空间特征，经 visual adapter 接入 VLM，VLM 在 learned slots 对应位置输出共享 state tokens。任务 decoder 根据任务读取 state tokens；分割和超分同时接收任务输入图像，通过 decoder 自身的图像分支提取局部证据，并用 state tokens 提供语义条件。任务损失训练 decoder 及状态编码路径。Latent World Model 根据当前 S_t 和时间条件 h 预测未来 state tokens，与真实未来图文经 VLM 编码的 S*_{t⁺} 对齐。
 
@@ -184,7 +184,7 @@ Task decoder 是表征学习的一部分。**优化目标是任务输出与真�
 
 ### 纵向数据
 
-MIMIC-CXR 可以提供同一患者的 current–future 观测。当前[附录第一张图](../26iclr/ppt/ppt/appendix_fig_v3.pdf)已有三类示例：A 为约 20.1 小时后的明显变化，B 为约 24 小时后的稳定随访，C 为四次连续检查。它们说明了 pair 和多时点序列的构建形式；最终可用配对数量仍需统计。
+MIMIC-CXR 可以提供同一患者的 current–future 观测。当前[附录第一张图](../27cvpr/ppt/ppt/appendix_fig_v3.pdf)已有三类示例：A 为约 20.1 小时后的明显变化，B 为约 24 小时后的稳定随访，C 为四次连续检查。它们说明了 pair 和多时点序列的构建形式；最终可用配对数量仍需统计。
 
 纵向训练单位是同一患者在两个时点的可用观测，支持影像、报告或二者的不同组合。具体数据集内各类组合的数量留待统计，不将用户对可用性分布的判断写成已验证的数据结论。
 

@@ -4,10 +4,10 @@
 
 ## 1. 两张图分别展示了什么
 
-[论文当前附录图](../26iclr/ppt/ppt/appendix_fig_v3.pdf)位于当前 `main.pdf` 第 17 页，编号为 Figure 2，是附录中的第一幅图。
+[附录病例图](../27cvpr/ppt/ppt/appendix_fig_v3.pdf)展示纵向检查样例；当前附录入口见 [supplementary.tex](../27cvpr/supplementary.tex)。
 
 - 胸片、胸片下方的报告摘要、检查间隔来自 MIMIC-CXR。
-- SICU、CCU → Vascular 等病区信息来自 MIMIC-IV。A/B 的来源可在 `26iclr/ppt/source/mimic_appendix_cases/appendix_cases.csv` 核对；C 的来源见 `26iclr/ppt/prompt/mimic_longitudinal_appendix_image2/report_reference.md`。
+- SICU、CCU → Vascular 等病区信息来自 MIMIC-IV。A/B 的来源可在 `27cvpr/ppt/source/mimic_appendix_cases/appendix_cases.csv` 核对；C 的来源见 `27cvpr/ppt/prompt/mimic_longitudinal_appendix_image2/report_reference.md`。
 - 图中没有展示 IV 的化验值、监护值、给药或出入量记录。报告摘要里的置管描述仍来自 CXR 报告，不能因为提到治疗就认作 IV 输入。
 
 因此，它主要展示的是 CXR 图文轨迹，附带少量 IV 病区背景，尚未充分展示当前训练使用的临床数据。

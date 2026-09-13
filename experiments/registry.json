@@ -1,5 +1,6 @@
 {
   "experiments": [
+    {"id": "frozen-multidepth-slots-0913", "task": "Frozen slots5-8 ablation: segmentation + x4 SR", "method": "Six native VLM vision towers, fixed multidepth slots + matched image-only decoder,20epochs", "role": "current", "run": "code/medworld_dense_baselines/runs/frozen_slots_20260913", "status": "status.json", "report": "REPORT.md"},
     {"id": "dense-baselines-0912", "task": "Table 2 dense probes + separate gold Direction F1", "method": "Six frozen VLMs × raw image / V-JEPA / V-JEPA+adapter, 20 matched epochs", "role": "current", "run": "code/medworld_dense_baselines/runs/dense_20260912", "status": "status.json", "report": "preview/full_tables.md"},
     {"id": "raw-models-0911", "task": "Table 1 + Table 2 / pretrained zero-shot sweep", "method": "Qwen3.5 0.8/4/9/27B-FP8 + MedGemma 4/27B", "role": "current", "run": "code/medworld_baselines/runs/raw_models_20260911", "status": "coordinator_status.json", "report": "REPORT.md"},
     {"id": "stage1-slot44-0911", "task": "Table 2 / four current tasks", "method": "Ours, 4+4 slots", "role": "current", "run": "code/medworld_stage1/runs/slot44_20260911", "status": "joint/status.json", "report": "REPORT.md"},

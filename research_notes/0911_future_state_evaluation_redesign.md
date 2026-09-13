@@ -156,4 +156,4 @@ ECE 会受箱数和样本量影响，低 ECE 也可能来自始终输出群体�
 
 优先工作应是锁定四个评价问题和标签定义，并用参考样本审核“改善／恶化”是否可稳定标注。所有新指标的规则在模型比较前冻结。统计区间按患者配对 bootstrap；同一患者多个 pair 不当独立患者。未知参考、预测解析失败、各指标覆盖率和 per-class support 都需记录。
 
-caption 已用逐列箭头替代 **“higher is better”**，Brier／ECE 越低越好。已同步至 [Table 1 源码](../26iclr/tables/table1_future.tex)、[正文](../26iclr/sections/6_results_analysis.tex)、[附录协议](../26iclr/sections/b_protocol_details.tex)和[计划说明](../26iclr/plans/README.md)。所有待跑分数仍为 TBD，未开展本方案下的新实验。
+caption 已用逐列箭头替代 **“higher is better”**，Brier／ECE 越低越好。已同步至 [Table 1 源码](../27cvpr/tables/table1_future.tex)、[正文](../27cvpr/sections/6_results_analysis.tex)、[附录协议](../27cvpr/sections/b_protocol_details.tex)和[计划说明](../27cvpr/plans/README.md)。所有待跑分数仍为 TBD，未开展本方案下的新实验。

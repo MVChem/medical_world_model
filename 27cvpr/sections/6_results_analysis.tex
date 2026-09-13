@@ -1,0 +1,57 @@
+\section{Results}
+\label{sec:results}
+
+% Declare both wide tables early so they can float near the results text.
+\input{tables/table1_future}
+\input{tables/table2_downstream}
+
+\input{sections/5_experiments}
+
+\subsection{Future prediction}
+
+\Cref{tab:future_prediction} evaluates four dimensions of the predicted future
+state: clinical status, disease progression, report fidelity, and probabilistic
+reliability, with two metrics per dimension. Inputs comprise the current radiograph and
+report, clinical history available by the source cutoff, and a horizon bin.
+The current report is assumed available retrospectively; follow-up images and
+reports supply targets only. Four public VLM checkpoints use zero-shot forecast
+prompts. BioViL-T and CheXWorld receive trained forecast modules; Copy Current
+and a finding-transition prior provide simple references. Qwen3.5-0.8B direct
+prediction is the same-language-scale trained baseline.
+
+Clinical status uses finding macro AP (non-interpolated average precision) and
+AUROC. Disease progression uses Transition F1, averaged over supported
+finding-specific onset and resolution events, and Direction F1, which measures
+improvement, stability, and worsening of persistent findings. Stable references
+remain eligible for false-change penalties. RadGraph partial F1 and GREEN assess
+the clinical content of generated future reports. Probabilistic reliability uses
+macro Brier score and classwise ECE on the same future-finding probabilities.
+VLM scores are derived from fixed Yes/No answer likelihoods. All methods share
+the reference-defined eligibility masks for each metric; training and readout
+differences, direction annotations, and calibration rules are specified in
+the supplementary material. Results remain pending under this eight-metric protocol.
+
+
+\subsection{Downstream tasks}
+
+\Cref{tab:downstream_tasks} plans six tasks without the future predictor:
+classification, standard VQA, current report generation, phrase grounding,
+organ segmentation, and super-resolution. This expanded image-based evaluation
+withholds the same-exam report from state construction. Questions and phrases
+condition task readout after the state is encoded. The no-slots baseline and
+\method{} will be adapted with the same task supervision and decoders; their
+earlier report-assisted four-task scores do not populate this table.
+
+Classification uses 13 MIMIC finding/device labels and reports macro AUROC/AP.
+MIMIC-CXR-VQA provides standard questions and official Accuracy/micro F1;
+Verify/Choose/Query and whole-image/region breakdowns will be reported separately.
+Current report generation uses MIMIC-CXR with RadGraph partial F1 and CheXbert
+macro-positive F1. MS-CXR phrase grounding uses mIoU and box accuracy at
+IoU $\geq0.5$ under one fixed conversion and matching protocol.
+
+Segmentation measures Dice for the lungs and heart against CXAS pseudo-labels
+and, separately, a human-mask test set to be selected. Super-resolution uses
+synthetic $4\times$ downsampling per spatial dimension, with LR imagery in both
+input branches and HR used only as the target. PSNR and SSIM exclude padding.
+DINOv2/CheXWorld use frozen visual encoders with supervised heads; MAIRA-2 and
+SwinIR provide reporting/grounding and reconstruction references, respectively.

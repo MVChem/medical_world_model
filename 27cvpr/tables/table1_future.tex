@@ -1,0 +1,48 @@
+% Shared by main.tex and the two-page plan. Four metric groups, two metrics each.
+\begin{table*}[t]
+\caption{Planned future-state evaluation across four dimensions. All results are pending;
+arrows indicate the preferred direction.
+$\mathrm{ZS}$ denotes zero-shot inference with a public checkpoint.}
+\label{tab:future_prediction}
+\centering
+\begingroup
+\small
+\setlength{\tabcolsep}{2pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{@{}L{0.30\linewidth}*{4}{C{0.075\linewidth}}C{0.095\linewidth}*{3}{C{0.075\linewidth}}@{}}
+\toprule
+ & \multicolumn{2}{c}{\shortstack{Future clinical\\status}}
+ & \multicolumn{2}{c}{\shortstack{Disease\\progression}}
+ & \multicolumn{2}{c}{\shortstack{Future report\\fidelity}}
+ & \multicolumn{2}{c}{\shortstack{Probabilistic\\reliability}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+Method & \shortstack{AP\\$\uparrow$} & \shortstack{AUROC\\$\uparrow$}
+ & \shortstack{Trans.\\F1$\uparrow$} & \shortstack{Dir.\\F1$\uparrow$}
+ & \shortstack{RadGraph\\F1$\uparrow$} & \shortstack{GREEN\\$\uparrow$}
+ & \shortstack{Brier\\$\downarrow$} & \shortstack{ECE\\$\downarrow$} \\
+\midrule
+Qwen2.5-VL-7B$^{\mathrm{ZS}}$ & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+LLaVA-v1.6-Mistral-7B$^{\mathrm{ZS}}$ & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+LLaVA-Med-v1.5-7B$^{\mathrm{ZS}}$ & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+CheXagent-8B$^{\mathrm{ZS}}$ & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+BioViL-T + predictor & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+CheXWorld + predictor & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+Copy Current & \na & \na & \tbd & \tbd & \tbd & \tbd & \na & \na \\
+Finding-transition prior & \tbd & \tbd & \tbd & \na & \na & \na & \tbd & \tbd \\
+\midrule
+Qwen3.5-0.8B direct & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\textbf{\method{} (Ours)} & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\bottomrule
+\end{tabular}
+\endgroup\par
+\vspace{3pt}
+\begin{minipage}{\linewidth}\fontsize{8}{9.5}\selectfont
+AP is non-interpolated average precision; AP, AUROC, Brier and classwise ECE
+are macro-averaged over findings. Trans. F1 covers onset/resolution; Dir. F1 covers
+improved/stable/worsened persistent findings. RadGraph uses partial F1.
+VLM scores use Yes/No likelihoods. ``+ predictor'' denotes trained fusion,
+prediction and readouts. Copy Current has no continuous-score interface;
+the finding prior has no direction or report output. Direct and Ours share a
+0.8B language backbone and forecast-training data. TBD: pending; ---: not evaluated.
+\end{minipage}
+\end{table*}

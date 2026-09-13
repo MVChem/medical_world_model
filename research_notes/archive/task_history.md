@@ -1,11 +1,11 @@
 # 历史任务原文（原根目录 TODO.md）
 
-本文件保存各日期的原始需求，不作为当前待办或执行授权入口。当前事项见 [TODO.md](../TODO.md)，项目结构见 [README.md](../../README.md)。
+本文件保存各日期的需求记录，论文资源路径已统一为当前目录，过时的投稿事项已移除；不作为当前待办或执行授权入口。[TODO.md](../TODO.md) 已停用，仅保留历史快照；后续计划和决定见 [研究笔记](../README.md)，项目结构见 [README.md](../../README.md)。
 
 # 0811 construct mimic example
 I have mimic data under /home/data1/data/MIMIC
 
-See /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr, now i want a example to see the future state, i need to construct some data like this:
+See /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr, now i want a example to see the future state, i need to construct some data like this:
 
 current state -> future state
 
@@ -34,7 +34,7 @@ Bascially, i want to show the data we use, see project /home/data2/chk/workspace
 
 # 0814 choose good data
 
-See /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr and /home/data2/chk/workspace/2026/08/04/medical_world_model/code/mimic_vla_jepa, i want make some data into /home/data2/chk/workspace/2026/08/04/medical_world_model/research_notes/assets/mimic_data_appendix (you can delete the old one)
+See /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr and /home/data2/chk/workspace/2026/08/04/medical_world_model/code/mimic_vla_jepa, i want make some data into /home/data2/chk/workspace/2026/08/04/medical_world_model/research_notes/assets/mimic_data_appendix (you can delete the old one)
 
 Should contain of those examples:
 
@@ -61,12 +61,7 @@ We would convert A to pdf and then insert that to proper place in the main conte
 
 A is /home/data2/chk/workspace/2026/08/04/medical_world_model/imgs/ppt/demo_fig1_v1.pptx
 
-and B is /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr
-
-# 0824 iclr call for papers
-
-2027 iclr怎么取号？在openreview上吗
-
+and B is /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr
 
 # 0824 rewrite the paper
 
@@ -74,7 +69,7 @@ https://chatgpt.com/share/6a8d8b71-f530-83e8-b967-7b47caf67151
 
 看一下这个链接
 
-然后重写一下我们的/home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr
+然后重写一下我们的/home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr
 
 用ccf skills
 
@@ -101,9 +96,9 @@ appendix基本也能都删了 全是废话
 
 /home/data2/chk/workspace/2026/08/04/medical_world_model/code/MIMIC_example有写这样的例子吗？
 
-找几个有代表性的联系一下这几个数据库，我估计我之后要找一下这个数据然后画在iclr的appendix里面
+找几个有代表性的联系一下这几个数据库，我估计我之后要找一下这个数据然后画在论文的appendix里面
 
-可以看一下/home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr，不过这也是个草稿
+可以看一下/home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr，不过这也是个草稿
 
 如果没有这个例子，你可以随便修改或者彻底重构/home/data2/chk/workspace/2026/08/04/medical_world_model/code/MIMIC_example搞一个例子
 
@@ -119,9 +114,9 @@ We want things editable in ppt and use native ppt components to draw, if ppt is 
 
 Code you write should be simple and short, do not overdesign
 
-A: /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/source/<name>.<extension>
-B: /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/ppt/<name>.pptx
-C: /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/scripts/<name>
+A: /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/source/<name>.<extension>
+B: /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/ppt/<name>.pptx
+C: /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/scripts/<name>
 
 name is Codex Image Aug 29, 2026, 06_33_48 AM.png
 
@@ -149,14 +144,14 @@ name is Codex Image Aug 29, 2026, 06_33_48 AM.png
 
 我需要一个gpt image2的prompt，之后我自己喂给gpt image2去生成图片，要英文版本的
 
-读一下/home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr
+读一下/home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr
 
 我们主要画这个图的fig1展示pipeline，包括网络架构，token使用之类
 
 要好看有设计感，nature系列配色，好好结合文章写prompt，不要过多文字块（因为要放在论文正文里面，后续我会监督修改，prompt可以细致一点）
 
 
-写完的prompt放在/home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/prompt下
+写完的prompt放在/home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/prompt下
 
 # 0829 downstream tasks
 /home/data2/chk/workspace/2026/08/04/medical_world_model/code/vjepa2 我们要看一下我们训练的jepa效果怎么样
@@ -173,7 +168,7 @@ name is Codex Image Aug 29, 2026, 06_33_48 AM.png
 
 请参考/home/data2/chk/workspace/2026/08/04/medical_world_model/code/MIMIC_example，里面有我们想要展示的数据
 
-我们要prompt和一些资源画图，你现在写一个英文的prompt放在/home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/prompt，一些mimic的资源放在/home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/source（新建一个folder）
+我们要prompt和一些资源画图，你现在写一个英文的prompt放在/home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/prompt，一些mimic的资源放在/home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/source（新建一个folder）
 
 我们要一个image2的prompt来展示我们的数据这样，要好看，不过对于prompt本身不要做太多限制（让image2自己去发挥），充分展示我们的数据即可，这个image要放在appendix里面估计
 
@@ -185,9 +180,9 @@ We would draw image A, and the path is B, script under C (if we use python to dr
 
 code you write should be simple and short, do not overdesign
 
-A: /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/source/<name>.png/jpg
-B: /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/ppt/<name>.pptx
-C: /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/scripts/<name>
+A: /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/source/<name>.png/jpg
+B: /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/ppt/<name>.pptx
+C: /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/scripts/<name>
 
 where name is fig1_v5
 
@@ -196,7 +191,7 @@ where name is fig1_v5
 
 请参考/home/data2/chk/workspace/2026/08/04/medical_world_model/code/MIMIC_example，里面有我们想要展示的数据
 
-我们要prompt和一些资源画图，你现在写一个英文的prompt放在/home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/prompt，一些mimic的资源放在/home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/source（新建一个folder）
+我们要prompt和一些资源画图，你现在写一个英文的prompt放在/home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/prompt，一些mimic的资源放在/home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/source（新建一个folder）
 
 我们要一个image2的prompt来展示我们的数据这样，要好看，不过对于prompt本身不要做太多限制（让image2自己去发挥），充分展示我们的数据即可，这个image要放在appendix里面估计
 
@@ -211,17 +206,17 @@ where name is fig1_v5
 
 # 0903 appendix fig1 v1
 
-/home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/source/appendix_fig1_v1.png with sources under /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/source/mimic_appendix_cases (data from /home/data2/chk/workspace/2026/08/04/medical_world_model/code/MIMIC_example)
+/home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/source/appendix_fig1_v1.png with sources under /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/source/mimic_appendix_cases (data from /home/data2/chk/workspace/2026/08/04/medical_world_model/code/MIMIC_example)
 
 I find this image messy, can you make this more organized?
 
-I need a image2 prompt for that under /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/prompt named appendix_fig1_v2, and try to make this figure nice
+I need a image2 prompt for that under /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/prompt named appendix_fig1_v2, and try to make this figure nice
 
 # 0903 fig1 prompt
 
-Please read /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/main.pdf and /home/data2/chk/workspace/2026/08/04/medical_world_model/related_works/26-Arxiv-VLA-JEPA.pdf carefully
+Please read /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/main.pdf and /home/data2/chk/workspace/2026/08/04/medical_world_model/related_works/26-Arxiv-VLA-JEPA.pdf carefully
 
-Now we need a image2 prompt to generate the fig1 for /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/main.pdf, do not make too much restriction (let image2 to manage the style i think, we would only say what we want to draw)
+Now we need a image2 prompt to generate the fig1 for /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/main.pdf, do not make too much restriction (let image2 to manage the style i think, we would only say what we want to draw)
 
 No need to draw too fucking much details
 
@@ -229,7 +224,7 @@ Draw the main idea and training pipeline and data flow i think would be ok
 
 Make the style maybe like current fig1
 
-We would write prompt under /home/data2/chk/workspace/2026/08/04/medical_world_model/26iclr/ppt/prompt called fig1_v1.txt please
+We would write prompt under /home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/ppt/prompt called fig1_v1.txt please
 
 # 0904 chest seg
 

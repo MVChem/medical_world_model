@@ -7,13 +7,15 @@
 | [medworld_stage1](medworld_stage1/README.md) | Table 2：分类、疾病识别、分割、SR | 当前开发主线 |
 | [medworld_table1](medworld_table1/README.md) | Table 1：未来状态／报告／finding 预测，DirectQwen 对照 | 保留纵向实验 |
 | [medworld_baselines](medworld_baselines/README.md) | 六个原始 Qwen／MedGemma 的未来预测、分类、报告和派生 QA | 09-11 零样本评测已完成 |
-| [medworld_dense_baselines](medworld_dense_baselines/README.md) | 冻结 VLM 的分割、×4 SR、解剖定位 heads 与独立方向评测 | 09-12 队列 55/55 已完成 |
+| [medworld_dense_baselines](medworld_dense_baselines/README.md) | 冻结 VLM 密集任务对照；冻结多层视觉 slots 的分割／×4 SR 对照 | 09-12 队列 55/55 已完成；09-13 独立运行见下方入口 |
 | `medworld_common` | 共享 Qwen 加载、LoRA、状态 encoder、报告 decoder、保存与随机种子工具 | 两个实验共用 |
 | [mimic_cxr_iv_linked](mimic_cxr_iv_linked/README.md) | CXR＋IV 连接、筛选、审计及本地 VLM 作业 | 数据管线 |
 | [MIMIC_example](MIMIC_example/README.md) | 时间配对、示例和数据约束 | 早期数据工具 |
 | [mimic_vla_jepa](mimic_vla_jepa/README.md) | 8 月的特征提取和预测器实验 | 历史实现 |
 
 `VLA-JEPA`、`VLA-JEPA-reference`、`Clin-JEPA`、`vjepa2`、`ChestXRayAnatomySegmentation` 是独立第三方仓库，保留其原路径和 Git。自有代码的整理不会把它们并入根仓库。
+
+09-13 冻结多层视觉 slots 实验的提取、训练、队列和报告代码位于 `medworld_dense_baselines/frozen_slots_{extract,train,queue,report}.py`；[固定协议](../research_notes/0913_frozen_multidepth_slots.md)、[运行报告](medworld_dense_baselines/runs/frozen_slots_20260913/REPORT.md) 和 [队列状态](medworld_dense_baselines/runs/frozen_slots_20260913/status.json) 分别记录定义、结果和进度。该轮使用独立的 `runs/frozen_slots_20260913/`，09-12 的结果继续保存在 `runs/dense_20260912/`。
 
 ## 运行和开发
 

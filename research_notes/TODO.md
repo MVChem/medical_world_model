@@ -1,4 +1,6 @@
-# 当前事项
+# TODO（Deprecated／已停用）
+
+**2026-09-13 起停用。** 本文件仅保留历史快照，不再新增、更新或据此安排任务。下方未勾选条目不代表当前待办。后续计划和决定见 [研究笔记](README.md)，实验进度见 [实验索引](../experiments/README.md)。
 
 项目入口：[README.md](../README.md)。历史任务原文已归档至 [task_history.md](archive/task_history.md)。
 
@@ -15,4 +17,4 @@
 - [ ] 按已确认的 Table 1 指标完成方向标签验收，并统一 Ours／direct 的新评分接口与对应实验。
 - [ ] 结果稳定后填写论文表格，保留验证／测试划分与 checkpoint 来源。
 
-运行状态以 [实验索引](../experiments/README.md) 中的原始记录为准。新增实验须登记；文档中的计划完成后，在索引中链接执行记录。
+运行状态以 [实验索引](../experiments/README.md) 中的原始记录为准。本页勾选状态保持停用时的快照。

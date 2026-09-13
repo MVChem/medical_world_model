@@ -1,0 +1,130 @@
+\section{MedWorld-JEPA}
+\label{sec:method}
+
+% Introduce the overall method before the detailed state construction.
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=\textwidth]{imgs/fig1.pdf}
+    \caption{Overview of \method{}. The state $S\in\mathbb R^{8\times d}$ supports task decoding and horizon-conditioned prediction; Figure~\ref{fig:task_supervised_slots} details its construction. Spatial tasks receive the input image and visual slots, using low-resolution evidence for super-resolution. The world model maps $(S_t,h)$ to $\widehat S_{t,h}$, supervised by the stop-gradient follow-up target $S^*_{t^+}$. Stage~1 learns task-supervised states; Stage~2 learns their temporal evolution.}
+    \label{fig:medworld_jepa_overview}
+\end{figure*}
+
+\input{sections/3_problem_formulation}
+
+\paragraph{Overview.}
+\method{} couples a multimodal state encoder with a horizon-conditioned latent world model (\cref{fig:medworld_jepa_overview}). At both time points, four vision--language slots and four visual slots form the state. Task decoders jointly supervise its construction, with direct image input for segmentation and super-resolution. The world model predicts future slots from the current state and horizon while further adapting the state encoder.
+
+\subsection{State Representation}
+\label{sec:state_representation}
+
+\paragraph{Shared multimodal state encoding.}
+Current and follow-up observations share an encoding design with $K=8$ slots. We use image--report pairs for longitudinal prediction; image-based downstream evaluation withholds the same-exam report. State construction precedes both the task query and horizon. The two slot groups retain distinct feature sources throughout their readout and alignment.
+
+\paragraph{Visual and vision--language feature sources.}
+A frozen JEPA encoder $f_\theta$ provides spatial features~\citep{assran2023ijepa,bardes2024vjepa,murlabadia2026vjepa21}, mapped by a trainable visual adapter $a_\rho$ into the VLM embedding space:
+\begin{equation}
+    \begin{aligned}
+        D_\tau&=f_\theta(X_\tau)\in\mathbb R^{N_D\times d_D},\\
+        V_\tau&=a_\rho(D_\tau)\in\mathbb R^{N_V\times d}.
+    \end{aligned}
+    \label{eq:visual_evidence}
+\end{equation}
+The VLM fuses $V_\tau$ with available text embeddings, yielding layerwise hidden states $H_\tau^{(\ell)}$. In parallel, the VLM's own vision encoder processes $X_\tau$ to produce visual features $F_\tau^{(k)}$ before language fusion. These native visual features supply the last four slots; the JEPA-to-VLM adapter and the slot readouts below have separate roles.
+
+\paragraph{Multi-scale slot construction.}
+As shown in Figure~\ref{fig:task_supervised_slots}, we select four depths from each source: one early layer, two intermediate layers, and the final layer. Let $\ell_j$ and $k_j$, $j=1,\ldots,4$, index the selected fusion and visual layers. Multi-scale refers to this hierarchy of representation depths. The lightweight adapter aggregates each selected feature sequence and projects it to one $d$-dimensional slot using source-specific learned readouts $r_j^{\mathrm{f}}$ and $r_j^{\mathrm{v}}$:
+\begin{equation}
+    \begin{aligned}
+        s_{\tau,j}^{\mathrm{f}}&=r_j^{\mathrm{f}}(H_\tau^{(\ell_j)})\in\mathbb R^d,\\
+        s_{\tau,j}^{\mathrm{v}}&=r_j^{\mathrm{v}}(F_\tau^{(k_j)})\in\mathbb R^d,\\
+        S_\tau&=E_\eta(O_\tau)=[S_\tau^{\mathrm{f}};S_\tau^{\mathrm{v}}]
+        \in\mathbb R^{8\times d}.
+    \end{aligned}
+    \label{eq:vlm_state}
+\end{equation}
+Each group stacks its four slots in depth order: $S_\tau^{\mathrm{f}}=S_{\tau,1:4}$ and $S_\tau^{\mathrm{v}}=S_{\tau,5:8}$. Alignment gives them a common width while preserving their sources; visual readouts do not receive fused or report features. Slots vary with the observation, with no fixed assignment to diseases, organs, or image regions. All eight enter the world model without further pooling. The encoder parameters $\eta$ comprise the adapters, slot readouts, and selected VLM parameters.
+
+\paragraph{Task-conditioned readout.}
+Each task uses a decoder with parameters $\omega_q$ and, when needed, a query $Q_q$. Classification and instruction-based disease recognition read all eight slots; the latter also receives a question and generates a disease list. Segmentation reads the input image together with only the four visual slots:
+\begin{equation}
+    \widehat M_\tau=H_{\omega_{\mathrm{seg}}}(X_\tau,S_\tau^{\mathrm{v}},Q_{\mathrm{seg}}).
+    \label{eq:segmentation_interface}
+\end{equation}
+Image-guided feature upsampling motivates this combination: FeatUp's guided variant~\citep{fu2024featup} lifts coarse backbone features to higher spatial resolution using image detail and multi-view consistency, while UPLiFT~\citep{walmer2026uplift} combines image guidance with local feature aggregation and multi-scale reconstruction supervision. We use this complementarity through hidden-state conditioning: the image branch retains spatially resolved local evidence, and $S_\tau^{\mathrm{v}}$ supplies visual context from multiple depths as the decoder constructs dense outputs. Task losses learn their interaction without imposing a one-to-one slot-to-pixel correspondence or a separate feature-matching objective.
+
+Super-resolution likewise reads image pixels and four visual slots, both derived exclusively from the same low-resolution input:
+\begin{equation}
+    \begin{aligned}
+        \widehat X^{\mathrm{HR}}&=H_{\omega_{\mathrm{SR}}}(X^{\mathrm{LR}},S^{\mathrm{v,LR}}),\\
+        \mathcal L_{\mathrm{SR}}
+        &=\frac{1}{N}\left\|\widehat X^{\mathrm{HR}}-X^{\mathrm{HR}}\right\|_F^2.
+    \end{aligned}
+    \label{eq:sr_loss}
+\end{equation}
+Here $S^{\mathrm{v,LR}}$ is obtained by applying the visual encoder and its four readouts to $X^{\mathrm{LR}}$. The HR image supplies supervision only. $N$ counts valid target pixels, excluding padding; prediction and target share an intensity scale. Neither spatial decoder reads $S^{\mathrm{f}}$. The expanded six-task evaluation adds standard VQA, report generation, and phrase grounding through the adaptation protocol.
+
+\subsection{State Prediction}
+\label{sec:state_prediction}
+
+\paragraph{Horizon-conditioned latent dynamics.}
+The latent world model takes the current state tokens and an embedding of the requested horizon, and predicts a state with the same token shape:
+\begin{equation}
+    \widehat S_{t,h}=P_\psi(S_t,h)\in\mathbb R^{K\times d}.
+    \label{eq:state_transition}
+\end{equation}
+The predictor receives both slot groups, with no additional image or feature-map input. Latent prediction on pretrained features has precedent in DINO-WM~\citep{zhou2025dinowm}; our predictive space combines fusion and visual slots. Prediction is direct at $h$; multi-time-point records supply training pairs without requiring autoregressive rollout.
+
+\paragraph{Observed future states as targets.}
+Let $E_{\bar\eta}$ denote the target instance of the same encoding design. The actual follow-up provides the target for latent prediction:
+\begin{equation}
+    \begin{aligned}
+        S^*_{t^+}&=E_{\bar\eta}(O_{t^+})\in\mathbb R^{K\times d},\\
+        \mathcal L_{\mathrm{future}}
+        &=\ell_S\!\left(\widehat S_{t,h},\operatorname{sg}(S^*_{t^+})\right),
+    \end{aligned}
+    \label{eq:future_latent_loss}
+\end{equation}
+where $\operatorname{sg}$ stops target-branch gradients. The follow-up image supplies both feature pathways, and its report contributes to the fusion slots. Only the eight future slots are predicted and supervised; there is no separate dense feature-map loss. Future observations and their modality indicators are not predictor inputs.
+
+The fixed source and depth ordering establishes correspondence between predicted and target slots. The latent distance and normalization remain to be selected; elementwise mean squared distance is one candidate. Forecast readouts consume only $\widehat S_{t,h}$ and permitted task conditions. Current spatial decoders also require the corresponding input image and therefore do not directly define dense future outputs.
+
+% Place the compact slot detail near the training discussion, after the
+% state construction and dynamics text, to separate it from Figure 1.
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{imgs/fig2_v2.pdf}
+    \caption{Construction of the eight state slots. Colored blocks select one early, two intermediate, and the final layer from each source. Lightweight readouts form four vision--language and four visual slots; task losses jointly train the readouts and decoders.}
+    \label{fig:task_supervised_slots}
+\end{figure}
+
+\subsection{Two-Stage Training}
+\label{sec:training}
+
+Single-time-point annotations supervise state content; longitudinal pairs supervise its evolution. Related staged VLM/world-model adaptation appears in VLA-JEPA~\citep{sun2026vlajepa}. We first establish a task-supervised medical state space and then learn longitudinal dynamics within it.
+
+\paragraph{Stage 1: task-supervised state pretraining.}
+Starting from pretrained JEPA and VLM weights, we jointly train the adapters, multi-scale slot readouts, task decoders, and selected VLM parameters using parameter-efficient adaptation~\citep{hu2022lora}; JEPA remains frozen. For the tasks $\mathcal Q_i$ supported by sample $i$, we minimize
+\begin{equation}
+    \mathcal L_{\mathrm{task}}
+    =\mathbb E_i\!\left[
+        \sum_{q\in\mathcal Q_i}\alpha_q\,
+        \ell_q\!\left(\widehat y_i^{(q)},y_i^{(q)}\right)
+      \right],
+    \label{eq:task_loss}
+\end{equation}
+where each prediction uses the task-specific slot subset and inputs defined above. Classification uses binary cross-entropy, disease recognition uses answer-token cross-entropy, segmentation uses Dice and pixel cross-entropy, and SR uses \cref{eq:sr_loss}.
+
+There is no stop-gradient between the task decoders and slot readouts. Task gradients flow through $S$ into the learned aggregation/projection modules and any adapted source layers, jointly with decoder updates. Classification and disease recognition supervise both slot groups; segmentation and SR directly supervise $S^{\mathrm{v}}$ and their image decoders. Thus training updates the shared parameters that produce observation-dependent slots, rather than treating each sample's slots as independent optimization variables.
+
+\paragraph{Stage 2: future state prediction fine-tuning.}
+We initialize the encoder from Stage~1 and train $P_\psi$ on same-patient current--future observations, primarily MIMIC-CXR image--report pairs~\citep{johnson2019mimiccxr}. Future-loss gradients pass through $P_\psi$ and both current slot groups to their trainable construction modules; JEPA remains frozen. Optional task replay gives
+\begin{equation}
+    \mathcal L_{\mathrm{stage2}}
+    =\mathbb E_{(O_t,O_{t^+},h)}[\mathcal L_{\mathrm{future}}]
+      +\beta\,\mathcal L_{\mathrm{task}},
+    \label{eq:joint_loss}
+\end{equation}
+where $\beta=0$ gives pure longitudinal fine-tuning. Task decoders receive updates only when their losses are retained. Temporal prediction and reusable representation are evaluated separately on held-out patients.
+
+\paragraph{Target updates and implementation choices.}
+With shared weights, $\bar\eta=\eta$, the follow-up pass is detached, but targets change with encoder updates. EMA or fixed Stage~1 targets maintain separate parameters; stop-gradient alone does not establish stability. \pending{finalize layer indices, readout configurations, backbone adaptation, target updates, and training protocol; see the supplementary material}.

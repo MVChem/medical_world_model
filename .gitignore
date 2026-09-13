@@ -1,5 +1,4 @@
-# Local source repository. Existing paper/upstream repositories stay independent.
-/26iclr/
+# Local source repository. Upstream repositories stay independent.
 /code/Clin-JEPA/
 /code/VLA-JEPA/
 /code/VLA-JEPA-reference/

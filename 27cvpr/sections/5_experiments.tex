@@ -1,0 +1,4 @@
+\subsection{Experimental setup}
+\label{sec:experiments}
+
+We plan to evaluate future prediction first (\cref{tab:future_prediction}), followed by six downstream tasks using the current state (\cref{tab:downstream_tasks}). MIMIC-CXR~\citep{johnson2019mimiccxr} supplies the main image/report data, with linked MIMIC-IV history for forecasting, MIMIC-CXR-VQA for question answering, and MS-CXR for grounding. Patient splits and benchmark-test exclusions will be enforced across tasks and stages. The planned encoder combines frozen V-JEPA~2.1 ViT-B features with Qwen3.5-0.8B, extracting four fusion and four native visual slots. Task adaptation jointly trains the adapters, multi-scale slot readouts, selected VLM parameters, and independent decoders. Table entries remain TBD pending their specified experiments.

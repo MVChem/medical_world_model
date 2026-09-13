@@ -1,0 +1,10 @@
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*_bbox.html
+main_text.txt
+main_page-*.png
+compact_plan_page-*.png

@@ -4,7 +4,7 @@
 
 **09-13 补充入口：** 下文当时在跑的冻结 VLM 密集任务已于 **09-12 12:14** 完成 55/55 项。最终分割／×4 超分、解剖定位和方向分数，以及实验时间证据，见 [Table 1／2 结果来源与实验时间](0913_table1_table2_results_provenance.md)；本页保留 09:56 的历史快照。
 
-[实验索引](../experiments/README.md) · [当前事项](TODO.md)
+[实验索引](../experiments/README.md) · [历史待办（已停用）](TODO.md)
 
 ## 1. 目前完成了什么
 
@@ -138,6 +138,6 @@
 | 新队列／Bicubic | `code/medworld_dense_baselines/runs/dense_20260912/status.json`、`queue.json`、`bicubic_metrics.json` |
 | 在跑结果预览 | `code/medworld_dense_baselines/runs/dense_20260912/preview/full_tables.md` |
 
-本轮代码提交：`e14b24a`（原始模型零样本评测）、`bd63b71`（冻结 VLM 密集任务队列）。代码入口分别为 [medworld_baselines](../code/medworld_baselines/README.md) 与 [medworld_dense_baselines](../code/medworld_dense_baselines/README.md)。论文位于 `26iclr/` 的独立仓库，论文中的实验计划不等于这里已完成的实验结果。
+本轮代码提交：`e14b24a`（原始模型零样本评测）、`bd63b71`（冻结 VLM 密集任务队列）。代码入口分别为 [medworld_baselines](../code/medworld_baselines/README.md) 与 [medworld_dense_baselines](../code/medworld_dense_baselines/README.md)。论文入口见 [27cvpr](../27cvpr/README.md)，论文中的实验计划不等于这里已完成的实验结果。
 
 归档前核验：本页最终匹配比较、六模型三组结果表及 Bicubic 数值逐项与原始 JSON 对齐；六模型完成状态和请求数已检查。原始模型协议 6 项测试、密集任务协议 7 项测试全部通过（包含本地患者划分和 LR 缓存核验）；命令见[开发说明](DEVELOPMENT.md)。

@@ -1,0 +1,21 @@
+Create a polished, publication-ready full-width appendix figure using the six attached chest radiographs as the main visual elements. Keep the composition simple, spacious, and immediately readable: three de-identified patient trajectories, each showing a large current radiograph paired with its observed follow-up. Preserve the recognizable radiograph content and orientation; do not replace the images with generated or generic X-rays.
+
+Use these exact pairings:
+
+- Case A: `case_a_current_cxr.jpg` → `case_a_observed_followup_cxr.jpg`
+  Clear change · 20.1 h · 0–24 h · SICU
+  From no reported edema or pleural effusion to marked bilateral opacity and pulmonary edema with a small right pleural effusion.
+
+- Case B: `case_b_current_cxr.jpg` → `case_b_observed_followup_cxr.jpg`
+  Stable follow-up · 24.0 h · 0–24 h · SICU
+  Persistent bibasal opacification, pleural effusions, and compressive atelectasis with little interval change.
+
+- Case C: `case_c_current_cxr.jpg` → `case_c_observed_followup_cxr.jpg`
+  Clear change · 50.5 h · 24–72 h · Trauma SICU
+  From no focal opacity or pleural effusion to extensive bilateral parenchymal opacities, greatest in the right upper lung, with probable multifocal pneumonia and possible effusion.
+
+Let the radiographs dominate. Use only sparse labels such as “Current”, “Observed follow-up”, the case letter, elapsed time, horizon, care setting, and one concise change summary per case. If helpful, represent linked MIMIC-IV interval context only as a subtle visual bridge—such as a fine timeline, small abstract markers, or restrained clinical symbols. Keep it secondary and generic; do not create dense EHR cards or invent specific clinical events.
+
+Choose the exact arrangement, proportions, palette, typography, connectors, and visual rhythm yourself. Aim for an elegant editorial medical aesthetic with a light neutral background, restrained color accents, refined spacing, and excellent radiograph-to-radiograph comparability at paper size.
+
+Do not add an overall title, subtitle, introductory sentence, footer, caption, disclaimer, methodological commentary, or any paragraph at the top or bottom. Keep all text short and attached directly to the three visual comparisons.

@@ -1,0 +1,180 @@
+Edit the attached MedWorld-JEPA Figure 1 into an improved v6. The attached image is the current v5 reference. Use it to preserve the established visual identity, overall two-lane composition, pastel palette, module shapes, typography, and medical thumbnails. Redraw the regions specified below so that the information flow and mathematical labels are correct and immediately readable.
+
+This is a reference-guided scientific figure edit, not a new stylistic redesign. The written specification overrides any conflicting arrows, equations, token counts, or labels in the reference. Completely rebuild affected boxes and connectors rather than covering old content with visible patches. Adjust local spacing to accommodate the changes; preserve the overall visual character. Return one complete, clean figure. Instructions in this prompt are not text to print in the artwork.
+
+CORE MESSAGE
+At each observation time, the image and report are encoded by the same multimodal pipeline. V-JEPA produces spatial image features D, a visual adapter connects those features to a VLM, and report tokens enter the VLM separately. Eight learned input slots are appended after the visual and text tokens. The eight output hidden states at those slot positions form the multimodal state S.
+
+Task decoders read the current S together with a task query or instruction where appropriate. Segmentation and super-resolution additionally use current spatial features D. The Latent World Model receives ONLY the current S and horizon h, and predicts ONLY future S. Its prediction is compared with the state tokens encoded from the observed future image and report. Future evidence is target-side only.
+
+PRIORITY EDITS TO THE REFERENCE
+1. Make the eight learned input slots and their eight contextualized output state tokens visibly distinct, with matching token counts and feature dimensions.
+2. Replace the current combined R_t box with a simple pink S_t state readout. Route current D_t separately to the spatial input of the task decoder.
+3. Keep a separate Task query q input to the task decoder. It is not S_t and is not a ninth state slot.
+4. Feed only S_t and h to the Latent World Model. Remove any D_t or combined R_t input to it.
+5. Replace the predicted D+S bundle with a single pink row of predicted future state tokens. Remove every predicted-D grid and predicted-R equation.
+6. Replace the future D+S target bundle with a single pink row of observed-future VLM state tokens. Keep future D only in the image-encoding path before its visual adapter.
+7. Rebuild the latent-loss area so it compares predicted S with observed-future S only. Remove all D-matching text and connections.
+8. Restore any faint, missing, disconnected, or ambiguous arrows. A reader must be able to trace every input to its destination.
+
+PRESERVE THE V5 VISUAL STYLE
+Use a pure white landscape canvas with approximately the reference aspect ratio, about 2.2:1. A high-resolution output near 4200 x 1900 pixels is suitable. Keep the drawing like a carefully assembled PowerPoint schematic for an AI conference paper: flat pastel modules, clear dark outlines, compact token glyphs, modest rounded corners, and small grayscale medical thumbnails. All diagram elements should be crisp; photographic texture belongs only inside the medical thumbnails.
+
+Use the reference palette consistently:
+- Text and ordinary connectors: near-black #171717.
+- V-JEPA encoder: pale cyan-blue #BFDFF9.
+- D features and visual tokens: blue #9BCAE9.
+- VLM: lavender-pink #E7BCE7, dark plum outline #68256C.
+- Learned slots and state tokens: rose pink #E89EBA.
+- Text tokens: neutral gray #BEBEBE.
+- Task decoder: pastel green #C7E6A9, olive outline #557C2F.
+- Latent World Model: warm beige #EBD9C6, brown outline #8C6639.
+- Visual adapters, tokenizers, and small internal blocks: pale cream #FEFAD1.
+- Report cards: very pale cream #FFF6E8.
+- Task-output cards: very pale blue #EDF6FB.
+- Latent prediction loss: pale peach #FAD9CD.
+
+Keep the reference's rounded handwritten sans-serif style, similar to Comic Sans MS, for module titles and major labels. Use a clean sans-serif for small annotations and readable italic mathematical symbols. Correct the old mathematical labels instead of copying their hats and stars. Use consistent font sizes across the two encoding lanes. Enlarge a crowded component instead of shrinking its labels to illegibility.
+
+Keep blue V-JEPA trapezoids, lavender VLM rectangles, cream adapter/tokenizer rectangles, the green task decoder, and the beige world-model block. Preserve the grayscale image and document examples. No new color theme, gradients, shadows, glossy effects, decorative medical icons, or title banner. Do not add a paper caption, citations, results, or a version label inside the artwork.
+
+LAYOUT
+Retain two corresponding encoding lanes on the left: current observations above, observed future below. Use the heading "Shared multimodal state encoding" and the short between-lane note "Same encoding pipeline at both times". Keep corresponding encoders, adapters, tokenizers, VLMs, and state readouts aligned vertically.
+
+The task decoder and four task outputs stay at the upper right. The Latent World Model and its predicted S stay at the middle right. The loss stays below the prediction, approximately aligned with the observed-future S readout. Preserve or restore the slim two-stage training strip along the bottom.
+
+Replacing three stacked D+S bundles with simpler S readouts creates space. Use that space for complete eight-token rows, clear arrows, and readable labels. Reposition affected modules as needed; do not leave large holes where old D grids were removed. The world-model branch must remain prominent.
+
+CURRENT ENCODING LANE
+Keep the lane title "Current observations, t".
+
+Image -> V-JEPA encoder -> blue spatial feature grid D_t -> Visual adapter -> VLM visual-input group.
+Report -> Tokenizer + embedding -> the same VLM's text-input group.
+
+Both routes must have complete arrowheads. The report does not pass through the visual encoder or adapter. The D_t grid between V-JEPA and the adapter is the source of the visual information; show a single spatial grid, not a multiscale pyramid.
+
+Inside the VLM, redraw one compact input strip with three clearly separated groups:
+"Visual tokens" | "Text tokens" | "Learned slots U".
+
+Use blue representative visual tokens, gray representative text tokens, and exactly eight pale-pink learned-slot glyphs. An ellipsis is allowed for the visual and text groups, but NOT inside the eight-slot group. Arrange all eight slots in one horizontal row, with consistent spacing. Add a small "8 x d" dimension annotation beneath the slot group; render the multiplication sign properly as 8 × d if possible.
+
+These are eight learnable input embeddings, not blank missing-data placeholders. They establish eight positions whose hidden states will be read after VLM processing. Their initial embeddings are shared across samples and learned during training. Do not print this explanatory paragraph in the figure.
+
+Below the input strip, retain the simple cream Transformer blocks and ellipsis. The computational order must be legible: input strip -> Transformer processing -> state readout. A short internal arrow may establish this order. Retain the small "LoRA" annotation from v5 without adding implementation details.
+
+At the right of the VLM, replace "Current state R_t" and its two-part bundle with one compact readout labeled "Current state S_t". It contains exactly eight contextualized rose-pink state tokens in the same order and dimensions as the learned input slots. Show "8 x d" under this row as well. Use a slightly stronger fill for the output tokens than for the input slots, within the same pink palette.
+
+The VLM output arrow must originate after Transformer processing and enter this S_t readout. It must not appear to copy the input slots directly around the Transformer. The input U and output S_t have the same 8 x d shape, but different values: S_t incorporates the current image and report. If space allows, add the small annotation "Slot hidden states" at the output arrow. Do not draw eight individual crossing wires.
+
+Use S_t with NO hat and NO star. It is the encoded current state, not a forecast. Do not pool the eight tokens into one vector in this overview.
+
+CURRENT D_t ROUTE TO SPATIAL TASKS
+Fork one thin blue connector from the SAME D_t feature grid that feeds the visual adapter. Route it through a clear corridor above the current VLM, then into a distinct spatial-feature port on the task decoder. Keep the route within the upper architecture area, away from the outer canvas edge and the lower future branch.
+
+Label this destination port "D_t: spatial tasks". This is the spatial feature bypass for segmentation and super-resolution. The ordinary D_t -> Visual adapter -> VLM route remains intact. The blue bypass must not enter the LWM or join the S_t-to-LWM branch junction.
+
+Use one continuous, unambiguous connector for this route, with a visible source and arrowhead. Do not leave a floating D_t port without a source. Avoid crossing the current S_t connectors; move the task decoder or adjust the upper corridor if necessary.
+
+Do not retain a combined R_t output box or R_t = [D_t; S_t] equation. R_t is a possible notation for the encoder's available outputs, but that combined bundle is not the input of every downstream module. This figure should show the actual S_t and D_t routes directly.
+
+TASK DECODER AND QUERY
+The green task decoder has distinct inputs:
+- Current contextualized S_t from the pink state readout.
+- A small independent token or pill labeled "Task query q", placed immediately above the decoder with one short arrow into it.
+- D_t at the separate port marked "D_t: spatial tasks".
+
+Keep the Task query q visually separate from the eight-slot rows. It supplies the requested task, target, or instruction. It is not a VLM output slot, not an extra state token, and not an input to the state encoder or LWM. For fixed task heads, the task choice can be implicit; the query graphic is a compact representation of the task interface, not a claim that every task needs a text question.
+
+Retain a compact Transformer-style interior. A single green box summarizes the task-decoding interfaces; it need not imply that all four tasks share identical decoder parameters.
+
+Keep the four output cards and their established illustrations:
+- "Classification": score bars; reads S_t.
+- "Segmentation": grayscale image plus colored mask; reads S_t and D_t, with a task condition where needed.
+- "Disease recognition": a text bubble such as "Disease: ..."; reads S_t and the instruction.
+- "Super-resolution": a small low-to-high-detail crop illustration; reads S_t and D_t computed from the LOW-resolution observation. Keep the compact "MSE" annotation here.
+
+Use the D_t spatial-port label to make its restricted role explicit. If the internal routing is shown, the blue spatial path supports only segmentation and super-resolution; it must not become a universal input requirement for classification or disease recognition. All tasks have a state-token path. Keep "Task loss" above or beside these four outputs.
+
+Do not assign labels such as classification-slot-1, segmentation-slot-2, diagnosis-slot-3, anatomy, or pathology to individual slots. Task-specific slot grouping is still a design option, not fixed in this figure. Query-conditioned reading is sufficient for this overview.
+
+LATENT WORLD MODEL: EXACTLY TWO INPUTS, ONE STATE OUTPUT
+The current S_t readout has a visible branch to the green task decoder and a separate branch to the beige "Latent World Model". Place their local fork after the S_t readout, not on a combined D+S bundle.
+
+The LWM has exactly these two forward inputs:
+1. Current S_t: a complete group of eight contextualized state tokens.
+2. "Horizon h": one small neutral-gray token with its own short arrow into the LWM.
+
+Retain the simple internal "Predictor block" glyphs. Do not add a transition-query module, action tokens, an autoregressive chain, or diffusion steps.
+
+To its right, draw a single compact pink readout labeled "Predicted future" with the mathematical symbol S-hat_{t,h}. It contains exactly eight rose-pink tokens and the small dimension annotation "8 x d". It contains NO blue grid, NO D prediction, NO R bundle, and NO observed target component.
+
+The mathematical statement represented by these arrows is:
+S-hat_{t,h} = P_psi(S_t, h).
+
+This equation guides the drawing; it need not be printed if it makes the prediction area crowded. A hat appears only on the predicted S. Do not add a star to it.
+
+OBSERVED-FUTURE ENCODING LANE
+Keep the lane title "Observed future, t⁺" and small annotation "Training target".
+
+Follow-up image -> V-JEPA encoder -> blue spatial feature grid D*_{t⁺} -> Visual adapter -> future VLM visual-input group.
+Follow-up report -> Tokenizer + embedding -> the same future VLM's text-input group.
+
+Retain the complete lower VLM. It must include the same three input groups as the upper VLM, with exactly eight learned-slot glyphs and an "8 x d" annotation. Future reports directly contribute to the target state. Do not replace this branch with a visual-only target encoder.
+
+At the future VLM output, replace the old "Future target R*" bundle with one pink state-token row labeled "Future target S*_{t⁺}". It contains exactly eight output tokens and "8 x d", matching the current and predicted S shapes. Use a star on this target S, but NO hat.
+
+The blue D* grid remains ONLY between the future V-JEPA encoder and visual adapter. It is an intermediate feature used to construct the future VLM state. It has no independent target readout, no route to the loss, and no route to the LWM. No future observation reaches the current encoding branch.
+
+The two encoding lanes use the same architecture and state interface. Do not add EMA formulas, a fixed-teacher panel, or hard weight-sharing arrows: the exact target-parameter update policy remains unspecified. Do not use bidirectional arrows between the branches.
+
+LATENT PREDICTION LOSS: S ONLY
+Keep one small peach box labeled "Latent prediction loss".
+
+Connect the predicted S-hat_{t,h} downward into this loss with a solid forward arrow. Connect the observed future S*_{t⁺} from the lower VLM readout into the SAME loss using a separate horizontal target arrow. Mark the target arrow "stop-grad". The target route should remain below the LWM and must not touch its input port or the current-state branch junction.
+
+Inside the loss, print one short comparison line:
+S-hat_{t,h} ↔ S*_{t⁺}
+
+Render S-hat as a proper mathematical hat over S, with readable subscripts. This comparison symbol is inside the loss only; it is not a reverse-time data-flow arrow.
+
+The underlying objective is L_future = ell(S-hat_{t,h}, stopgrad(S*_{t⁺})). It compares two groups of eight latent state tokens. Do not compare current S_t directly with future S*, and do not detach the predicted S. The precise latent distance is not fixed, so do not label this loss "MSE". MSE remains attached to the super-resolution task only.
+
+Delete the old "D-hat ↔ D*; S-hat ↔ S*" annotation completely. Do not preserve either D-matching term, the old predicted-R equation, or any future blue target compartment. Do not draw future pixel or full-report generation after the LWM.
+
+TWO-STAGE TRAINING STRIP
+Keep or restore two shallow boxes along the bottom, with one short left-to-right arrow. Match the subtle pale-green and pale-beige styling of v5. Use these compact labels:
+
+"Stage 1: Task-supervised state pretraining"
+"Task loss -> slots + adapter + VLM + task decoders"
+
+"Stage 2: Future-state prediction fine-tuning"
+"Future loss -> LWM + current slots / adapter / VLM"
+
+Render the arrows within these text lines as ordinary small right arrows. Here "slots" means trainable input slot embeddings, whose VLM output hidden states receive task and future supervision. The loss trains the state-producing path, not just the final decoder. S_t itself is a computed representation, not an additional persistent parameter table.
+
+A small shared note below the strip may read "Pretrained V-JEPA kept frozen". Do not draw long gradient-feedback arrows across the architecture. The strip communicates optimization, while the main arrows communicate forward information flow. Do not imply that Stage 2 necessarily retains all Stage 1 task losses, and do not label either stage as new medical JEPA pretraining.
+
+EXACT NOTATION AND TOKEN CHECK
+- U: the learned INPUT slots; eight glyphs inside each VLM input strip.
+- S_t: the current VLM OUTPUT at those eight positions; no hat, no star.
+- S-hat_{t,h}: the LWM's predicted future output; hat, no star.
+- S*_{t⁺}: the observed future VLM target; star, no hat.
+- D_t: current spatial features, feeding the adapter and spatial task decoder only.
+- D*_{t⁺}: future intermediate spatial features, feeding the future adapter only.
+- q: task query / instruction, entering the task decoder only.
+- h: requested horizon, entering the LWM only.
+
+Use exactly eight visible glyphs in EACH of five groups: current input slots, current output S_t, future input slots, future output S*, and predicted S-hat. This is five separate groups of eight, not eight tokens across the entire image. All five share the same 8 x d dimensional convention. Eight is the illustrated slot count, not a claim of optimality. Do not insert ellipses into these five groups or use one unprocessed token row as both input and output.
+
+FINAL CONNECTIVITY CHECK
+Trace the completed figure before finishing:
+1. Both images reach their own VLM through V-JEPA and a visual adapter.
+2. Both reports reach their own VLM through tokenizer/embedding, separately from image features.
+3. Each VLM processes eight input slots and produces eight contextualized output state tokens.
+4. Current S_t reaches BOTH the task decoder and the LWM.
+5. Task query q reaches the task decoder, and D_t reaches its spatial-task port.
+6. The LWM receives S_t and h only, and outputs eight predicted S tokens only.
+7. Predicted S and observed-future S* meet only at the latent loss; stop-grad is on the target connection.
+8. No D prediction, D loss, combined-R output, future-to-predictor input, or hard-coded task-to-slot assignment remains.
+
+Finish as a coherent polished revision of the attached v5 figure, with the corrected slot mechanism, explicit task query and spatial-feature routing, and an unmistakable S-to-future-S prediction path.

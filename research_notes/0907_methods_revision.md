@@ -1,6 +1,6 @@
 # Methods 改写说明
 
-2026-09-07，根据现有正文及最新图像输入接口讨论更新。本说明与 [0906_methods.md](0906_methods.md)、[0907_paper_plan.md](0907_paper_plan.md) 对齐；Methods 正文见 [4_method.tex](../26iclr/sections/4_method.tex)，Task Definition 保存在 [3_problem_formulation.tex](../26iclr/sections/3_problem_formulation.tex)，由 Methods 内部载入。本版本取代旧说明中将 D/S 一起作为预测输出的描述。
+2026-09-07，根据现有正文及最新图像输入接口讨论更新。本说明与 [0906_methods.md](0906_methods.md)、[0907_paper_plan.md](0907_paper_plan.md) 对齐；Methods 正文见 [4_method.tex](../27cvpr/sections/4_method.tex)，Task Definition 保存在 [3_problem_formulation.tex](../27cvpr/sections/3_problem_formulation.tex)，由 Methods 内部载入。本版本取代旧说明中将 D/S 一起作为预测输出的描述。
 
 ## 本稿的主线
 

@@ -1,0 +1,31 @@
+\section{Medical-Domain Continuation of V-JEPA 2.1}
+\label{app:medvjepa_transfer}
+
+We treat medical-domain continuation as a supporting initialization step rather than a standalone architectural contribution. \Cref{tab:medvjepa_adaptation} isolates this step from the subsequent language-grounding and longitudinal objectives. The original and medically continued V-JEPA~2.1 encoders use the same architecture, and each pair of downstream runs uses identical preprocessing, readout capacity, optimization, and label subsets. Frozen transfer tests the representation directly, updating the final four encoder blocks tests parameter-efficient adaptation, and full fine-tuning measures the task-specific upper bound. Each result cell reports performance with 10\% / 100\% of the downstream training labels.
+
+\begin{table}[h]
+\caption{Label-efficient adaptation of the V-JEPA~2.1 initialization across radiograph and volumetric tasks. Classification is measured by macro-AUPRC and segmentation by mean Dice. CheXpert~\citep{irvin2019chexpert}, CT-RATE~\citep{hamamci2026ctrate}, and BraTS~\citep{baid2021brats} serve as non-overlapping transfer evaluations. TotalSegmentator~\citep{wasserthal2023totalsegmentator} is reported only as an in-domain diagnostic because its unlabeled images are included in medical continuation. Each cell reports 10\%-label / full-label performance.}
+\label{tab:medvjepa_adaptation}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{@{}L{0.20\linewidth}L{0.14\linewidth}*{4}{C{0.13\linewidth}}@{}}
+\toprule
+Initialization & Encoder update & \shortstack{CXR cls.\\AUPRC $\uparrow$} & \shortstack{CT cls.\\AUPRC $\uparrow$} & \shortstack{CT seg.\\Dice $\uparrow$} & \shortstack{MRI seg.\\Dice $\uparrow$} \\
+\midrule
+Random ViT-B & Full & \tbdpair{} & \tbdpair{} & \tbdpair{} & \tbdpair{} \\
+\addlinespace
+V-JEPA~2.1 (video) & Frozen & \tbdpair{} & \tbdpair{} & \tbdpair{} & \tbdpair{} \\
+V-JEPA~2.1 + medical continuation & Frozen & \tbdpair{} & \tbdpair{} & \tbdpair{} & \tbdpair{} \\
+\addlinespace
+V-JEPA~2.1 (video) & Final 4 blocks & \tbdpair{} & \tbdpair{} & \tbdpair{} & \tbdpair{} \\
+V-JEPA~2.1 + medical continuation & Final 4 blocks & \tbdpair{} & \tbdpair{} & \tbdpair{} & \tbdpair{} \\
+\addlinespace
+V-JEPA~2.1 (video) & Full & \tbdpair{} & \tbdpair{} & \tbdpair{} & \tbdpair{} \\
+V-JEPA~2.1 + medical continuation & Full & \tbdpair{} & \tbdpair{} & \tbdpair{} & \tbdpair{} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The frozen and low-label comparisons are the primary evidence for representation quality: full fine-tuning can reduce differences between initializations. The appendix will report matched fixed label draws and the same downstream seeds for both checkpoints. Volume-order perturbations and cross-sequence retrieval are retained as diagnostics rather than merged with heterogeneous task metrics in this table.
