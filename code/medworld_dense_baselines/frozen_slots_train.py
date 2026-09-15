@@ -6,6 +6,7 @@ parameters are optimized; no VLM or learned slot vectors are instantiated here.
 """
 import argparse
 import contextlib
+import datetime as dt
 import fcntl
 import hashlib
 import json
@@ -13,6 +14,7 @@ import math
 import os
 from pathlib import Path
 import random
+import signal
 import time
 
 import numpy as np
@@ -236,7 +238,8 @@ def bootstrap(records, keys, seed=DEFAULT_SEED, draws=1000):
 
 
 @torch.inference_mode()
-def evaluate(model, corpus, out, batch_size, epochs, seed, contract):
+def evaluate(model, corpus, out, batch_size, epochs, seed, contract, metrics_filename="metrics.json",
+             checkpoint_label="final epoch; no test-based checkpoint selection"):
     model.eval()
     results = {}
     splits = ["validate", "test"] + (["human_test"] if corpus.task == "segmentation" else [])
@@ -283,9 +286,10 @@ def evaluate(model, corpus, out, batch_size, epochs, seed, contract):
         if corpus.task == "segmentation":
             results[split]["per_organ"] = np.mean([r["per_organ"] for r in records], axis=0).tolist()
             results[split]["organs"] = ["right lung", "left lung"] + ([] if split == "human_test" else ["heart"])
-    atomic(out / "metrics.json", dict(model=contract["model"], task=corpus.task, condition=corpus.condition,
+    atomic(out / metrics_filename, dict(model=contract["model"], task=corpus.task, condition=corpus.condition,
            epochs=epochs, seed=seed, train_n=len(corpus.pool["train"]), metrics=results,
-           checkpoint="final epoch; no test-based checkpoint selection",
+           checkpoint=checkpoint_label, requested_epochs=contract["epochs"],
+           complete_requested_epochs=metrics_filename == "metrics.json",
            cohort_sha256=contract["cohort_sha256"], contract_sha256=digest(out / "contract.json"),
            segmentation_scope="CXAS teacher agreement; external Montgomery human lungs",
            sr_scope="x4; LR-only encoder inputs; valid ROI; clamp [0,1]; no border shave; skimage 7x7 SSIM"))
@@ -342,7 +346,39 @@ def train(args):
         return _train(args)
 
 
+class StopRequest:
+    """A wall-clock deadline or queue signal stops at an optimizer-step boundary."""
+    def __init__(self, stop_at=None):
+        self.deadline = dt.datetime.fromisoformat(stop_at).timestamp() if stop_at else None
+        if stop_at and dt.datetime.fromisoformat(stop_at).tzinfo is None:
+            raise ValueError("--stop-at must include an explicit time zone")
+        self.reason = None
+        self.previous = {}
+
+    def __enter__(self):
+        for signum in (signal.SIGTERM, signal.SIGUSR1):
+            self.previous[signum] = signal.signal(signum, self.receive)
+        return self
+
+    def receive(self, signum, frame):
+        self.reason = f"signal {signum}"
+
+    def requested(self):
+        if self.reason is None and self.deadline is not None and time.time() >= self.deadline:
+            self.reason = "wall-clock deadline"
+        return self.reason is not None
+
+    def __exit__(self, *unused):
+        for signum, previous in self.previous.items():
+            signal.signal(signum, previous)
+
+
 def _train(args):
+    with StopRequest(getattr(args, "stop_at", None)) as stop:
+        return _train_until_stop(args, stop)
+
+
+def _train_until_stop(args, stop):
     if args.epochs <= 0 or args.batch_size <= 0 or args.microbatch <= 0:
         raise ValueError("epochs, batch-size, and microbatch must be positive")
     os.umask(0o077)
@@ -401,6 +437,7 @@ def _train(args):
         raise ValueError("decoder initialization mismatch")
     atomic(initial_path, initialization)
     first, step, history, prior_seconds = 0, 0, [], 0.
+    resume_batch_start, partial_total, partial_n = 0, 0., 0
     checkpoint = out / "checkpoint.pt"
     if checkpoint.exists():
         saved = torch.load(checkpoint, map_location="cpu", weights_only=False)
@@ -410,17 +447,54 @@ def _train(args):
         optimizer.load_state_dict(saved["optimizer"])
         first, step = saved["epoch"], saved["step"]
         history, prior_seconds = saved["history"], saved["seconds"]
+        resume_batch_start = saved.get("resume_batch_start", 0)
+        partial_total, partial_n = saved.get("partial_total", 0.), saved.get("partial_n", 0)
         restore_rng(saved["rng"])
         write_rows(out / "epochs.jsonl", history)
     started = time.time()
+    checkpoint_seconds = getattr(args, "checkpoint_seconds", 120.)
+    if checkpoint_seconds <= 0:
+        raise ValueError("checkpoint-seconds must be positive")
+    last_checkpoint = started
+
+    def save_checkpoint(completed_epochs, next_batch_start=0, total=0., n=0):
+        nonlocal last_checkpoint
+        payload = dict(model=model.state_dict(), optimizer=optimizer.state_dict(), epoch=completed_epochs,
+                       step=step, rng=capture_rng(), history=history,
+                       seconds=prior_seconds + time.time() - started, contract=contract,
+                       resume_batch_start=next_batch_start, partial_total=total, partial_n=n)
+        torch.save(payload, out / "checkpoint.tmp.pt")
+        os.replace(out / "checkpoint.tmp.pt", checkpoint)
+        last_checkpoint = time.time()
+
+    def finish_partial(completed_epochs, next_batch_start, total, n):
+        save_checkpoint(completed_epochs, next_batch_start, total, n)
+        trained_epochs = completed_epochs + n / len(corpus.pool["train"])
+        atomic(out / "progress.json", dict(epoch=completed_epochs, epochs=args.epochs,
+               epochs_trained=trained_epochs, step=step, samples_in_epoch=n,
+               status="deadline_evaluating", reason=stop.reason,
+               seconds=prior_seconds + time.time() - started))
+        if step:
+            evaluate(model, corpus, out, args.microbatch, trained_epochs, args.seed, contract,
+                     metrics_filename="partial_metrics.json",
+                     checkpoint_label="deadline checkpoint; incomplete planned training; no test selection")
+        atomic(out / "progress.json", dict(epoch=completed_epochs, epochs=args.epochs,
+               epochs_trained=trained_epochs, step=step, samples_in_epoch=n,
+               status="deadline_stopped", reason=stop.reason,
+               seconds=prior_seconds + time.time() - started))
+        raise SystemExit(124)
+
     for epoch in range(first, args.epochs):
         model.train()
-        total, n = 0., 0
+        total, n = (partial_total, partial_n) if epoch == first else (0., 0)
+        cursor = resume_batch_start if epoch == first else 0
         ids = np.random.default_rng(args.seed + epoch).permutation(corpus.pool["train"]).tolist()
         lr = args.learning_rate * (.1 + .9 * .5 * (1 + np.cos(np.pi * epoch / args.epochs)))
         for group in optimizer.param_groups:
             group["lr"] = lr
-        for start in range(0, len(ids), args.batch_size):
+        if stop.requested():
+            finish_partial(epoch, cursor, total, n)
+        for start in range(cursor, len(ids), args.batch_size):
             chunk = ids[start:start+args.batch_size]
             optimizer.zero_grad(set_to_none=True)
             for position in range(0, len(chunk), args.microbatch):
@@ -437,6 +511,11 @@ def _train(args):
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1., error_if_nonfinite=True)
             optimizer.step()
             step += 1
+            next_batch_start = start + len(chunk)
+            if stop.requested():
+                finish_partial(epoch, next_batch_start, total, n)
+            if time.time() - last_checkpoint >= checkpoint_seconds:
+                save_checkpoint(epoch, next_batch_start, total, n)
             if step % 50 == 0:
                 atomic(out / "progress.json", dict(epoch=epoch+1, epochs=args.epochs, step=step,
                        samples_in_epoch=n, training_loss=total/n,
@@ -446,10 +525,7 @@ def _train(args):
                       order_sha256=hashlib.sha256(json.dumps(ids).encode()).hexdigest(),
                       seconds=prior_seconds+time.time()-started)
         history.append(record)
-        payload = dict(model=model.state_dict(), optimizer=optimizer.state_dict(), epoch=epoch+1, step=step,
-                       rng=capture_rng(), history=history, seconds=record["seconds"], contract=contract)
-        torch.save(payload, out / "checkpoint.tmp.pt")
-        os.replace(out / "checkpoint.tmp.pt", checkpoint)
+        save_checkpoint(epoch + 1)
         write_rows(out / "epochs.jsonl", history)
         if epoch+1 in (5, 10, 20):
             torch.save(dict(model=model.state_dict(), epoch=epoch+1, contract=contract), out / f"epoch_{epoch+1}.pt")
@@ -478,6 +554,8 @@ def parse_args():
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--pseudo-path", type=Path)
+    parser.add_argument("--stop-at", help="Timezone-aware ISO deadline; checkpoint and evaluate partial training")
+    parser.add_argument("--checkpoint-seconds", type=float, default=120.)
     return parser.parse_args()
 
 

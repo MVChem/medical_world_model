@@ -6,11 +6,21 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from frozen_slots_extract import (block_indices, branch_image, cache_array, pool_slot,
+from frozen_slots_extract import (block_indices, branch_image, cache_array, pool_slot, pool_batch_slots,
                                   required_branches, tensor_hash)
 
 
 class FrozenSlotsTests(unittest.TestCase):
+    def test_batch_pooling_preserves_image_boundaries(self):
+        first, second = torch.randn(7, 768), torch.randn(11, 768)
+        batched = pool_batch_slots(torch.cat([first, second]), [7, 11])
+        torch.testing.assert_close(batched[0], pool_slot(first))
+        torch.testing.assert_close(batched[1], pool_slot(second))
+        batch = torch.randn(3, 7, 1152)
+        torch.testing.assert_close(pool_batch_slots(batch, [7, 7, 7]), torch.stack([pool_slot(x) for x in batch]))
+        with self.assertRaises(ValueError):
+            pool_batch_slots(torch.cat([first, second]), [7, 10])
+
     def test_quarter_depth_including_final(self):
         self.assertEqual(block_indices(12), [2, 5, 8, 11])
         self.assertEqual(block_indices(24), [5, 11, 17, 23])

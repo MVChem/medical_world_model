@@ -50,6 +50,28 @@ def pool_slot(hidden, width=SLOT_WIDTH):
     return pooled.index_select(0, indices)
 
 
+def pool_batch_slots(hidden, token_lengths, width=SLOT_WIDTH):
+    """Pool each image separately, including Qwen's packed variable-length tokens."""
+    if hidden.ndim == 3:
+        if hidden.shape[0] != len(token_lengths) or any(n != hidden.shape[1] for n in token_lengths):
+            raise ValueError("batched image token dimensions disagree with the processor")
+        pooled = hidden.float().mean(dim=1)
+    elif hidden.ndim == 2:
+        if hidden.shape[0] != sum(token_lengths):
+            raise ValueError("packed token boundaries disagree with the processor")
+        if len(set(token_lengths)) == 1:
+            pooled = hidden.reshape(len(token_lengths), token_lengths[0], -1).float().mean(dim=1)
+        else:
+            pooled = torch.stack([chunk.float().mean(dim=0) for chunk in hidden.split(token_lengths)])
+    else:
+        raise ValueError("unsupported native vision block output shape")
+    native_width = pooled.shape[-1]
+    if native_width < width:
+        return F.pad(pooled, (0, width - native_width))
+    indices = torch.floor((torch.arange(width, device=hidden.device) + .5) * native_width / width).long()
+    return pooled.index_select(1, indices)
+
+
 def required_branches(rows):
     return np.array([["segmentation" in r["tasks"], "sr" in r["tasks"]] for r in rows], dtype=bool)
 
@@ -183,31 +205,43 @@ class FrozenVisionSlots:
         self.model, self.processor, self.family = model, processor, family
         self.slots = {}
         self.native_shapes = {}
+        self.token_lengths = None
         self.handles = [blocks[index].register_forward_hook(self._capture(i)) for i, index in enumerate(indices)]
 
     def _capture(self, slot_index):
         def capture(_module, _inputs, output):
             hidden = output[0] if isinstance(output, (tuple, list)) else output
             self.native_shapes[slot_index] = list(hidden.shape)
-            self.slots[slot_index] = pool_slot(hidden)
+            self.slots[slot_index] = pool_batch_slots(hidden, self.token_lengths)
         return capture
 
     @torch.inference_mode()
     def __call__(self, image):
+        return self.batch([image])[0]
+
+    @torch.inference_mode()
+    def batch(self, images):
+        if not images:
+            raise ValueError("empty image batch")
         self.slots.clear()
         self.native_shapes.clear()
         reference = next(self.model.parameters())
-        inputs = self.processor(images=image, return_tensors="pt")
+        inputs = self.processor(images=images, return_tensors="pt")
         pixels = inputs["pixel_values"].to(device=reference.device, dtype=reference.dtype)
         if self.family == "qwen":
+            self.token_lengths = inputs["image_grid_thw"].prod(dim=1).tolist()
+            if len(self.token_lengths) != len(images):
+                raise ValueError("Qwen processor changed the number of images")
             self.model(hidden_states=pixels, grid_thw=inputs["image_grid_thw"].to(reference.device))
         else:
-            if pixels.shape[0] != 1:
+            if pixels.shape[0] != len(images):
                 raise ValueError("native Gemma processor unexpectedly generated multiple crops")
+            patch = self.model.config.patch_size
+            self.token_lengths = [(pixels.shape[-2] // patch) * (pixels.shape[-1] // patch)] * len(images)
             self.model(pixel_values=pixels)
         if set(self.slots) != set(range(4)):
             raise AssertionError("not all four intermediate blocks were captured")
-        result = torch.stack([self.slots[i] for i in range(4)])
+        result = torch.stack([self.slots[i] for i in range(4)], dim=1)
         if result.requires_grad or not torch.isfinite(result).all():
             raise ValueError("slot values must be frozen and finite")
         array = result.cpu().numpy().astype(np.float16)
@@ -228,11 +262,13 @@ def cache_array(path, shape):
     return arr
 
 
-def extract(run, mid, limit=None, data=None, device="cuda:0"):
+def extract(run, mid, limit=None, data=None, device="cuda:0", batch_size=1):
     import transformers
     torch.set_num_threads(4)
     os.umask(0o077)
     run = Path(run).resolve()
+    if batch_size < 1:
+        raise ValueError("batch-size must be positive")
     data = Path(data).resolve() if data else run / "data"
     out = run / mid
     out.mkdir(parents=True, exist_ok=True)
@@ -263,6 +299,8 @@ def extract(run, mid, limit=None, data=None, device="cuda:0"):
         segmentation_input="prepared HR uint8 512x512; Montgomery HR included",
         sr_input="only prepared LR uint8 128x128; native processor may resize this LR image",
         slot_training=False, language_model_loaded=False,
+        extraction_batch_size=batch_size,
+        batch_isolation="native image attention boundaries preserved; each image pooled independently",
         alignment="mean-pool 4 intermediate vision blocks; bin-center channels to1024 or right zero-pad",
     )
     contract_path = out / "slot_contract.json"
@@ -301,27 +339,34 @@ def extract(run, mid, limit=None, data=None, device="cuda:0"):
         raise ValueError("loaded native-vision provenance changed")
     atomic(metadata_path, metadata)
     started = time.time()
-    completed = 0
+    completed, batch_forwards = 0, 0
     native_shapes = collections.defaultdict(set)
     with torch.inference_mode():
-        for i, row in enumerate(rows):
-            for j, branch in enumerate(BRANCHES):
-                if done[i, j] or not required[i, j]:
-                    continue
-                image = branch_image(branch, i, images, lr_images)
-                arrays[branch][i] = extractor(image)
+        for j, branch in enumerate(BRANCHES):
+            pending = np.flatnonzero(required[:, j] & ~done[:, j]).tolist()
+            for start in range(0, len(pending), batch_size):
+                ids = pending[start:start + batch_size]
+                if limit is not None:
+                    ids = ids[:max(0, limit - completed)]
+                if not ids:
+                    return
+                batch = [branch_image(branch, i, images, lr_images) for i in ids]
+                arrays[branch][ids] = extractor.batch(batch)
+                batch_forwards += 1
                 native_shapes[branch].add(tuple(tuple(extractor.native_shapes[k]) for k in range(4)))
                 arrays[branch].flush()
-                done[i, j] = True
+                done[ids, j] = True
                 np.save(out / "slots_done.tmp.npy", done)
                 os.replace(out / "slots_done.tmp.npy", done_path)
-                completed += 1
-                if completed == 1 or completed % 20 == 0:
+                completed += len(ids)
+                if completed == len(ids) or completed % max(20, batch_size) < batch_size:
                     progress = dict(done=int(done[required].sum()), total=int(required.sum()),
                                     done_by_branch=dict(zip(BRANCHES, done.sum(0).tolist())),
                                     seconds=time.time() - started, forward_calls_this_session=completed,
                                     native_shapes={k: sorted(v) for k, v in native_shapes.items()},
                                     physical_gpus=os.environ.get("CUDA_VISIBLE_DEVICES"))
+                    progress["extraction_batch_size"] = batch_size
+                    progress["batch_forward_calls_this_session"] = batch_forwards
                     atomic(out / "slots_progress.json", progress)
                     print("slots", mid, progress["done"], "/", progress["total"],
                           "seconds", round(progress["seconds"], 1), flush=True)
@@ -334,7 +379,8 @@ def extract(run, mid, limit=None, data=None, device="cuda:0"):
         done=int(done[required].sum()), total=int(required.sum()),
         hr_slots_sha256=digest(out / "hr_slots.npy"), lr_slots_sha256=digest(out / "lr_slots.npy"),
         native_shapes={k: sorted(v) for k, v in native_shapes.items()},
-        forward_calls_this_session=completed, seconds=time.time() - started))
+        forward_calls_this_session=completed, batch_forward_calls_this_session=batch_forwards,
+        extraction_batch_size=batch_size, seconds=time.time() - started))
 
 
 if __name__ == "__main__":
@@ -344,7 +390,8 @@ if __name__ == "__main__":
     parser.add_argument("--data", type=Path)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--limit", type=int, help="stop after this many new image forwards; cache resumes")
+    parser.add_argument("--batch-size", type=int, default=1)
     args = parser.parse_args()
     if args.limit is not None and args.limit < 1:
         parser.error("--limit must be positive")
-    extract(args.run, args.model, args.limit, args.data, args.device)
+    extract(args.run, args.model, args.limit, args.data, args.device, args.batch_size)

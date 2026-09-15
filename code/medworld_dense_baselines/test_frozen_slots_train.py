@@ -168,6 +168,34 @@ class FrozenSlotTests(unittest.TestCase):
             self.assertEqual(metrics["metrics"]["human_test"]["n"], 2)
             self.assertEqual(metrics["train_n"], 2)
 
+    def test_step_deadline_checkpoint_resumes_exactly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            data_run, run, pseudo_path, rows = make_fixture(root)
+            args = argparse.Namespace(data_run=data_run, run=run, model="fixture", task="segmentation",
+                                      condition="slots", out=root / "uninterrupted", epochs=2, train_limit=None,
+                                      batch_size=1, microbatch=1, learning_rate=3e-4, seed=7, device="cpu",
+                                      threads=2, pseudo_path=pseudo_path, checkpoint_seconds=120.)
+            training.train(args)
+            uninterrupted = torch.load(args.out / "checkpoint.pt", weights_only=False)
+            args.out = root / "deadline_resumed"
+            # Stop after the first optimizer update, half-way through epoch 1.
+            with mock.patch.object(training.StopRequest, "requested", side_effect=[False, True]):
+                with self.assertRaises(SystemExit) as raised:
+                    training.train(args)
+            self.assertEqual(raised.exception.code, 124)
+            self.assertFalse((args.out / "metrics.json").exists())
+            partial = json.loads((args.out / "partial_metrics.json").read_text())
+            self.assertFalse(partial["complete_requested_epochs"])
+            self.assertEqual(partial["epochs"], .5)
+            saved = torch.load(args.out / "checkpoint.pt", weights_only=False)
+            self.assertEqual(saved["resume_batch_start"], 1)
+            training.train(args)
+            resumed = torch.load(args.out / "checkpoint.pt", weights_only=False)
+            self.assertEqual(resumed["step"], uninterrupted["step"])
+            for key in uninterrupted["model"]:
+                torch.testing.assert_close(uninterrupted["model"][key], resumed["model"][key], rtol=0, atol=0)
+
 
 if __name__ == "__main__":
     unittest.main()
