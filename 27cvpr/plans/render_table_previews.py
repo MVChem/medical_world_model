@@ -18,13 +18,18 @@ def main():
         raise ValueError(f"Expected two plan pages, found {len(pages)}")
     dpi = 160
     scale = dpi / 72
-    for index, marker in enumerate(("Planned scoring interface.", "Data."), 1):
+    for index, marker in enumerate(("Scoring interface.", "Data."), 1):
         lines = []
         for line in pages[index - 1].findall(".//{*}line"):
             text = " ".join(word.text or "" for word in line.findall("{*}word"))
             lines.append((text, {key: float(value) for key, value in line.attrib.items()}))
         top = next(box["yMin"] for text, box in lines if text.startswith(f"Table {index}:"))
-        following = next(box["yMin"] for text, box in lines if text.startswith(marker))
+        # A top float can precede the page title; exclude that title and prose too.
+        following = min(
+            box["yMin"] for text, box in lines
+            if box["yMin"] > top
+            and text.startswith((marker, f"Table {index} results:"))
+        )
         boxes = [box for _, box in lines if box["yMin"] >= top and box["yMax"] < following]
         left = math.floor((min(box["xMin"] for box in boxes) - 4) * scale)
         right = math.ceil((max(box["xMax"] for box in boxes) + 4) * scale)

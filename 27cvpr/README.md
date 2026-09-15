@@ -31,42 +31,92 @@ has 9 pages including references. The supplement has 4 pages. Both PDFs and
 the two-page experiment plan compile without unresolved references or reported
 box overflows. Page previews are generated in `preview/` for this migration.
 
-The planned Tables 1 and 2 now appear in the manuscript. Each has **10
-method/settings**, with no category-title rows. The same editable table sources
-also produce the two-page [table preview](plans/table1_table2_plan.pdf):
+Tables 1 and 2 now include the available results checked on **2026-09-15**.
+Table 1 has **11 method/settings** and Table 2 has **13**, with no category-title
+rows. Both use **Qwen3.5-9B** for the Qwen zero-shot reference. The same editable
+table sources also produce the [table preview](plans/table1_table2_plan.pdf):
 
 - [Table 1 source](tables/table1_future.tex): future prediction.
 - [Table 2 source](tables/table2_downstream.tex): six downstream task families.
 - [Execution plan and model selection](plans/README.md).
 
+Both tables display scores multiplied by 100, with two decimal places; PSNR
+retains its dB unit. Brier/ECE remain lower-is-better. The aggregate JSON and
+original experiment results retain their original scales and full precision.
+
+Table 1's bottom three rows use **Qwen3.5-9B**: full-token,
+slots, and shuffled state. All three have completed 2,400 forecast updates,
+297-pair evaluation, and GREEN scoring from a shared new 9B Stage-1 warm start.
+CheXagent's forecast, current classification, and report scores are also filled.
+See the [September 15 backfill record](../research_notes/0915_table_results_filled.md);
+the previous 0.8B results are preserved in the
+[upgrade record](../research_notes/0914_qwen9b_forecast_upgrade.md).
+
 Results retains three subsections: Experimental setup, Future prediction, and
 Downstream tasks. `sections/6_results_analysis.tex` includes the brief setup from
 `sections/5_experiments.tex` and the two shared table sources.
+
+The **2026-09-14 candidate visualization plan** adds five compact figure
+placeholders to Results: longitudinal forecasting, clinical evidence, state-based
+retrieval, slot-condition perturbations, and segmentation/SR output comparisons.
+A sixth placeholder for actual slot-readout attention is in the supplement,
+conditional on an attention-based readout. Each has a brief planned caption;
+none represents a completed visualization. The editable sources are in
+`figures/candidate_*.tex`. All candidates will be tried before final selection
+and placement; see the [figure plan](../research_notes/0914_candidate_figure_plan.md).
+With these placeholders retained, the main PDF has 10 pages (body through
+page 8) and the supplement has 5; page previews have been refreshed.
+
+First empirical attempts are now available in the separate
+[four-figure review PDF](figures/generated/candidate_figures_v1.pdf), with
+[overview](figures/generated/candidate_figures_v1_overview.png) and
+[rebuild scripts, individual exports and scope notes](figures/README.md).
+They use available frozen visual controls and baseline classifiers; missing
+full-model conditions remain identified. An additional historical 0.8B
+[forecasting visualization](figures/generated/forecasting.pdf) is also available.
+These review artifacts do not replace the full-method manuscript placeholders.
 
 Table 1 uses the agreed **four dimensions, two metrics each**: future clinical
 status (macro AP/AUROC), disease progression (Transition/Direction macro F1),
 future report fidelity (RadGraph partial F1/GREEN), and probabilistic reliability
 (macro Brier/classwise ECE). Lower Brier/ECE are better. Onset/resolution
 breakdowns, CheXbert F1, and retrieval are supplementary. Zero-shot VLM rows are
-marked ZS; the same-scale direct baseline and Ours are task-trained. Planned VLM
-finding scores come from Yes/No answer likelihoods. Direction labels and new
-scorers still require validation and implementation under this fixed metric set.
+marked ZS. The three 9B forecast conditions use 16,000 training pairs,
+2,400 updates at effective batch size 32 after a shared 9B Stage-1 warm
+start. Validation/test contain 230/297
+pairs, with 94 test patients. VLM finding scores use Yes/No answer likelihoods.
+All reported forecast rows share per-metric reference masks. Direction labels
+remain unadjudicated, so that column stays pending. BioViL-T/CheXWorld forecast
+adaptations and their GREEN scoring are complete. Their trained modules use the
+common Stage-1 warm start; these are not the original papers' native forecasters.
+The 9B slots improve Transition F1 and AUROC over full-token, with lower
+Brier/ECE but slightly lower AP, RadGraph, and GREEN. Shuffling collapses all
+297 reports to one output and yields zero CheXbert F1; its low ECE accompanies
+near-chance AUROC and weak report scores.
 
 Table 2 covers classification, standard VQA, current report generation, phrase
 grounding, organ segmentation, and spatial 4x super-resolution. It excludes
 temporal understanding. Pseudo-label and human-mask Dice occupy separate columns.
-The no-slots baseline and Ours share six-task adaptation and decoder budgets.
-The image-based evaluation withholds the same-exam report; previous four-task
-report-assisted scores must not be inserted into this expanded plan.
+The planned no-slots and full Ours rows remain pending under matched six-task
+adaptation. Separate Qwen3.5-9B frozen visual-slot, shuffled-slot, and image-only
+rows report the completed dense-task controls. Main-table dense results use
+4,096/249/447 training/validation/test images, 20 epochs, and the separate
+Montgomery 138-image human lung test. DINOv2/CheXWorld classification heads use
+13,681/160/353 images; current-report scoring uses 507 test images. Standard VQA
+and MS-CXR grounding are pending. Derived QA, anatomical-region localization,
+old report-assisted scores, and separate two-epoch joint pilots do not fill
+those pending rows or columns.
 
 Methods now follows Figure 2's multi-scale design: four fusion-layer slots and
 four slots from the VLM's own vision encoder, each sampling one early, two
 intermediate, and the final layer. Classification/disease recognition read all
 eight; segmentation/SR read the four visual slots plus the task image (LR for SR).
 Task gradients jointly train slot readouts and decoders. This design requires
-new training; existing prototype results do not validate it. Additional readouts
-and image-only adaptation remain planned work. The appendix records the input,
-supervision, scoring, and cohort conditions needed before filling the tables.
+new training. Table 1's **9B slot adaptation uses final-layer language queries**,
+not the multi-depth 4+4 architecture, and its full-token control retains the
+same forecast module. Neither it nor Table 2's frozen visual-slot controls
+validate the full proposed system. The appendix records the distinct inputs,
+supervision, scoring, and cohorts for the partial results and remaining work.
 
 ## Compile
 
@@ -88,8 +138,9 @@ single-column detail of the eight-slot construction. Long equations use aligned
 lines. The standalone experiment plan stays single-column at the CVPR text
 width and shares the manuscript's table sources.
 
-The architecture figure is `imgs/fig1.pdf`, exported from
-`ppt/ppt/fig1_v7.pptx`. The slot figure is `imgs/fig2_v2.pdf`, with its editable
+The architecture figure is `imgs/fig1.pdf`, an exact copy of the user-selected
+`ppt/ppt/fig1_v7.pdf` as of 2026-09-15; `imgs/fig1.png` is rendered from that PDF.
+Its editable source is `ppt/ppt/fig1_v7.pptx`. The slot figure is `imgs/fig2_v2.pdf`, with its editable
 source in `ppt/ppt/fig2_v2.pptx` and build/export instructions in
 `ppt/scripts/fig2_v2/README.md`. The supplementary case figure is
 `ppt/ppt/appendix_fig_v3.pdf`. Other figure versions and their authoring scripts
@@ -97,7 +148,16 @@ are retained as archival assets.
 
 ## Result status
 
-Every scheduled result is marked `TBD`; a dash means the specified row does not
-evaluate that metric. No preliminary result has been inserted. Finalize cohorts,
-checkpoint versions, adaptation budgets, human-mask data, and reference masks
-before running the plan and making performance claims.
+Available metrics have been inserted; `TBD` means pending, while a dash means
+the specified row does not evaluate that metric. Scores are point estimates,
+not significance claims. Data and epoch/update counts are matched within the
+described protocols, but actual GPU hours and pretraining differ: SwinIR's
+4,096-image run uses 8.313 GPU hours including evaluation, versus 0.161 for the
+image-only SR run. The comparison is not equal-compute.
+
+CheXagent and all three 9B forecast conditions are complete for their available
+metrics. MAIRA-2 awaits checkpoint access. Direction annotation, transition-prior
+threshold selection/scoring, formal VQA, MS-CXR grounding, the complete
+six-task no-slots/Ours experiments, and cross-task/pretraining overlap audits
+remain unfinished. The larger 18,708-image dense experiments are recorded in
+the experiment reports and are not mixed into this 4,096-image main-table panel.

@@ -4,6 +4,7 @@
 % Introduce the overall method before the detailed state construction.
 \begin{figure*}[t]
     \centering
+    % User-selected Figure 1: exact copy of ppt/ppt/fig1_v7.pdf (2026-09-15).
     \includegraphics[width=\textwidth]{imgs/fig1.pdf}
     \caption{Overview of \method{}. The state $S\in\mathbb R^{8\times d}$ supports task decoding and horizon-conditioned prediction; Figure~\ref{fig:task_supervised_slots} details its construction. Spatial tasks receive the input image and visual slots, using low-resolution evidence for super-resolution. The world model maps $(S_t,h)$ to $\widehat S_{t,h}$, supervised by the stop-gradient follow-up target $S^*_{t^+}$. Stage~1 learns task-supervised states; Stage~2 learns their temporal evolution.}
     \label{fig:medworld_jepa_overview}
@@ -12,20 +13,20 @@
 \input{sections/3_problem_formulation}
 
 \paragraph{Overview.}
-\method{} couples a multimodal state encoder with a horizon-conditioned latent world model (\cref{fig:medworld_jepa_overview}). At both time points, four vision--language slots and four visual slots form the state. Task decoders jointly supervise its construction, with direct image input for segmentation and super-resolution. The world model predicts future slots from the current state and horizon while further adapting the state encoder.
+\method{} couples a multimodal state encoder with a horizon-conditioned latent world model (\cref{fig:medworld_jepa_overview}). At both time points, four vision--language slots and four visual slots form the state. Task decoders jointly supervise its construction, with direct image input for segmentation and super-resolution. The world model predicts future slots from the current state and horizon while further adapting the state encoder. For forecasting, these predicted slots augment a native Qwen vision--language decoder that also reads the current radiograph, available report/history, and horizon. This revised architecture remains pending training and evaluation; the completed Table~\ref{tab:future_prediction} adaptations are legacy prototypes with a different readout.
 
 \subsection{State Representation}
 \label{sec:state_representation}
 
 \paragraph{Shared multimodal state encoding.}
-Current and follow-up observations share an encoding design with $K=8$ slots. We use image--report pairs for longitudinal prediction; image-based downstream evaluation withholds the same-exam report. State construction precedes both the task query and horizon. The two slot groups retain distinct feature sources throughout their readout and alignment.
+Current and follow-up observations share an encoding design with $K=8$ slots of width $d=1024$. We use image--report pairs for longitudinal prediction; image-based downstream evaluation withholds the same-exam report. State construction precedes both the task query and horizon. The two slot groups retain distinct feature sources throughout their readout and alignment.
 
 \paragraph{Visual and vision--language feature sources.}
-A frozen JEPA encoder $f_\theta$ provides spatial features~\citep{assran2023ijepa,bardes2024vjepa,murlabadia2026vjepa21}, mapped by a trainable visual adapter $a_\rho$ into the VLM embedding space:
+A frozen JEPA encoder $f_\theta$ provides spatial features~\citep{assran2023ijepa,bardes2024vjepa,murlabadia2026vjepa21}, mapped by a trainable visual adapter $a_\rho$ into the VLM embedding space of width $d_L$:
 \begin{equation}
     \begin{aligned}
         D_\tau&=f_\theta(X_\tau)\in\mathbb R^{N_D\times d_D},\\
-        V_\tau&=a_\rho(D_\tau)\in\mathbb R^{N_V\times d}.
+        V_\tau&=a_\rho(D_\tau)\in\mathbb R^{N_V\times d_L}.
     \end{aligned}
     \label{eq:visual_evidence}
 \end{equation}
@@ -84,9 +85,20 @@ Let $E_{\bar\eta}$ denote the target instance of the same encoding design. The a
     \end{aligned}
     \label{eq:future_latent_loss}
 \end{equation}
-where $\operatorname{sg}$ stops target-branch gradients. The follow-up image supplies both feature pathways, and its report contributes to the fusion slots. Only the eight future slots are predicted and supervised; there is no separate dense feature-map loss. Future observations and their modality indicators are not predictor inputs.
+where $\operatorname{sg}$ stops target-branch gradients. The follow-up image supplies both feature pathways, and its report contributes to the fusion slots. This latent objective supervises the eight future slots, with no separate dense feature-map loss. Future observations and their modality indicators are not predictor inputs.
 
-The fixed source and depth ordering establishes correspondence between predicted and target slots. The latent distance and normalization remain to be selected; elementwise mean squared distance is one candidate. Forecast readouts consume only $\widehat S_{t,h}$ and permitted task conditions. Current spatial decoders also require the corresponding input image and therefore do not directly define dense future outputs.
+The fixed source and depth ordering establishes correspondence between predicted and target slots. The latent distance and normalization remain to be selected; elementwise mean squared distance is one candidate. Current spatial decoders also require the corresponding input image and therefore do not directly define dense future outputs.
+
+\paragraph{Native report forecasting with predicted-state context.}
+Let $A_\gamma$ project the eight predicted slots to the native Qwen language width. The forecast decoder retains Qwen's native vision encoder and image--text interface:
+\begin{equation}
+    (\widehat R_{t,h},\widehat p_{t,h})
+    =D_\omega\!\left(X_t,C_t,h;A_\gamma(\widehat S_{t,h})\right).
+    \label{eq:augmented_forecast}
+\end{equation}
+Here $C_t$ includes the current report and source-available clinical history. Native visual tokens from $X_t$, the current text, and the horizon remain in the decoder context; projected future slots are inserted at the end of the native user message, before the assistant generation prompt. The finding head reads the final source-prompt hidden state before any teacher-forced future report tokens. Both native supervised fine-tuning and the state-augmented condition use the same aspect-preserving 512-pixel source image, native decoder/finding-head initialization, and report objective. Encoder and decoder share immutable pretrained weights but have independent LoRA parameters. Follow-up images never enter this context; follow-up report tokens are used only as causally masked training targets.
+
+The native supervised baseline omits $A_\gamma(\widehat S_{t,h})$. Its comparison with \method{} measures the contribution of the added state branch, which includes a JEPA encoder and learned dynamics. Isolating prediction and compression further requires controls that retain the same encoders and supply current slots or full tokens. In the shuffled control, only the state branch uses a different patient's source observation from the same split; the native decoder retains the true current image, text, and requested horizon.
 
 % Place the compact slot detail near the training discussion, after the
 % state construction and dynamics text, to separate it from Figure 1.
@@ -112,19 +124,23 @@ Starting from pretrained JEPA and VLM weights, we jointly train the adapters, mu
       \right],
     \label{eq:task_loss}
 \end{equation}
-where each prediction uses the task-specific slot subset and inputs defined above. Classification uses binary cross-entropy, disease recognition uses answer-token cross-entropy, segmentation uses Dice and pixel cross-entropy, and SR uses \cref{eq:sr_loss}.
+where each prediction uses the task-specific slot subset and inputs defined above. Classification uses binary cross-entropy, report generation and disease recognition use token cross-entropy, segmentation uses Dice and pixel cross-entropy, and SR uses \cref{eq:sr_loss}.
 
 There is no stop-gradient between the task decoders and slot readouts. Task gradients flow through $S$ into the learned aggregation/projection modules and any adapted source layers, jointly with decoder updates. Classification and disease recognition supervise both slot groups; segmentation and SR directly supervise $S^{\mathrm{v}}$ and their image decoders. Thus training updates the shared parameters that produce observation-dependent slots, rather than treating each sample's slots as independent optimization variables.
 
 \paragraph{Stage 2: future state prediction fine-tuning.}
-We initialize the encoder from Stage~1 and train $P_\psi$ on same-patient current--future observations, primarily MIMIC-CXR image--report pairs~\citep{johnson2019mimiccxr}. Future-loss gradients pass through $P_\psi$ and both current slot groups to their trainable construction modules; JEPA remains frozen. Optional task replay gives
+We initialize the encoder from a newly trained $4+4$ Stage~1 model and train $P_\psi$ on same-patient current--future observations, primarily MIMIC-CXR image--report pairs~\citep{johnson2019mimiccxr}. The legacy final-language-layer checkpoint does not initialize this state design. Future latent, report, and finding losses update $P_\psi$ and the current-state construction modules, while the latter two also train the native forecast decoder; JEPA remains frozen. With optional current-task replay,
 \begin{equation}
+    \begin{aligned}
     \mathcal L_{\mathrm{stage2}}
-    =\mathbb E_{(O_t,O_{t^+},h)}[\mathcal L_{\mathrm{future}}]
-      +\beta\,\mathcal L_{\mathrm{task}},
+    ={}&\lambda_S\mathcal L_{\mathrm{future}}
+       +\lambda_R\mathcal L_{\mathrm{report}}\\
+      &+\lambda_F\mathcal L_{\mathrm{finding}}
+       +\beta\mathcal L_{\mathrm{task}},
+    \end{aligned}
     \label{eq:joint_loss}
 \end{equation}
-where $\beta=0$ gives pure longitudinal fine-tuning. Task decoders receive updates only when their losses are retained. Temporal prediction and reusable representation are evaluated separately on held-out patients.
+where losses are averaged over sampled training pairs, $\mathcal L_{\mathrm{report}}$ is future-report token cross-entropy, and $\mathcal L_{\mathrm{finding}}$ is masked binary cross-entropy on future findings. Setting $\beta=0$ omits current-task replay. The native supervised baseline uses the same report and finding losses, without a latent target. Temporal prediction and reusable representation are evaluated separately on held-out patients.
 
 \paragraph{Target updates and implementation choices.}
-With shared weights, $\bar\eta=\eta$, the follow-up pass is detached, but targets change with encoder updates. EMA or fixed Stage~1 targets maintain separate parameters; stop-gradient alone does not establish stability. \pending{finalize layer indices, readout configurations, backbone adaptation, target updates, and training protocol; see the supplementary material}.
+The target encoder is a frozen snapshot of the new $4+4$ Stage~1 encoder; its parameters remain fixed throughout Stage~2. Its immutable pretrained weights can share storage with the online branches, while its copied adapters and readouts remain separate and receive no updates. Stop-gradient excludes the target pass from future-loss backpropagation. The initial implementation uses classification and current-report state supervision together with native current-report decoder training in Stage~1; this subset is not the complete six-task protocol. \pending{validate the revised native decoder, selected layer/readout configuration, and matched training budgets before reporting new results; see the supplementary material}.

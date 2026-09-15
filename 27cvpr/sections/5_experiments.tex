@@ -1,4 +1,22 @@
 \subsection{Experimental setup}
 \label{sec:experiments}
 
-We plan to evaluate future prediction first (\cref{tab:future_prediction}), followed by six downstream tasks using the current state (\cref{tab:downstream_tasks}). MIMIC-CXR~\citep{johnson2019mimiccxr} supplies the main image/report data, with linked MIMIC-IV history for forecasting, MIMIC-CXR-VQA for question answering, and MS-CXR for grounding. Patient splits and benchmark-test exclusions will be enforced across tasks and stages. The planned encoder combines frozen V-JEPA~2.1 ViT-B features with Qwen3.5-0.8B, extracting four fusion and four native visual slots. Task adaptation jointly trains the adapters, multi-scale slot readouts, selected VLM parameters, and independent decoders. Table entries remain TBD pending their specified experiments.
+We report partial future-prediction and downstream results in
+\cref{tab:future_prediction,tab:downstream_tasks}. MIMIC-CXR~\citep{johnson2019mimiccxr}
+supplies images and reports, with source-available MIMIC-IV history for forecasting.
+Forecast training/validation/test sets contain 16,000/230/297 pairs; the test set
+contains 94 patients. Adapted representation models use 2,400 updates with
+batch size 32. The three legacy Qwen3.5-9B forecast conditions complete the same budget
+from a shared 9B Stage~1 initialization. Dense tasks use 4,096/249/447 images and
+20 training epochs; human lung Dice is evaluated separately on 138 Montgomery
+images. The tables distinguish zero-shot checkpoints, frozen-feature task heads,
+and trained forecast adaptations. The completed 9B slot adaptation uses final-layer
+language queries; it does not implement the proposed four fusion-layer plus four
+native-vision slots. New native supervised and predicted-state-augmented Qwen
+forecasters retain the same 512-pixel current-image and report/history context;
+their training and results are pending. Their planned protocol uses a new
+1,694-update Stage~1 at effective batch eight, followed by 2,400 forecast updates
+at effective batch 32, subject to 0.8B and 9B execution and memory checks.
+Full six-task adaptation of that design, standard
+MIMIC-CXR-VQA, and MS-CXR phrase grounding remain pending. All reported numbers
+are point estimates; matched data and update counts do not imply matched GPU hours.

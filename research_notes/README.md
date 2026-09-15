@@ -16,10 +16,18 @@
 
 ## 当前决定与执行
 
+**2026-09-15 回填：9B 三组预测对照及 CheXagent 的正式结果已写入两表，新增 32 个指标值。** Table 1 现有 70 个、Table 2 有 42 个已填指标；完整多深度模型、Direction、正式 VQA／grounding 等缺项见[本次回填记录](0915_table_results_filled.md)。
+
 **2026-09-13 核对：09-11 的 4＋4 slots／无 slots 匹配训练、六模型零样本评测，以及 09-12 的冻结 VLM 密集任务队列均已完成。** 密集任务于 09-12 12:14 完成 55/55 项；表格来源、实验时间和最终结果见下方溯源记录。09-13 新多层视觉 slots 是独立实验，其状态以对应运行报告为准。旧文档中的“尚未训练”“在跑”等描述属于当时快照。
 
 | 文档 | 用途 |
 |---|---|
+| [09-15 slots 版本与文本解码](0915_slots_version_and_text_codec.md) | 核对两表旧结果与新版 4＋4 的归属；补充预测 latent 直接生成报告的接口、0.8B／9B 检查及正式质量验收边界 |
+| [09-15 Table 1 原生图文预测重做](0915_table1_native_forecast_redesign.md) | 保留当前原图／历史的 Qwen decoder，新增预测 4＋4 slots；匹配 native SFT／slots／shuffled，新旧结果分开记录 |
+| [09-15 共享模型短测、baseline 与缓存范围](0915_table2_joint_prototype_and_baselines.md) | 0.8B 四组与 9B 两组真实短测；区分原生 Qwen 微调、JEPA 结构对照、SwinIR 参照及缓存特征训练 |
+| [09-15 两表补跑结果回填](0915_table_results_filled.md) | 9B full-token／slots／shuffled 与 CheXagent 的最终结果、完成时间、来源与剩余缺项 |
+| [09-15 候选图复盘与后续制作思路](0915_figure_review_and_next_steps.md) | 汇总分享聊天与本轮看图讨论；区分状态证据与未来预测，明确现有试图不足、缺失材料及后续制作边界 |
+| [09-14 候选图尝试与论文占位计划](0914_candidate_figure_plan.md) | 临床证据、状态检索、slot 条件扰动、空间输出、纵向预测及真实 attention 候选；全部尝试后筛选，先在论文保留简短图注占位 |
 | [Table 1／2 结果来源与实验时间](0913_table1_table2_results_provenance.md) | 聊天中表格的具体路径、09-11／12 实验时间、18 行分割／×4 SR 最终分数，以及与新旧 slots 实验的区别 |
 | [09-13 冻结多层视觉 slots 对照](0913_frozen_multidepth_slots.md) | 第 5–8 个 slots 固定，只训练分割／×4 SR decoder；六个视觉塔与匹配 image-only 基线 |
 | [8 个多层 slots 方法小图 prompt](0912_multiscale_slots_figure_prompt.md) | 紧凑版：VLM 原生视觉与融合特征经轻量 adapter 对齐为八个 slots；沿用 fig1 字体 |
@@ -36,9 +44,9 @@
 | [Table 1 旧指标与来源](0910_table1_metrics_and_data_sources.md) | 早期实验评分解释与 MIMIC 数据来源 |
 | [数据总览](0910_dataset_summary.md) | 数据规模、变化与时间分布 |
 
-当前论文 Results 使用简短 setup、Table 1 future prediction、Table 2 downstream tasks。Table 1 已固定为临床状态、病情演变、报告内容、概率可靠性四组，每组两项指标；结果仍待正式实验填写。
+当前论文 Results 使用简短 setup、Table 1 future prediction、Table 2 downstream tasks。Table 1 已固定为临床状态、病情演变、报告内容、概率可靠性四组，每组两项指标；已完成且符合对应协议的结果已回填。
 
-原始 VLM 评测已得到其中七项指标，论文主表未回填；Direction 的新增 82 对子集另有输入和参考协议，不能直接当作原 297 对的第八列。
+原始 VLM 评测已得到其中七项指标并写入论文主表；Direction 的新增 82 对子集另有输入和参考协议，不能直接当作原 297 对的第八列。
 
 ## 历史实验和数据审计
 

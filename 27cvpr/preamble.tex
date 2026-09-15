@@ -15,5 +15,10 @@
 \newcommand{\na}{\textcolor{black!45}{---}}
 \newcommand{\tbdpair}{}
 \newcommand{\pending}[1]{\textcolor{gray}{[TBD: #1]}}
+% Compact draft boxes; replace with actual figures after candidate selection.
+\newcommand{\candidatefigureplaceholder}[1]{%
+    \fbox{\parbox[c][0.52in][c]{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{%
+        \centering\small #1\par\medskip
+        \footnotesize\textcolor{black!55}{Candidate visualization --- pending}}}}
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}

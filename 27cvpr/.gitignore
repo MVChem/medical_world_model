@@ -14,6 +14,9 @@
 /supplementary.pdf
 /preview/
 
+# Local case-level visualizations, reports, retrieval rankings and provenance.
+/figures/generated/
+
 # Editor and OS metadata
 .DS_Store
 *~

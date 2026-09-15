@@ -5,12 +5,12 @@
 \usepackage{amsmath,amssymb,booktabs,array,float,microtype}
 \usepackage[table]{xcolor}
 \usepackage{hyperref}
-\hypersetup{hidelinks,pdftitle={MedWorld-JEPA: Table 1 and Table 2 experiment plan}}
+\hypersetup{hidelinks,pdftitle={MedWorld-JEPA: Table 1 and Table 2 results}}
 
 % Standalone single-column plan with the CVPR text width and Times fonts.
 \pagestyle{fancy}
 \fancyhead{}
-\fancyhead[L]{\footnotesize MedWorld-JEPA \quad / \quad Experiment plan}
+\fancyhead[L]{\footnotesize MedWorld-JEPA \quad / \quad Results and pending evaluations}
 \fancyhead[R]{\footnotesize CVPR 2026 working draft}
 \fancyfoot[C]{\thepage}
 \renewcommand{\headrulewidth}{0pt}
@@ -22,40 +22,40 @@
 \newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
 
 \begin{document}
-{\Large\bfseries Table 1 plan: future prediction}\par
+{\Large\bfseries Table 1 results: future prediction}\par
 Predict the unobserved follow-up from the current radiograph, current report,
-source-available clinical history, and requested horizon. Ten methods/settings
-are evaluated across four dimensions, with two metrics each; zero-shot rows
-are marked explicitly.
+source-available clinical history, and requested horizon. Results available on
+15 September 2026 are entered below. The public Qwen baseline and the three
+completed legacy forecast conditions use Qwen3.5-9B. A new native-image-conditioned 4+4 comparison is in progress.
 
 \input{plans/tables/table1_future_plan}
 
-\textbf{Planned scoring interface.}
+\textbf{Scoring interface.}
 For each finding, score the fixed candidate answers \texttt{Yes} and \texttt{No}
 from the VLM's conditional token likelihoods:
 \[
  s_k=\frac{\exp(\ell_{\mathrm{Yes},k})}
  {\exp(\ell_{\mathrm{Yes},k})+\exp(\ell_{\mathrm{No},k})}.
 \]
-Here $\ell$ is the candidate answer's log-likelihood, scored at the same answer
-boundary. No extra classification head is required for this interface.
-Representation forecasters use supervised finding heads; the interface and
-training regime will be disclosed per row. AP/AUROC assess ranking; Brier/ECE
-assess the same scores as probability predictions. The main table uses raw scores;
-any calibration uses validation data only and is reported separately.
+Here $\ell$ is the candidate answer's log-likelihood at the same answer boundary.
+Trained forecasters use finding heads. AP/AUROC assess ranking; Brier/ECE assess
+the same raw scores as probabilities. These are distinct training regimes.
 
-\textbf{Evaluation plan.}
-All rows share patient splits, per-metric reference masks, and clinical scorers.
-Transition F1 averages supported finding-specific onset/resolution events.
-Direction F1 measures improved/stable/worsened persistent findings using reviewed,
-source-anchored annotations; stable references remain eligible for false changes.
-Report fidelity uses RadGraph partial F1 and GREEN. Brier and ten-bin classwise
-ECE are macro-averaged over findings. Onset/resolution breakdowns, retrieval,
-CheXbert F1, horizon analyses, coverage, and patient-bootstrap intervals are
-supplementary. Direction-label validation and new scorers remain pending.
+\textbf{Evaluation status.}
+The 297-pair reference masks are shared. Transition F1 averages supported
+finding-specific onset/resolution events. All entered GREEN scores cover all
+297 pairs. Direction labels for this cohort remain unreviewed; scores from the
+separate 82-pair pilot are excluded. The bottom three rows share a newly trained
+9B Stage~1 initialization and have completed matched forecast training and
+evaluation. Historical 0.8B scores are retained in the experiment records.
+The 9B slot adaptation
+uses final-language-layer queries, distinct from the proposed multi-depth
+fusion/vision model. The new comparison retains native current-image and history inputs at the decoder and adds predicted future slots; its results are not yet available. CheXagent inference and scoring are complete; the prior's
+transition readout remains pending. Source paths, hashes and full-precision values are saved in
+\texttt{tables/results\_20260914.json}.
 
 \clearpage
-{\Large\bfseries Table 2 plan: six downstream tasks}\par
+{\Large\bfseries Table 2 results: six downstream tasks}\par
 Evaluate current-image understanding, language readout, localization, and
 reconstruction. The six task families are classification, standard VQA,
 current report generation, phrase grounding, organ segmentation, and spatial
@@ -64,19 +64,18 @@ $4\times$ super-resolution.
 \input{plans/tables/table2_downstream_plan}
 
 \textbf{Data.}
-Use MIMIC-CXR for classification, reports and synthetic SR;
-\href{https://physionet.org/content/mimic-ext-mimic-cxr-vqa/1.0.0/}{MIMIC-CXR-VQA}
-for standard question answering;
-\href{https://physionet.org/content/ms-cxr/1.1.0/}{MS-CXR} for phrase grounding;
-and CXAS pseudo-labels plus a separate human-mask test for segmentation.
-Classification uses macro AUROC/AP; reports use RadGraph partial and
-CheXbert macro-positive F1. Spatial $4\times$ SR has $1/16$ of the HR pixel count.
+Filled entries use MIMIC-CXR classification, reports and synthetic SR, CXAS
+pseudo-labels, and external Montgomery human lung masks. All filled dense-task
+rows use the 4,096-image training cohort. The 18,708-image runs are reported
+separately in the experiment records. PSNR/SSIM use the same valid image region.
 
-\textbf{Input and training plan.}
-Use images plus task questions/phrases and withhold the same-exam target report.
-Adapt Ours and no-slots to this setting; exclude test patients across all training
-tasks and stages. Report VQA Verify/Choose/Query and whole-image/region slices
-separately. Added readouts require training; current report-assisted four-task
-scores are not entries in this plan.
+\textbf{Remaining evaluations.}
+Official MIMIC-CXR-VQA, MS-CXR phrase grounding and matched six-task adaptation
+of the full proposed model remain pending. The Qwen3.5-9B native row reports
+zero-shot classification/reporting; its separate dense rows train heads on
+four fixed tokens from the frozen vision tower. All filled dense rows share
+data and updates, but actual GPU hours and pretraining differ. The old
+report-assisted $2\times$ SR and separate two-epoch VLM adaptation pilots are
+not scores for the full six-task model.
 
 \end{document}
