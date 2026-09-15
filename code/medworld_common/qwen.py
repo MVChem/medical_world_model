@@ -119,9 +119,12 @@ class StateEncoder(nn.Module):
 
 
 class ReportDecoder(nn.Module):
-    def __init__(self, backbone, tokenizer, width):
+    def __init__(self, backbone, tokenizer, width, output_head=None):
         super().__init__()
         self.backbone = backbone
+        self.output_head = output_head
+        if output_head is not None:
+            output_head.requires_grad_(False)
         self.projection = nn.Sequential(nn.LayerNorm(width), nn.Linear(width, width))
         self.tokenizer = tokenizer
         prompt = tokenizer.apply_chat_template(
@@ -140,6 +143,10 @@ class ReportDecoder(nn.Module):
         self.register_buffer(
             "prompt_ids", torch.tensor(prompt, dtype=torch.long), persistent=False
         )
+
+    def language_weight(self):
+        return (self.output_head.weight if self.output_head is not None
+                else self.backbone.get_input_embeddings().weight)
 
     def prefix(self, state):
         embed = self.backbone.get_input_embeddings()
@@ -161,7 +168,7 @@ class ReportDecoder(nn.Module):
         outputs = hidden(self.backbone, seq, mask).last_hidden_state
         predictors = outputs[:, prefix.shape[1] - 1 : -1]
         targets = target_ids.masked_fill(~target_mask.bool(), -100)
-        return chunked_ce(predictors, targets, embed.weight)
+        return chunked_ce(predictors, targets, self.language_weight())
 
     @torch.no_grad()
     def generate(self, state, max_tokens):
@@ -172,9 +179,8 @@ class ReportDecoder(nn.Module):
         ended = torch.zeros(len(state), device=state.device, dtype=torch.bool)
         generated = []
         for _ in range(max_tokens):
-            logits = F.linear(
-                outputs.last_hidden_state[:, -1].to(embed.weight.dtype), embed.weight
-            )
+            weight = self.language_weight()
+            logits = F.linear(outputs.last_hidden_state[:, -1].to(weight.dtype), weight)
             ids = logits.argmax(-1)
             ids = torch.where(ended, self.tokenizer.eos_token_id, ids)
             generated.append(ids)

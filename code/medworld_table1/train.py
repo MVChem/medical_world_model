@@ -11,8 +11,38 @@ from common import atomic_json, atomic_torch, digest, read_config, seed_all
 import torch
 from data import Corpus
 from model import MedWorld
+from ablation_model import build_model
 
 STOP = False
+
+
+def pretrained_weight_signature(directory):
+    """Pin every declared shard, while retaining old single-file signatures."""
+    directory = Path(directory)
+    index = directory / 'model.safetensors.index.json'
+    legacy = directory / 'model.safetensors-00001-of-00001.safetensors'
+    if index.exists():
+        files = sorted(set(json.loads(index.read_text())['weight_map'].values()))
+        if not files:
+            raise ValueError('Pretrained weight index declares no shards')
+        if files == [legacy.name]:
+            return digest(legacy)
+        return dict(index=digest(index), shards={name: digest(directory / name) for name in files})
+    if legacy.exists():
+        return digest(legacy)
+    files = sorted(directory.glob('*.safetensors'))
+    if len(files) != 1:
+        raise ValueError('Expected a safetensors index or one complete weight file')
+    return digest(files[0])
+
+
+def stage1_budget_reached(cfg, stage_step, elapsed, smoke_steps=0):
+    """An explicit update budget takes precedence over the historical time cap."""
+    if smoke_steps:
+        return stage_step >= smoke_steps
+    if cfg.get('max_stage1_steps'):
+        return stage_step >= cfg['max_stage1_steps']
+    return elapsed >= cfg['stage1_hours'] * 3600
 
 
 def stop_handler(signum, frame):
@@ -59,7 +89,7 @@ def train(args, cfg):
     signal.signal(signal.SIGINT, stop_handler)
     signatures = {f: digest(Path(cfg['cache']) / f) for f in ['manifest.json', 'observations.jsonl', 'train.jsonl', 'validate.jsonl', 'test.jsonl', 'features.json']}
     signatures['qwen_config'] = digest(Path(cfg['qwen']) / 'config.json')
-    signatures['qwen_weights'] = digest(Path(cfg['qwen']) / 'model.safetensors-00001-of-00001.safetensors')
+    signatures['qwen_weights'] = pretrained_weight_signature(cfg['qwen'])
     atomic_json(run / 'inputs.json', signatures)
     atomic_json(run / 'software.json', dict(torch=torch.__version__, cuda=torch.version.cuda,
         gpu=torch.cuda.get_device_name(), source_hashes={p.name: digest(p) for p in Path(__file__).parent.glob('*.py')}))
@@ -67,12 +97,34 @@ def train(args, cfg):
         from direct import DirectQwen
         model = DirectQwen(cfg).to('cuda')
     else:
-        model = MedWorld(cfg).to('cuda')
+        model = build_model(cfg).to('cuda')
+    if hasattr(model, 'audit_shared_backbones') and cfg.get('share_frozen_backbone'):
+        atomic_json(run / 'backbone_alias_audit_stage1.json', model.audit_shared_backbones())
     corpus = Corpus(cfg, model.tokenizer)
     stage, step, stage_step, elapsed, save4_step = 1, 0, 0, 0., None
     if args.mode == 'direct':
         stage = 2
     followed = Path(args.follow).resolve() if args.follow else None
+    if cfg.get('initialize_stage1') and not args.resume:
+        if followed or args.mode == 'direct':
+            raise ValueError('Stage-1 transfer is only supported for independent latent models')
+        initial = Path(cfg['initialize_stage1'])
+        checkpoint = torch.load(initial, map_location='cpu', weights_only=False)
+        if checkpoint['stage'] != 1:
+            raise ValueError('Expected an image-only Stage-1 checkpoint')
+        for key in ['qwen', 'visual_grid', 'slots', 'lwm_width', 'lwm_depth', 'lora_rank', 'lora_alpha', 'findings']:
+            if checkpoint['config'][key] != cfg[key]:
+                raise ValueError(f'Incompatible Stage-1 transfer field: {key}')
+        weights = checkpoint['model']
+        if cfg.get('state_condition') == 'no_slots':
+            weights = {k: v for k, v in weights.items() if k != 'encoder.slots'}
+        model.load_compact(weights)
+        model.begin_stage2()
+        stage, step, stage_step, elapsed = 2, 0, 0, 0.
+        atomic_json(run / 'initialization.json', dict(checkpoint=str(initial), sha256=digest(initial),
+            source_step=checkpoint['step'], source_stage=1, optimizer_reset=True,
+            removed_parameters=['encoder.slots'] if cfg.get('state_condition') == 'no_slots' else [],
+            target='Independent frozen copy of transferred source encoder under each representation'))
     if followed:
         checkpoint = torch.load(followed / 'checkpoint_stage1.pt', map_location='cpu', weights_only=False)
         if checkpoint['signatures'] != signatures:
@@ -94,6 +146,8 @@ def train(args, cfg):
         optimizer.load_state_dict(checkpoint['optimizer'])
         torch.set_rng_state(checkpoint['torch_rng'])
         torch.cuda.set_rng_state_all(checkpoint['cuda_rng'])
+    if hasattr(model, 'audit_shared_backbones') and cfg.get('share_frozen_backbone'):
+        atomic_json(run / f'backbone_alias_audit_stage{stage}.json', model.audit_shared_backbones())
     model.train()
     started = time.time()
     history = run / 'metrics.jsonl'
@@ -142,6 +196,23 @@ def train(args, cfg):
                     loss, parts = model.losses(batch, stage)
                 if not torch.isfinite(loss):
                     raise FloatingPointError('Non-finite training loss')
+                if cfg.get('audit_task_gradients') and stage == 2 and stage_step == 0 and micro == 0:
+                    selected = {}
+                    for name, parameter in model.encoder.named_parameters():
+                        if not parameter.requires_grad:
+                            continue
+                        category = 'slots' if name == 'slots' else ('adapter' if name.startswith('adapter.') else ('lora' if 'lora_B' in name else None))
+                        if category and category not in selected:
+                            selected[category] = (name, parameter)
+                    task_loss = cfg['text_weight']*parts['text'] + cfg['finding_weight']*parts['finding']
+                    gradients = torch.autograd.grad(task_loss, [v[1] for v in selected.values()], retain_graph=True, allow_unused=True)
+                    audit = {key: dict(parameter=entry[0], norm=float(g.float().norm()) if g is not None else None)
+                             for (key, entry), g in zip(selected.items(), gradients)}
+                    if any(v['norm'] is None or not 0 < v['norm'] < float('inf') for v in audit.values()):
+                        raise RuntimeError(f'Task-only gradient did not reach online state encoder: {audit}')
+                    atomic_json(run / 'task_gradient_audit.json', dict(task_loss='future report CE + weighted finding BCE; latent/replay excluded',
+                        state_condition=cfg.get('state_condition', 'slots'), gradients=audit,
+                        target_frozen=all(not p.requires_grad for p in model.target_encoder.parameters())))
                 (loss / cfg['gradient_accumulation']).backward()
                 for k, v in dict(loss=loss, **parts).items():
                     totals[k] = totals.get(k, 0.) + float(v.detach()) / cfg['gradient_accumulation']
@@ -164,13 +235,16 @@ def train(args, cfg):
                 f.write(json.dumps(row, allow_nan=False) + '\n')
             if step % 10 == 0 or args.smoke_steps or step == 1:
                 print(f'stage={stage} step={stage_step} hours={elapsed/3600:.3f} sec/step={duration:.2f} loss={totals}', flush=True)
-            if stage == 1 and (elapsed >= cfg['stage1_hours']*3600 or (args.smoke_steps and stage_step >= args.smoke_steps)):
+            if stage == 1 and stage1_budget_reached(cfg, stage_step, elapsed, args.smoke_steps):
                 save('checkpoint_stage1.pt')
+                if cfg.get('stage1_only'):
+                    break
                 model.begin_stage2()
                 stage, stage_step = 2, 0
                 optimizer = optimizer_for(model, cfg)
                 status()
             elif stage == 2 and not followed and (elapsed >= cfg['total_hours']*3600 or
+                    (cfg.get('max_stage2_steps') and stage_step >= cfg['max_stage2_steps']) or
                     (deadline is not None and time.time() >= deadline) or (args.smoke_steps and stage_step >= args.smoke_steps)):
                 break
             if cfg.get('periodic_checkpoint_minutes') and time.monotonic()-last_periodic >= cfg['periodic_checkpoint_minutes']*60:

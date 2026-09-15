@@ -26,11 +26,17 @@ def predict(args, cfg):
         checkpoint = torch.load(args.checkpoint, map_location='cpu', weights_only=False)
         if checkpoint['stage'] != 2:
             raise ValueError('Stage-1 checkpoint alone is not a trained forecast.')
+        for key in ('state_condition', 'report_tokens', 'ehr_tokens', 'use_ehr'):
+            if checkpoint['config'].get(key) != cfg.get(key):
+                raise ValueError(f'Evaluation input protocol differs: {key}')
         for name, expected in checkpoint['signatures'].items():
             if name == 'qwen_config':
                 path = Path(cfg['qwen']) / 'config.json'
             elif name == 'qwen_weights':
-                path = Path(cfg['qwen']) / 'model.safetensors-00001-of-00001.safetensors'
+                from train import pretrained_weight_signature
+                if pretrained_weight_signature(cfg['qwen']) != expected:
+                    raise ValueError(f'Checkpoint input differs: {name}')
+                continue
             else:
                 path = Path(cfg['cache']) / name
             if digest(path) != expected:
@@ -39,8 +45,8 @@ def predict(args, cfg):
             from direct import DirectQwen
             model = DirectQwen(cfg)
         else:
-            from model import MedWorld
-            model = MedWorld(cfg)
+            from ablation_model import build_model
+            model = build_model(cfg)
             model.begin_stage2(frozen_encoder=checkpoint.get('mode') == 'matched')
         model.load_compact(checkpoint['model'])
         model.eval().to('cuda')
@@ -64,6 +70,7 @@ def predict(args, cfg):
             write_rows(Path(args.out) / 'predictions.partial.jsonl', generated)
     write_rows(Path(args.out) / 'predictions.jsonl', generated)
     atomic_json(Path(args.out) / 'generation.json', dict(mode=args.mode, split=args.split, count=len(rows),
+        state_condition=cfg.get('state_condition', 'slots'),
         checkpoint=str(args.checkpoint), checkpoint_sha256=digest(args.checkpoint) if args.checkpoint else None,
         decoding='greedy', max_new_tokens=cfg['generation_tokens'], teacher_forcing=False, target_inputs=False))
     counts = Counter(r['report'] for r in generated)
@@ -96,12 +103,18 @@ def score(args, cfg):
     torch.cuda.empty_cache()
     scores = [r['scores'] for r in generated] if all(r['scores'] is not None for r in generated) else None
     result = clinical_metrics(current, target, predicted, scores, cfg['findings'])
+    if scores is not None:
+        from medworld_baselines.stats import probability_metrics
+        result['probability_metrics'] = probability_metrics(target, scores, cfg['findings'])
+        result.update({k: result['probability_metrics'][k] for k in ('ap', 'auroc', 'brier', 'ece')})
     negatives = cfg.get('retrieval_negatives', 31)
     pools = candidate_pools(rows, current, target, cfg['seed'], negatives=negatives)
     result.update(retrieval(predicted, target, pools))
     atomic_json(output / 'candidate_pools.json', pools)
     atomic_json(output / 'chexbert_labels.json', dict(current=current, target=target, predicted=predicted, provenance=provenance))
     result.update(mode=args.mode, split=args.split, n=len(rows), patients=len({r['patient'] for r in rows}),
+        state_condition=cfg.get('state_condition', 'slots'), direction_f1=None,
+        direction_status='No adjudicated direction targets for this fixed 297-pair cohort',
         radgraph_f1=None, radgraph_status='pending', chexbert=provenance,
         protocol=dict(unknown='Reference blank/uncertain excluded; prediction unknown never alters coverage',
                       zero_support='Truth-unsupported diseases/events marked null and excluded from a fixed reference-defined denominator',

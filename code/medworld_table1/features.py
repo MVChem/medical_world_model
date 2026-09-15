@@ -49,7 +49,31 @@ def extract(cfg):
         raise FileExistsError('Features already complete.')
     features = np.lib.format.open_memmap(feature_path.with_suffix('.tmp.npy'), mode='w+',
                                          dtype=np.float16, shape=(len(rows), grid * grid, 768))
-    loader = DataLoader(Images(rows, cfg['image_size']), batch_size=cfg['feature_batch_size'],
+    missing = list(range(len(rows)))
+    reused = 0
+    if cfg.get('feature_reuse_cache'):
+        import json
+        old = Path(cfg['feature_reuse_cache'])
+        metadata = json.loads((old / 'features.json').read_text())
+        old_cfg = json.loads((old / 'manifest.json').read_text())['config']
+        if metadata['checkpoint_sha256'] != digest(cfg['vjepa_checkpoint']) or any(old_cfg[k] != cfg[k] for k in ('image_size', 'visual_grid')):
+            raise ValueError('Feature reuse checkpoint or preprocessing differs')
+        if metadata['observations_sha256'] != digest(old / 'observations.jsonl'):
+            raise ValueError('Feature reuse observation manifest differs')
+        old_rows = load_rows(old / 'observations.jsonl')
+        lookup = {(r['id'], r['image']): i for i, r in enumerate(old_rows)}
+        old_features = np.load(old / 'vjepa_features.npy', mmap_mode='r')
+        missing = []
+        for i, row in enumerate(rows):
+            j = lookup.get((row['id'], row['image']))
+            if j is None:
+                missing.append(i)
+            else:
+                features[i] = old_features[j]
+                reused += 1
+        del old_features
+        print(f'Reused {reused} immutable features; extracting {len(missing)} new images', flush=True)
+    loader = DataLoader(torch.utils.data.Subset(Images(rows, cfg['image_size']), missing), batch_size=cfg['feature_batch_size'],
                         num_workers=cfg['feature_workers'], pin_memory=True)
     start = time.monotonic()
     with torch.inference_mode():
@@ -70,6 +94,7 @@ def extract(cfg):
     os.replace(feature_path.with_suffix('.tmp.npy'), feature_path)
     atomic_json(cache / 'features.json', dict(shape=[len(rows), grid * grid, 768],
         checkpoint_sha256=digest(cfg['vjepa_checkpoint']), observations_sha256=digest(cache / 'observations.jsonl'),
+        reused_observations=reused, reuse_cache=cfg.get('feature_reuse_cache'),
         encoder='V-JEPA 2.1 ViT-B EMA image branch, strict checkpoint load, last normalized layer',
         preprocessing='384px aspect-preserving black letterbox, bicubic, ImageNet mean/std, image temporal size 1',
         pooling='24x24 to 8x8 adaptive spatial average pooling', dtype='float16'))

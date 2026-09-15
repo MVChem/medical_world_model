@@ -1,5 +1,11 @@
 # MedWorld-JEPA Table 1 small-model pilot
 
+**September 13 expanded forecast ablations:** [protocol and verification](../../research_notes/0913_table1_expanded_overnight.md).
+The prepared overnight queue uses 16,000 training pairs, unchanged 230 validation / 297 test pairs,
+and matched Qwen0.8B learned-slots, full-token no-slots, and other-patient shuffled-state conditions.
+The immutable launch manifest is `runs/overnight_20260913/jobs.json`; final scores are available only
+after each job's required artifacts and completion checks pass.
+
 **September 9 linked-data run:** [live Table 1 and training status](runs/linked_20260909_overnight/REPORT.md),
 [protocol and completed old-checkpoint diagnostics](../../research_notes/0909_overnight_linked_training.md).
 This new run uses original MIMIC-CXR + IV clinical inputs, excludes Qwen-Gate annotations,

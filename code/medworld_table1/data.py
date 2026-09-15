@@ -1,5 +1,6 @@
 """Explicit source and target tensors; all report truncation is fixed in config."""
 from pathlib import Path
+import hashlib
 import numpy as np
 import torch
 
@@ -32,6 +33,20 @@ class Corpus:
                 self.context_tokens.append(report_header + report + ehr_header + ehr)
         self.stage1 = [i for i, r in enumerate(self.observations) if r['split'] == 'train']
         self._permutations = {}
+        self.donors = {}
+        if cfg.get('state_condition') == 'shuffled':
+            # Donors come from the same official split and a different patient;
+            # their current evidence is allowed, never their future evidence.
+            for split, rows in self.pairs.items():
+                for row in rows:
+                    position = int(hashlib.sha256(f"{cfg['seed']}:state-donor:{row['id']}".encode()).hexdigest(), 16) % len(rows)
+                    for offset in range(len(rows)):
+                        donor = rows[(position + offset) % len(rows)]
+                        if donor['patient'] != row['patient']:
+                            self.donors[row['id']] = donor['source']
+                            break
+                    else:
+                        raise ValueError('Shuffled-state split requires at least two patients')
 
     def pad(self, sequences, *, left=False):
         width = max(map(len, sequences))
@@ -55,6 +70,10 @@ class Corpus:
             batch[side+'_target_ids'], batch[side+'_target_mask'] = self.pad([t+[self.tokenizer.eos_token_id] for t in tokens])
             batch[side+'_features'] = torch.from_numpy(np.array(self.features[idx], copy=True))
             batch[side+'_labels'] = torch.tensor([self.observations[i]['labels'] for i in idx])
+        if self.donors and not stage1:
+            idx = [self.lookup[self.donors[r['id']]] for r in rows]
+            batch['donor_ids'], batch['donor_mask'] = self.pad([self.context_tokens[i] for i in idx], left=True)
+            batch['donor_features'] = torch.from_numpy(np.array(self.features[idx], copy=True))
         batch['horizon'] = torch.tensor([r['horizon'] for r in rows], dtype=torch.long)
         batch = {k: v.to(device) for k, v in batch.items()}
         batch['_source_images'] = [self.observations[self.lookup[r['source']]]['image'] for r in rows]
