@@ -1,0 +1,15 @@
+single_interval/example_01
+
+Observed interval treatment context (retrospective; not known at t0)
+
+CXR-to-IV link: subject_id=12137189, hadm_id=28837774, 2119-06-09 19:52:00 to 2119-07-02 15:35:00.
+MIMIC-III: no public patient-level crosswalk; no III row was attached.
+
+state_0 -> state_1 (20.108355 h)
+eMAR rows: 0; statuses: none
+Administered medications: none
+ICU administered/input treatments: Ampicillin/Sulbactam (Unasyn) (2), Dexmedetomidine (Precedex) (3), Famotidine (Pepcid) (1), Labetalol (1), NaCl 0.9% (3), Propofol (5)
+ICU treatment procedures/devices: 18 Gauge (1), 20 Gauge (2), Invasive Ventilation (1)
+
+These are retrospective observed events. Using events after the current CXR changes the task from current-only forecasting to action-conditioned analysis.
+Empty eMAR or event groups indicate source-table missingness, not proof that no treatment occurred. Diagnostic/communication procedure rows remain in the JSON but are not presented as treatment above.

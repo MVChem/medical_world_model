@@ -1,0 +1,139 @@
+{
+  "schema_version": "mimic-cross-database-examples-v1",
+  "generated_by": "/home/data2/chk/workspace/2026/08/11/mimic_linkage/build_cross_database_examples.py",
+  "appendix_manifest": "/home/data2/chk/workspace/2026/08/04/medical_world_model/research_notes/assets/mimic_cross_database_examples/manifest.json",
+  "datasets": {
+    "mimic_cxr": {
+      "version": "MIMIC-CXR-JPG v2.0.0",
+      "root": "/home/data1/data/MIMIC/MIMIC_CXR",
+      "role": "CXR images, radiology reports, study identifiers and timestamps",
+      "source_file_sha256": {
+        "mimic-cxr-2.0.0-metadata.csv": "bffbd01c24dfa84586f0eb81a90d1aacd8091e4cd6df41e257b03d6930059a0f"
+      }
+    },
+    "mimic_iv": {
+      "version": "MIMIC-IV v3.1",
+      "root": "/home/data1/data/MIMIC/mimic-iv-3.1",
+      "role": "admissions, ICU stays, eMAR, ICU inputs and ICU procedures",
+      "source_file_sha256": {
+        "hosp/admissions.csv.gz": "a9584ed88e9ed664a2f66f86a5cf9fd175c8bb0af50e3b6115598b19e978384e",
+        "hosp/emar.csv.gz": "1c147c152c8cc12dfb22bd2b26328ec7817100bbcc4e84dd8fcb92960a01fdec",
+        "icu/d_items.csv.gz": "7f223a9570da9c02bd12f281b398cb4951d5a560a51836540f357bc247366b7f",
+        "icu/icustays.csv.gz": "3c590ed37f1fb7a77a128f2f6961f836001512ba81adcd0dfeced2702f96bc5f",
+        "icu/inputevents.csv.gz": "09ffc40fade12d017debcb939225ab3924ac807625fdae27f09a260a8ee0ce48",
+        "icu/procedureevents.csv.gz": "5ec6c252aae1f035de05c2053ad1279a138ee00d22d1569a712a1df7e31371c2"
+      }
+    },
+    "mimic_iii": {
+      "version": "MIMIC-III Clinical Database v1.4",
+      "root": "/home/data1/data/MIMIC/mimic-iii-clinical-database-1.4",
+      "used_in_patient_examples": false,
+      "role": "independent MetaVision ICU episode; no row attached to CXR-IV patients",
+      "used_as_independent_reference": true
+    }
+  },
+  "mimic_iii_linkage_audit": {
+    "status": "not_patient_linkable_with_public_identifiers",
+    "attempted_join": "exact subject_id equality",
+    "source_file": "PATIENTS.csv.gz",
+    "source_rows_scanned": 46520,
+    "subject_id_range": [
+      2,
+      99999
+    ],
+    "selected_cxr_subject_ids_found": [],
+    "reason": "MIMIC-III and MIMIC-IV use different public patient identifiers and date shifts; no local crosswalk is available. MIMIC-III is not added to any same-patient trajectory."
+  },
+  "mimic_iii_to_iv_schema_correspondence_only": {
+    "ADMISSIONS.csv.gz": "hosp/admissions.csv.gz",
+    "ICUSTAYS.csv.gz": "icu/icustays.csv.gz",
+    "PRESCRIPTIONS.csv.gz": "hosp/prescriptions.csv.gz",
+    "INPUTEVENTS_CV.csv.gz + INPUTEVENTS_MV.csv.gz": "icu/inputevents.csv.gz",
+    "PROCEDUREEVENTS_MV.csv.gz": "icu/procedureevents.csv.gz"
+  },
+  "examples": [
+    {
+      "example_id": "single_interval/example_01",
+      "subject_id": "19112585",
+      "hadm_id": "27368392",
+      "stay_ids": [
+        "39539932"
+      ],
+      "state_count": 2,
+      "adjacent_segment_count": 1,
+      "displayed_horizon_count": 1,
+      "event_counts": {
+        "emar": 0,
+        "icu_inputs": 172,
+        "icu_procedures": 12
+      },
+      "json_file": "single_interval/example_01/clinical_context.json",
+      "treatment_prompt_file": "single_interval/example_01/treatment_prompt.txt",
+      "event_counts_semantics": "sum of adjacent-segment memberships; an interval-spanning source row may appear in more than one segment",
+      "unique_source_row_counts": {
+        "emar": 0,
+        "icu_inputs": 172,
+        "icu_procedures": 12
+      }
+    },
+    {
+      "example_id": "multi_interval/example_01",
+      "subject_id": "17945610",
+      "hadm_id": "22671433",
+      "stay_ids": [
+        "39832367"
+      ],
+      "state_count": 4,
+      "adjacent_segment_count": 3,
+      "displayed_horizon_count": 3,
+      "event_counts": {
+        "emar": 0,
+        "icu_inputs": 49,
+        "icu_procedures": 8
+      },
+      "json_file": "multi_interval/example_01/clinical_context.json",
+      "treatment_prompt_file": "multi_interval/example_01/treatment_prompt.txt",
+      "event_counts_semantics": "sum of adjacent-segment memberships; an interval-spanning source row may appear in more than one segment",
+      "unique_source_row_counts": {
+        "emar": 0,
+        "icu_inputs": 43,
+        "icu_procedures": 4
+      }
+    }
+  ],
+  "relationship_matrix": {
+    "mimic_cxr_to_mimic_iv": {
+      "patient_link": true,
+      "method": "exact subject_id and aligned shifted timestamps"
+    },
+    "mimic_iii_to_mimic_iv": {
+      "patient_link": false,
+      "reason": "no public crosswalk"
+    },
+    "mimic_iii_to_mimic_cxr": {
+      "patient_link": false,
+      "reason": "no public crosswalk"
+    }
+  },
+  "mimic_iii_independent_reference": {
+    "example_id": "mimic_iii_reference/episode_01",
+    "subject_id": "81478",
+    "hadm_id": "163368",
+    "icustay_id": "261188",
+    "event_counts": {
+      "inputevents_mv": 64,
+      "procedureevents_mv": 6
+    },
+    "json_file": "mimic_iii_reference/episode_01/episode.json"
+  },
+  "concept_crosswalk": {
+    "file": "concept_crosswalk.json",
+    "mapping_count": 20,
+    "scope": "terminology_or_schema_only; never a patient link"
+  },
+  "generated_by_sha256": "ba8523e95a87d8fcd6caad9d5a46bc56136371897242b1ef32e875b5530b23a4",
+  "mimic_iv_context_component": {
+    "path": "/home/data2/chk/workspace/2026/08/11/mimic_linkage/build_linked_examples.py",
+    "sha256": "4cc5fd030a9c123d60a6036923c0b0993e08cb53cd88a01701ac3ee48bec4eca"
+  }
+}

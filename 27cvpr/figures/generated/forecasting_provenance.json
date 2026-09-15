@@ -1,0 +1,387 @@
+{
+  "title": "Historical 0.8B longitudinal forecasting pilot",
+  "status": "Review artifact; not a 9B result and not the full multi-depth 4+4 architecture",
+  "run": "overnight_20260913",
+  "generation": {
+    "no_slots": {
+      "mode": "ours",
+      "split": "test",
+      "count": 297,
+      "state_condition": "no_slots",
+      "checkpoint": "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_table1/runs/overnight_20260913/no_slots/checkpoint_final.pt",
+      "checkpoint_sha256": "ba35b37fc55bc1f420ea7bd2a4426f3027a35850c5c6a276667e9fcb86833a27",
+      "decoding": "greedy",
+      "max_new_tokens": 384,
+      "teacher_forcing": false,
+      "target_inputs": false
+    },
+    "slots": {
+      "mode": "ours",
+      "split": "test",
+      "count": 297,
+      "state_condition": "slots",
+      "checkpoint": "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_table1/runs/overnight_20260913/slots/checkpoint_final.pt",
+      "checkpoint_sha256": "8fe27a8819617b5a490a20d50c76b66e37917682b41707f95d8ec9e39b98173b",
+      "decoding": "greedy",
+      "max_new_tokens": 384,
+      "teacher_forcing": false,
+      "target_inputs": false
+    }
+  },
+  "findings": [
+    "Atelectasis",
+    "Cardiomegaly",
+    "Consolidation",
+    "Edema",
+    "Pleural Effusion",
+    "Pneumothorax"
+  ],
+  "focused_finding": "Pleural Effusion",
+  "cohort": {
+    "n_pairs": 297,
+    "n_patients": 94,
+    "split": "test"
+  },
+  "selection": "Fixed Pleural Effusion finding; for (0,1), (1,0), (1,1), first sorted pair ID from a distinct patient with both reports passing the script's explicit presence/absence screening. Selection never accesses prediction correctness or scores.",
+  "exclusions": [
+    {
+      "kind": "Label onset",
+      "pair_id": "0f883376711f719684bf4742",
+      "reason": "Reference report failed explicit mention/absence consistency screen",
+      "source_pass": true,
+      "target_pass": false
+    },
+    {
+      "kind": "Label onset",
+      "pair_id": "19e5efef260892f802207f94",
+      "reason": "Reference report failed explicit mention/absence consistency screen",
+      "source_pass": true,
+      "target_pass": false
+    },
+    {
+      "kind": "Label onset",
+      "pair_id": "536e1eb0ae98b11f162651a3",
+      "reason": "Reference report failed explicit mention/absence consistency screen",
+      "source_pass": false,
+      "target_pass": true
+    },
+    {
+      "kind": "Label resolution",
+      "pair_id": "001482bff25a7873526841e0",
+      "reason": "Reference report failed explicit mention/absence consistency screen",
+      "source_pass": true,
+      "target_pass": false
+    }
+  ],
+  "clinical_reference": "CheXbert-extracted report labels, not clinician adjudicated. Persistence concerns only the selected finding. No disease-direction or severity claim.",
+  "inputs": "Source image, current report, clinical history available by source image time, and discrete horizon bin. Exact observed gap is displayed only for reference.",
+  "copy_current": "Current report copied verbatim as baseline; displayed exact effusion-specific source sentence. No continuous probability is assigned.",
+  "followup": "Observed follow-up CXR; reference only; no future-image generation and no target inputs during prediction.",
+  "score_note": "Finding-head probabilities and CheXbert labels of generated text are distinct interfaces and may disagree.",
+  "attention_audit": {
+    "frozen_visual_slots": "Four intermediate vision blocks are mean-pooled in medworld_dense_baselines/frozen_slots_extract.py; no learned slot-to-patch attention exists in this path.",
+    "downstream_readout": "medworld_stage1/networks.py SlotQueries attends over aggregate slots, not spatial patches; medworld_stage1/slot44_networks.py SpatialRead attends spatial queries to slots, the reverse direction of slot-readout-to-patch attention.",
+    "pilot_encoder": "medworld_common/qwen.py StateEncoder appends eight learned slot tokens to the visual/text sequence and returns last-layer slot hidden states. Current wrapper exposes no attention weights; these are not the proposed multi-depth 4+4 readout. No attention visualization was fabricated."
+  },
+  "cases": [
+    {
+      "pair": {
+        "id": "5cac0c314363a8fe71ce5c62",
+        "patient": "16508811",
+        "split": "test",
+        "source": "444dfa8e-bb3ce9c4-55126266-43629bc2-fce21515",
+        "target": "2905a219-0044b483-8315fff6-2258fe9f-a288ed45",
+        "hadm_id": "24080274",
+        "horizon": 1,
+        "realized_gap_hours": 41.235277777777775,
+        "view": "PA"
+      },
+      "kind": "Label onset",
+      "source_image": "/home/data1/data/MIMIC/MIMIC_CXR/files/p16/p16508811/s52761853/444dfa8e-bb3ce9c4-55126266-43629bc2-fce21515.jpg",
+      "target_image": "/home/data1/data/MIMIC/MIMIC_CXR/files/p16/p16508811/s52670967/2905a219-0044b483-8315fff6-2258fe9f-a288ed45.jpg",
+      "source_image_sha256": "8d78f01a4bea92b8284109264d953f4039b3f8ccbc76b5e2a23663772ad60ff5",
+      "target_image_sha256": "12a2dbfe42bbf47e7b750898ebf5b4047018e3b79743ed991e831e5b4444a042",
+      "current_report": "IMPRESSION: As compared to the previous radiograph, the patient has now received a right-sided PICC line. The course of the line is unremarkable, the tip of the line projects over the mid SVC. In the interval, the patient has developed a relatively widespread left middle and lower lung parenchymal opacity with air bronchograms, likely reflecting pneumonia. There is no evidence of complicating pleural effusions. At the time of dictation and observation, 17:05, ___, the referring physician ___. ___ was paged for notification. The referring physician was also sent an urgent email.",
+      "observed_report": "IMPRESSION: As compared to ___, bilateral lower lobe predominant airspace opacities have worsened, and may reflect evolving infectious pneumonia. Peripheral interstitial opacities likely reflect coexisting interstitial edema. Small left pleural effusion has increased in size, and a small right pleural effusion is new.",
+      "current_labels": [
+        -2,
+        -2,
+        -2,
+        -2,
+        0,
+        -2
+      ],
+      "observed_labels": [
+        -2,
+        -2,
+        -2,
+        1,
+        1,
+        -2
+      ],
+      "predictions": {
+        "no_slots": {
+          "id": "5cac0c314363a8fe71ce5c62",
+          "report": "IMPRESSION: In comparison with the study of ___, there is little change in the appearance of the cardiac silhouette and the pulmonary vasculature. No evidence of acute focal pneumonia.",
+          "scores": [
+            0.98046875,
+            0.5546875,
+            0.7890625,
+            0.5859375,
+            0.56640625,
+            0.059326171875
+          ],
+          "report_labels": [
+            -2,
+            1,
+            -2,
+            -2,
+            -2,
+            -2
+          ]
+        },
+        "slots": {
+          "id": "5cac0c314363a8fe71ce5c62",
+          "report": "IMPRESSION: In comparison with the study of ___, there is little change in the appearance of the cardiac silhouette and the pulmonary vasculature. No evidence of acute focal pneumonia.",
+          "scores": [
+            0.98046875,
+            0.69140625,
+            0.75390625,
+            0.640625,
+            0.54296875,
+            0.053466796875
+          ],
+          "report_labels": [
+            -2,
+            1,
+            -2,
+            -2,
+            -2,
+            -2
+          ]
+        }
+      },
+      "displayed": {
+        "pair_id": "5cac0c314363a8fe71ce5c62",
+        "source_quote": "There is no evidence of complicating pleural effusions.",
+        "target_quote": "Small left pleural effusion has increased in size, and a small right pleural effusion is new.",
+        "generated_excerpts": {
+          "no_slots": "[No effusion-specific sentence in generated report.]",
+          "slots": "[No effusion-specific sentence in generated report.]"
+        }
+      }
+    },
+    {
+      "pair": {
+        "id": "2283246c54ec15adaad8a7ac",
+        "patient": "11893091",
+        "split": "test",
+        "source": "07ec545e-2a913153-c28cae67-2c38c3b4-c1d7e30a",
+        "target": "1d2eae56-aca1446e-78e09b18-02818224-5f58634a",
+        "hadm_id": "25782796",
+        "horizon": 0,
+        "realized_gap_hours": 16.892309166666667,
+        "view": "AP"
+      },
+      "kind": "Label resolution",
+      "source_image": "/home/data1/data/MIMIC/MIMIC_CXR/files/p11/p11893091/s57330158/07ec545e-2a913153-c28cae67-2c38c3b4-c1d7e30a.jpg",
+      "target_image": "/home/data1/data/MIMIC/MIMIC_CXR/files/p11/p11893091/s50901361/1d2eae56-aca1446e-78e09b18-02818224-5f58634a.jpg",
+      "source_image_sha256": "ea183dc56dfeb059c484908e56770392f32e0febec0330d056574dd7f6b250ea",
+      "target_image_sha256": "79a40c9205aab7ebbb1f5969036937bd299696ae56fa9869781e285a542d3a98",
+      "current_report": "FINDINGS: Newly placed endotracheal tube terminates approximately 3.6 cm above the carina, and a nasogastric tube courses below the diaphragm. A 3-cm diameter rounded lucency is identified lateral to the endotracheal tube and nasogastric tube to the left of midline. Although potentially representing an over-distended endotracheal tube cuff, the position is more lateral than expected for this condition. Alternative possibilities include an air-filled diverticulum arising from the trachea or esophagus. Findings were communicated by telephone with Dr. ___ on ___ at 4:00 p.m. at the time of discovery. Exam is otherwise remarkable for persistent cardiomegaly and worsening congestive heart failure with increasing perihilar edema and persistent small right pleural effusion.",
+      "observed_report": "FINDINGS: As compared to the previous image, the patient has received an external pacemaker. The tip of the pacemaker is in expected correct position, as documented on the previous fluoroscopy. Unchanged position of the other monitoring and support devices. Moderate cardiomegaly with signs of mild pulmonary edema. No pleural effusions. No pneumothorax. Left apical pleural calcification. Mild atelectasis at the left lung bases. No evidence of pneumonia.",
+      "current_labels": [
+        -2,
+        1,
+        -2,
+        1,
+        1,
+        -2
+      ],
+      "observed_labels": [
+        1,
+        1,
+        -2,
+        1,
+        0,
+        0
+      ],
+      "predictions": {
+        "no_slots": {
+          "id": "2283246c54ec15adaad8a7ac",
+          "report": "FINDINGS: As compared to the previous radiograph, the patient has been extubated. The nasogastric tube has been removed. The lung volumes remain low. The bilateral areas of atelectasis are constant in appearance. No new parenchymal opacities. No larger pleural effusions. No pneumothorax. The monitoring and support devices are constant.",
+          "scores": [
+            0.9921875,
+            0.89453125,
+            0.9609375,
+            0.94140625,
+            0.81640625,
+            0.06005859375
+          ],
+          "report_labels": [
+            1,
+            -2,
+            -2,
+            -2,
+            0,
+            0
+          ]
+        },
+        "slots": {
+          "id": "2283246c54ec15adaad8a7ac",
+          "report": "IMPRESSION: AP chest compared to ___: Mild pulmonary edema has improved since ___, but moderate cardiomegaly and mediastinal vascular engorgement have worsened. Small bilateral pleural effusions are presumed. No pneumothorax. ET tube in standard placement. Nasogastric drainage tube passes into the stomach and out of view. Right jugular line ends in the mid SVC.",
+          "scores": [
+            0.9921875,
+            0.94140625,
+            0.92578125,
+            0.9375,
+            0.79296875,
+            0.03466796875
+          ],
+          "report_labels": [
+            -2,
+            1,
+            -2,
+            1,
+            1,
+            0
+          ]
+        }
+      },
+      "displayed": {
+        "pair_id": "2283246c54ec15adaad8a7ac",
+        "source_quote": "[\u2026] and worsening congestive heart failure with increasing perihilar edema and persistent small right pleural effusion.",
+        "target_quote": "No pleural effusions.",
+        "generated_excerpts": {
+          "no_slots": "No larger pleural effusions.",
+          "slots": "Small bilateral pleural effusions are presumed."
+        }
+      }
+    },
+    {
+      "pair": {
+        "id": "04cfb420ed3a5857f3dcd3d7",
+        "patient": "13135946",
+        "split": "test",
+        "source": "d0ce0dbb-82f88ba2-6467498e-a4e23f78-c203cf06",
+        "target": "3433048d-a6c5dc75-1a99a0b6-1f89a734-ef0b39b8",
+        "hadm_id": "22133572",
+        "horizon": 0,
+        "realized_gap_hours": 22.842087777499998,
+        "view": "AP"
+      },
+      "kind": "Label persistence",
+      "source_image": "/home/data1/data/MIMIC/MIMIC_CXR/files/p13/p13135946/s52547146/d0ce0dbb-82f88ba2-6467498e-a4e23f78-c203cf06.jpg",
+      "target_image": "/home/data1/data/MIMIC/MIMIC_CXR/files/p13/p13135946/s56680924/3433048d-a6c5dc75-1a99a0b6-1f89a734-ef0b39b8.jpg",
+      "source_image_sha256": "3842360589c4d4363cd92a368c35b11ae7345794637c58a671acf51b38525971",
+      "target_image_sha256": "a072047f242103dedce6bff2160b56adf868efe94325e6050bd6fb465bb93f32",
+      "current_report": "IMPRESSION: increase in moderate right pleural effusion.",
+      "observed_report": "FINDINGS: Comparison is made to prior study from ___. There is a Swan-Ganz catheter whose distal lead tip is in the main pulmonary outflow tract. The cardiac silhouette is enlarged. There is again seen moderate right-sized pleural effusion which is stable. There is some improvement in the pulmonary vascular edema. There are no pneumothoraces identified.",
+      "current_labels": [
+        -2,
+        -2,
+        -2,
+        -2,
+        1,
+        -2
+      ],
+      "observed_labels": [
+        -2,
+        1,
+        -2,
+        1,
+        1,
+        0
+      ],
+      "predictions": {
+        "no_slots": {
+          "id": "04cfb420ed3a5857f3dcd3d7",
+          "report": "IMPRESSION: As compared to the previous radiograph, the patient has been extubated. The right internal jugular vein catheter is in unchanged position. The lung volumes have decreased, potentially reflecting decreased ventilation. The pre-existing bilateral parenchymal opacities are constant in appearance. No new opacities. No larger pleural effusions. No pneumothorax.",
+          "scores": [
+            0.99609375,
+            0.83984375,
+            0.98046875,
+            0.91796875,
+            0.97265625,
+            0.10498046875
+          ],
+          "report_labels": [
+            -2,
+            -2,
+            -2,
+            -2,
+            0,
+            0
+          ]
+        },
+        "slots": {
+          "id": "04cfb420ed3a5857f3dcd3d7",
+          "report": "FINDINGS: As compared to the previous radiograph, the patient has been extubated. The nasogastric tube has been removed. The lung volumes remain low. The bilateral pleural effusions are constant in extent and severity. The areas of atelectasis at the lung bases are constant in extent and severity. No new parenchymal opacities. No pneumothorax.",
+          "scores": [
+            0.99609375,
+            0.88671875,
+            0.9765625,
+            0.9296875,
+            0.96875,
+            0.09814453125
+          ],
+          "report_labels": [
+            1,
+            -2,
+            -2,
+            -2,
+            1,
+            0
+          ]
+        }
+      },
+      "displayed": {
+        "pair_id": "04cfb420ed3a5857f3dcd3d7",
+        "source_quote": "increase in moderate right pleural effusion.",
+        "target_quote": "There is again seen moderate right-sized pleural effusion which is stable.",
+        "generated_excerpts": {
+          "no_slots": "No larger pleural effusions.",
+          "slots": "The bilateral pleural effusions are constant in extent and severity."
+        }
+      }
+    }
+  ],
+  "sources": [
+    {
+      "path": "code/medworld_table1/runs/overnight_20260913/no_slots/evaluation_test/chexbert_labels.json",
+      "sha256": "cc2a70ad465e04df917d0889649f2b0456dbd35fbbe80d2f81f3a3c06004954c"
+    },
+    {
+      "path": "code/medworld_table1/runs/overnight_20260913/no_slots/evaluation_test/predictions.jsonl",
+      "sha256": "e9027f4929ea498b0a3d2b493f6619620003b4e28c4477cdf671ea8cf134010c"
+    },
+    {
+      "path": "code/medworld_table1/runs/overnight_20260913/no_slots/evaluation_test/generation.json",
+      "sha256": "93a0c208bc3ce4534d25a515bd1894cb08b56bc8f3e4770f1bbcc0cd1e572478"
+    },
+    {
+      "path": "code/medworld_table1/runs/overnight_20260913/slots/evaluation_test/chexbert_labels.json",
+      "sha256": "926e42e5f13959cbac6855fc4c45291427bcd3fbb54bca6fb96ddd7ea318abb3"
+    },
+    {
+      "path": "code/medworld_table1/runs/overnight_20260913/slots/evaluation_test/predictions.jsonl",
+      "sha256": "b2ddb446e2e6f10e50b5a80e32c40c7246becf59e561c4196ca01ce75140d514"
+    },
+    {
+      "path": "code/medworld_table1/runs/overnight_20260913/slots/evaluation_test/generation.json",
+      "sha256": "2b8277313efd3be5b1bde79d33504a5e5f1ae45a385d9d2937f29fb1c072d6c8"
+    },
+    {
+      "path": "code/medworld_table1/data/linked_20260913_16k/test.jsonl",
+      "sha256": "e13b53d197fd19af7eb92d79cb360e2f54519ebc667a4c70470d1962c70ef112"
+    },
+    {
+      "path": "code/medworld_table1/data/linked_20260913_16k/observations.jsonl",
+      "sha256": "336528eff78e819fee1265e46f43715b37615a299849b6b9c8c8175306227855"
+    },
+    {
+      "path": "27cvpr/figures/scripts/build_forecasting.py",
+      "sha256": "f03a9f91ee0491b88446786e6913ff9a411f65be093dcf925fa5c1c1e69bfb96"
+    }
+  ]
+}

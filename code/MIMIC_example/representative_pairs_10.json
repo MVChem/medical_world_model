@@ -1,0 +1,122 @@
+{
+  "schema_version": "mimic-current-future-curation-v1",
+  "description": "Purposefully diverse 10-transition local audit set. It preserves the original four examples and adds two explicit multi-time-point chains plus a PA long-gap case. Selection uses target-side reports and labels, so this is not a statistically representative cohort, clinical adjudication, or a training sample.",
+  "selection_coverage": {
+    "num_transitions": 10,
+    "num_patients": 7,
+    "horizon_bin_counts": {
+      "0-24h": 4,
+      "24-72h": 3,
+      "3-7d": 1,
+      ">7d": 2
+    },
+    "view_counts": {
+      "AP": 9,
+      "PA": 1
+    },
+    "split_counts": {
+      "train": 9,
+      "test": 1
+    },
+    "multi_time_point_chains": [
+      {
+        "subject_id": "12698729",
+        "num_time_points": 4,
+        "num_adjacent_transitions": 3,
+        "view": "AP",
+        "study_ids": ["58879033", "58984555", "58550608", "54057315"],
+        "elapsed_hours": [9.237535, 22.944562, 24.126471]
+      },
+      {
+        "subject_id": "16454913",
+        "num_time_points": 3,
+        "num_adjacent_transitions": 2,
+        "view": "AP",
+        "study_ids": ["56164331", "50631837", "50175812"],
+        "elapsed_hours": [1131.331272, 126.389744]
+      }
+    ]
+  },
+  "pairs": [
+    {
+      "subject_id": "12137189",
+      "source_study_id": "58934755",
+      "target_study_id": "59180443",
+      "category": "clear_change",
+      "audit_note": "Reports and images show a marked interval increase in bilateral lung opacity/edema with a small effusion; support-device differences are also visible."
+    },
+    {
+      "subject_id": "11137177",
+      "source_study_id": "52850042",
+      "target_study_id": "56778646",
+      "category": "stable_followup",
+      "audit_note": "Reports and images show little interval change in bibasal atelectatic opacity and pleural effusions."
+    },
+    {
+      "subject_id": "16254738",
+      "source_study_id": "50797586",
+      "target_study_id": "54607164",
+      "category": "clear_change",
+      "audit_note": "Reports and images show a marked interval change from no focal opacity/effusion to extensive bilateral parenchymal opacity with probable effusion."
+    },
+    {
+      "subject_id": "16562665",
+      "source_study_id": "56016380",
+      "target_study_id": "57241925",
+      "category": "uncertain_followup",
+      "audit_note": "The follow-up report explicitly states that a subtle residual pneumothorax cannot be excluded because subcutaneous emphysema limits assessment."
+    },
+    {
+      "subject_id": "12698729",
+      "source_study_id": "58879033",
+      "target_study_id": "58984555",
+      "category": "multi_timepoint_acute_followup",
+      "sequence_id": "p12698729_four_time_points",
+      "sequence_position": 1,
+      "audit_note": "First transition in a four-time-point AP chain. The reports describe right pleural-drain placement, a smaller residual pneumothorax, and improving edema."
+    },
+    {
+      "subject_id": "12698729",
+      "source_study_id": "58984555",
+      "target_study_id": "58550608",
+      "category": "multi_timepoint_acute_followup",
+      "sequence_id": "p12698729_four_time_points",
+      "sequence_position": 2,
+      "audit_note": "Second transition in the same AP chain. The drainage catheter is revised or replaced and the follow-up report no longer identifies an appreciable pneumothorax."
+    },
+    {
+      "subject_id": "12698729",
+      "source_study_id": "58550608",
+      "target_study_id": "54057315",
+      "category": "multi_timepoint_acute_followup",
+      "sequence_id": "p12698729_four_time_points",
+      "sequence_position": 3,
+      "audit_note": "Third transition in the same AP chain. It provides a further short-interval follow-up with no appreciable pneumothorax while chronic fibrotic findings remain."
+    },
+    {
+      "subject_id": "16454913",
+      "source_study_id": "56164331",
+      "target_study_id": "50631837",
+      "category": "long_gap_cross_episode",
+      "sequence_id": "p16454913_three_time_points",
+      "sequence_position": 1,
+      "audit_note": "First transition in a three-time-point AP chain, with a 47-day adjacent-study gap across hospital episodes. It represents a >7d horizon and an expected no-common-admission linkage boundary."
+    },
+    {
+      "subject_id": "16454913",
+      "source_study_id": "50631837",
+      "target_study_id": "50175812",
+      "category": "multi_timepoint_delayed_change",
+      "sequence_id": "p16454913_three_time_points",
+      "sequence_position": 2,
+      "audit_note": "Second transition in the same AP chain, 5.3 days later. The reports change from right lower-lobe collapse without pneumonia to new upper-lung opacity/pneumonia with increasing effusions."
+    },
+    {
+      "subject_id": "14851532",
+      "source_study_id": "58584546",
+      "target_study_id": "57470809",
+      "category": "long_gap_pa_change",
+      "audit_note": "A 53-day PA follow-up from the official test split. The reports change from stable postoperative/scarring findings to new mild pulmonary edema and bilateral pleural effusions, adding long-horizon and projection diversity."
+    }
+  ]
+}

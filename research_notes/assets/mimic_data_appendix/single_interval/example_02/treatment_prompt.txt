@@ -1,0 +1,15 @@
+single_interval/example_02
+
+Observed interval treatment context (retrospective; not known at t0)
+
+CXR-to-IV link: subject_id=11137177, hadm_id=26133494, 2132-04-05 22:24:00 to 2132-04-17 13:40:00.
+MIMIC-III: no public patient-level crosswalk; no III row was attached.
+
+state_0 -> state_1 (23.995247 h)
+eMAR rows: 28; statuses: Administered (22), Not Given per Sliding Scale (3), blank (3)
+Administered medications: Albuterol 0.083% Neb Soln (1), Amlodipine (1), Atorvastatin (1), Calcium Carbonate (1), Furosemide (2), Heparin (3), Insulin (1), Ipratropium-Albuterol Neb (4), Magnesium Sulfate Replacement (Critical Care and Oncology) (1), Metoprolol Tartrate (3), Neutra-Phos (1), PHENObarbital Alcohol Withdrawal Dose Taper (Days 2-7) (2), Potassium Chloride Replacement (Critical Care and Oncology)  (1)
+ICU administered/input treatments: Furosemide (Lasix) (2), Heparin Sodium (Prophylaxis) (2), Insulin - Regular (1), Magnesium Sulfate (Bolus) (1), Metoprolol (1)
+ICU treatment procedures/devices: 20 Gauge (1)
+
+These are retrospective observed events. Using events after the current CXR changes the task from current-only forecasting to action-conditioned analysis.
+Empty eMAR or event groups indicate source-table missingness, not proof that no treatment occurred. Diagnostic/communication procedure rows remain in the JSON but are not presented as treatment above.

@@ -1,0 +1,444 @@
+{
+  "status": "completed exploratory frozen visual-depth retrieval pilot",
+  "script": "/home/data2/chk/workspace/2026/08/04/medical_world_model/27cvpr/figures/scripts/build_state_retrieval.py",
+  "script_sha256": "9ec4d8fdc45f8a431b22c0cbb76e2ef14675613ea4e3625787679d730ac0df14",
+  "command": "/home/data2/chk/workspace/2026/.venv/bin/python 27cvpr/figures/scripts/build_state_retrieval.py",
+  "model": "qwen08b",
+  "model_contract": {
+    "version": 1,
+    "model_id": "qwen08b",
+    "model_label": "Qwen3.5-0.8B",
+    "shape": [
+      5830,
+      4,
+      1024
+    ],
+    "dtype": "float16",
+    "slot_ids": [
+      5,
+      6,
+      7,
+      8
+    ],
+    "data_path": "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_dense_baselines/runs/frozen_slots_20260913/data",
+    "cohort_sha256": "ebce0ea7ceee963cef0626b68518b3cd8c0d8848a004523504cd3f480df48e24",
+    "manifest_sha256": "9df4079b5aabd49e3a9ec2a914b79c8973d2a6b68f235a82d6d58cdc0d986d84",
+    "image_sha256": "45060a8a97b22b4e4e04ccaaaade6c6ed548dbbbaba572e5a1439a6fddb55536",
+    "lr_image_sha256": "8234beb111b76eb3330b03d23b1460164e24c69f06894515b532b7666de889ee",
+    "checkpoint": {
+      "config_sha256": "b90b86f35c8e6925ef74ee04d0e758f0a845c83a42089ad82bbaa948de9b4204",
+      "index_sha256": "d8a08838a613b025eb7952ed9db11696213e57e76a375661ef5c12f9dd5dcf4e",
+      "vision_prefix": "model.visual.",
+      "selected_tensors": 153,
+      "shards": [
+        {
+          "name": "model.safetensors-00001-of-00001.safetensors",
+          "resolved": "/home/data1/musong/.cache/huggingface/hub/models--Qwen--Qwen3.5-0.8B/blobs/04b1c301231dd422b8860db31311ab2721511346a32cb1e079c4c4e5f1fe4696",
+          "bytes": 1746942600,
+          "mtime_ns": 1774338140205317950
+        }
+      ]
+    },
+    "extractor_code_sha256": "0728e2ffde1982f177a6ff22ddc09d5e4027b021fc928d9ea9de3d69ae669ad4",
+    "common_code_sha256": "b669dbd7e99d01e12e8303405e31ff637eb56c26312ff679c8dd7aa90011c75a",
+    "transformers_version": "5.12.1",
+    "torch_version": "2.11.0+cu129",
+    "branch_columns": [
+      "hr",
+      "lr"
+    ],
+    "required_counts": {
+      "hr": 4930,
+      "lr": 4792
+    },
+    "segmentation_input": "prepared HR uint8 512x512; Montgomery HR included",
+    "sr_input": "only prepared LR uint8 128x128; native processor may resize this LR image",
+    "slot_training": false,
+    "language_model_loaded": false,
+    "alignment": "mean-pool 4 intermediate vision blocks; bin-center channels to1024 or right zero-pad"
+  },
+  "model_metadata": {
+    "checkpoint": {
+      "config_sha256": "b90b86f35c8e6925ef74ee04d0e758f0a845c83a42089ad82bbaa948de9b4204",
+      "index_sha256": "d8a08838a613b025eb7952ed9db11696213e57e76a375661ef5c12f9dd5dcf4e",
+      "vision_prefix": "model.visual.",
+      "selected_tensors": 153,
+      "shards": [
+        {
+          "name": "model.safetensors-00001-of-00001.safetensors",
+          "resolved": "/home/data1/musong/.cache/huggingface/hub/models--Qwen--Qwen3.5-0.8B/blobs/04b1c301231dd422b8860db31311ab2721511346a32cb1e079c4c4e5f1fe4696",
+          "bytes": 1746942600,
+          "mtime_ns": 1774338140205317950
+        }
+      ]
+    },
+    "vision_config": {
+      "deepstack_visual_indexes": [],
+      "depth": 12,
+      "hidden_act": "gelu_pytorch_tanh",
+      "hidden_size": 768,
+      "in_channels": 3,
+      "initializer_range": 0.02,
+      "intermediate_size": 3072,
+      "model_type": "qwen3_5",
+      "num_heads": 12,
+      "num_position_embeddings": 2304,
+      "out_hidden_size": 1024,
+      "patch_size": 16,
+      "spatial_merge_size": 2,
+      "temporal_patch_size": 2
+    },
+    "vision_model_class": "Qwen3_5VisionModel",
+    "native_width": 768,
+    "vision_parameters": 100592896,
+    "vision_backbone_parameters": 88004352,
+    "vision_weights_sha256": "45f1002a6d35b57a2da8ae6fcc09015c09df7bb10e88c4e622a62a3fa249cbdc",
+    "vision_backbone_weights_sha256": "558b2c15f2d95a01f4754125e74d66dc17ea476e4cb2cb51a3b4b9921050c13a",
+    "checkpoint_vision_dtypes": [
+      "torch.bfloat16"
+    ],
+    "inference_dtype": "torch.bfloat16",
+    "attention": "sdpa",
+    "depth": 12,
+    "block_indices_zero_based": [
+      2,
+      5,
+      8,
+      11
+    ],
+    "block_indices_one_based": [
+      3,
+      6,
+      9,
+      12
+    ],
+    "hook_modules": [
+      "blocks.2",
+      "blocks.5",
+      "blocks.8",
+      "blocks.11"
+    ],
+    "hook_stage": "block output before final vision norm/projector; image tokens only",
+    "slot_ids": [
+      5,
+      6,
+      7,
+      8
+    ],
+    "slot_shape": [
+      4,
+      1024
+    ],
+    "pooling": "spatial mean of all native image tokens, accumulated in float32",
+    "channel_alignment": "native 768 channels then 256 right zeros",
+    "processor": {
+      "do_convert_rgb": true,
+      "do_normalize": true,
+      "do_rescale": true,
+      "do_resize": true,
+      "image_mean": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "image_processor_type": "Qwen2VLImageProcessor",
+      "image_std": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "merge_size": 2,
+      "patch_size": 16,
+      "resample": 3,
+      "rescale_factor": 0.00392156862745098,
+      "size": {
+        "longest_edge": 262144,
+        "shortest_edge": 65536
+      },
+      "temporal_patch_size": 2
+    },
+    "frozen_vision": true,
+    "trainable_slot_parameters": 0,
+    "language_model_loaded": false,
+    "interpretation": "checkpoint vision-tower comparison; language-model parameter count is not exercised"
+  },
+  "slot_cache_sha256": "6feb0b4b924d6d661129887de99bb22ff11997ea8f01a08d8e90e8929492ab9d",
+  "verified_input_hashes": [
+    "slot_contract",
+    "slots_model",
+    "hr_slots",
+    "cohort",
+    "manifest",
+    "label_source"
+  ],
+  "image_hash_validation": "The source manifest and slot contract agree on full image-cache hash; exact prepared-pixel hashes are freshly computed for all test images.",
+  "label_source": "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_stage1/data/overnight_20260910/observations.jsonl",
+  "label_source_sha256": "a73556ef6d903efcf79e8b735a9ca76bdf2f43053bdfdf3c9187e8289e2f786e",
+  "findings": [
+    "Atelectasis",
+    "Cardiomegaly",
+    "Consolidation",
+    "Edema",
+    "Pleural Effusion",
+    "Pneumothorax"
+  ],
+  "finding_source_columns": [
+    0,
+    1,
+    2,
+    3,
+    8,
+    11
+  ],
+  "label_encoding": {
+    "1": "positive",
+    "0": "negative",
+    "-1": "uncertain",
+    "-2": "missing"
+  },
+  "protocol": {
+    "image_input": "same cached 512x512 HR uint8 radiograph used by native vision slot extractor",
+    "report_input": false,
+    "learned_parameters_in_retrieval": false,
+    "fusion_slots_present": false,
+    "full_eight_slot_state_present": false,
+    "trained_semantic_slots": false,
+    "gallery": "all MIMIC images in the dense test split; same gallery for every condition",
+    "exclusions": "same subject_id OR identical prepared image pixel SHA256; exact query excluded",
+    "candidate_patient_uniqueness": "query patient excluded; multiple other images of a candidate patient remain eligible",
+    "ranking": "L2-normalize each slot, cosine at corresponding depths, arithmetic mean across selected slots; stable image-ID tie break",
+    "conditions": {
+      "early": {
+        "label": "Early visual depths",
+        "slots": [
+          0,
+          1
+        ],
+        "color": "#327296"
+      },
+      "late": {
+        "label": "Late visual depths",
+        "slots": [
+          2,
+          3
+        ],
+        "color": "#947133"
+      },
+      "all": {
+        "label": "All four visual depths",
+        "slots": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "color": "#49765C"
+      }
+    },
+    "query_selection": "minimum SHA256('20260914:' + image_id) among test images with >=1 positive of the six findings, before rankings",
+    "metric": "mean of Jaccard(recorded-positive-query-set, recorded-positive-neighbor-set) over the three neighbors, then mean across all eligible queries",
+    "metric_scope": "Queries with at least one recorded positive; blank/uncertain are not interpreted as negatives. Measures recorded positive overlap, not clinical equivalence.",
+    "random": "exact expected mean for three uniformly sampled eligible bank images, without replacement; same exclusions; no fitting",
+    "confounds": "View consistency is reported. Device, exposure, rotation, and anatomy are not controlled; the frozen vision summaries may encode them."
+  },
+  "cohort": {
+    "test_images": 447,
+    "test_patients": 398,
+    "positive_label_queries": 225,
+    "candidate_counts_min": 443,
+    "candidate_counts_max": 446,
+    "duplicate_pixel_pairs_across_patients": 0,
+    "view_counts": {
+      "AP": 310,
+      "PA": 137
+    }
+  },
+  "metrics": {
+    "early": {
+      "mean_positive_jaccard_at3": 0.1725432098765432,
+      "same_view_at3": 0.9045488441461595
+    },
+    "late": {
+      "mean_positive_jaccard_at3": 0.2174814814814815,
+      "same_view_at3": 0.9120059656972408
+    },
+    "all": {
+      "mean_positive_jaccard_at3": 0.1928395061728395,
+      "same_view_at3": 0.912751677852349
+    }
+  },
+  "random_bank_expectation": {
+    "mean_positive_jaccard_at3": 0.12889394538595295,
+    "same_view_at3": 0.573782040294759
+  },
+  "displayed_query": {
+    "id": "4491f71c-75173ff4-c12f708d-b4f58af2-2d54d859",
+    "subject_id": "18566607",
+    "cohort_index": 4399,
+    "view": "AP",
+    "image_pixel_sha256": "c0153b76c5105a5cd5b2925542d845c4f118153f6932ca86ec2f4e3f80978733",
+    "finding_labels": [
+      -2,
+      1,
+      -2,
+      -1,
+      1,
+      0
+    ],
+    "label_metric_eligible": true,
+    "candidates": 446,
+    "methods": {
+      "early": {
+        "positive_jaccard_at3": 0.0,
+        "same_view_at3": 1.0,
+        "top3": [
+          {
+            "id": "95133322-5ad8fb3e-dea16125-70e718db-6cef790a",
+            "subject_id": "13120957",
+            "score": 0.9931375980377197,
+            "view": "AP",
+            "finding_labels": [
+              -2,
+              -2,
+              -2,
+              -2,
+              -2,
+              -2
+            ]
+          },
+          {
+            "id": "c5fe5884-9333457b-9928b9d6-1f4731b2-c373eb43",
+            "subject_id": "15717895",
+            "score": 0.9920859932899475,
+            "view": "AP",
+            "finding_labels": [
+              1,
+              -2,
+              -2,
+              -2,
+              -2,
+              -2
+            ]
+          },
+          {
+            "id": "70e31905-dd605e80-305f056b-4f88ec80-cbb4b3fb",
+            "subject_id": "11378150",
+            "score": 0.9919593930244446,
+            "view": "AP",
+            "finding_labels": [
+              -1,
+              -2,
+              -2,
+              -2,
+              -2,
+              -2
+            ]
+          }
+        ]
+      },
+      "late": {
+        "positive_jaccard_at3": 0.0,
+        "same_view_at3": 1.0,
+        "top3": [
+          {
+            "id": "70e31905-dd605e80-305f056b-4f88ec80-cbb4b3fb",
+            "subject_id": "11378150",
+            "score": 0.9920921325683594,
+            "view": "AP",
+            "finding_labels": [
+              -1,
+              -2,
+              -2,
+              -2,
+              -2,
+              -2
+            ]
+          },
+          {
+            "id": "95133322-5ad8fb3e-dea16125-70e718db-6cef790a",
+            "subject_id": "13120957",
+            "score": 0.9919459819793701,
+            "view": "AP",
+            "finding_labels": [
+              -2,
+              -2,
+              -2,
+              -2,
+              -2,
+              -2
+            ]
+          },
+          {
+            "id": "c5fe5884-9333457b-9928b9d6-1f4731b2-c373eb43",
+            "subject_id": "15717895",
+            "score": 0.9916927218437195,
+            "view": "AP",
+            "finding_labels": [
+              1,
+              -2,
+              -2,
+              -2,
+              -2,
+              -2
+            ]
+          }
+        ]
+      },
+      "all": {
+        "positive_jaccard_at3": 0.0,
+        "same_view_at3": 1.0,
+        "top3": [
+          {
+            "id": "95133322-5ad8fb3e-dea16125-70e718db-6cef790a",
+            "subject_id": "13120957",
+            "score": 0.9925417900085449,
+            "view": "AP",
+            "finding_labels": [
+              -2,
+              -2,
+              -2,
+              -2,
+              -2,
+              -2
+            ]
+          },
+          {
+            "id": "70e31905-dd605e80-305f056b-4f88ec80-cbb4b3fb",
+            "subject_id": "11378150",
+            "score": 0.9920257329940796,
+            "view": "AP",
+            "finding_labels": [
+              -1,
+              -2,
+              -2,
+              -2,
+              -2,
+              -2
+            ]
+          },
+          {
+            "id": "c5fe5884-9333457b-9928b9d6-1f4731b2-c373eb43",
+            "subject_id": "15717895",
+            "score": 0.9918893575668335,
+            "view": "AP",
+            "finding_labels": [
+              1,
+              -2,
+              -2,
+              -2,
+              -2,
+              -2
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "per_query_metrics_and_rankings": "state_retrieval_rankings.jsonl",
+  "limitations": [
+    "Uses four fixed summaries from the frozen Qwen vision tower, not the learned 4+4 MedWorld state.",
+    "Early/late depth subsets are descriptive probes, not fusion/visual slot-group substitutes.",
+    "Report-derived labels are used only to annotate and audit retrieval, never as state inputs.",
+    "Test selection is a deterministic annotated example, not a best retrieval case; no significance or causal claim."
+  ]
+}

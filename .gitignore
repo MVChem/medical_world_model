@@ -5,17 +5,16 @@
 /code/ChestXRayAnatomySegmentation/
 /code/vjepa2/
 
-# Runtime data, downloaded dependencies, weights and generated artifacts.
+# Runtime data, downloaded dependencies, weights and caches stay local.
+# Research exports and paper assets are included in the
+# private pre-unification snapshot (2026-09-15).
+/related_works/
 **/runs/
-**/data/
-**/weights/
-**/checkpoints/
-**/vendor/
-**/metric_vendor/
-**/assets/
-/results/
-/related_works/*.pdf
-/imgs/
+**/data
+**/weights
+**/checkpoints
+**/vendor
+**/metric_vendor
 **/*output*/
 **/__pycache__/
 **/*.pyc
@@ -25,12 +24,33 @@
 **/*.egg-info/
 *.pt
 *.pth
+*.ckpt
 *.safetensors
+*.th
 *.npy
 *.npz
 *.log
+*.log.*
+**/logs/
+*.pid
+*.lock
 .env
 .env.*
 *.tmp
-/code/MIMIC_example/curated_pairs.json
-/code/MIMIC_example/representative_pairs_10.json
+
+# Open comparator assets and immutable local execution artifacts.
+/code/medworld_open_baselines/third_party/
+/code/medworld_open_baselines/*_vendor/
+/code/medworld_open_baselines/*_weights/
+/code/medworld_open_baselines/*_runs/
+/code/medworld_open_baselines/*_assets/
+
+# Dependency symlinks in frozen execution copies are machine-local too.
+**/*_vendor
+**/*_weights
+**/third_party
+**/dinov2_assets
+/code/medworld_open_baselines/repair_forecast_20260914/scheduler_recovery/
+
+# The original discussion bundle contains logs; use the no-logs snapshot copy.
+/results/medworld_jepa_discussion_20260909.zip

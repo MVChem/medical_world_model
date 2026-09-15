@@ -1,0 +1,2850 @@
+{
+  "schema_version": "mimic-iii-independent-episode-v1",
+  "example_id": "mimic_iii_reference/episode_01",
+  "dataset": "MIMIC-III Clinical Database v1.4",
+  "relationship_to_cxr_iv_examples": {
+    "patient_link": false,
+    "status": "independent_reference_episode",
+    "reason": "MIMIC-III and MIMIC-IV use regenerated public identifiers and date shifts; no public crosswalk exists."
+  },
+  "window": {
+    "start_inclusive": "2186-02-11 11:24:04",
+    "end_exclusive": "2186-02-12 11:24:04",
+    "selection": "STARTTIME in [start, end), CANCELREASON=0, and STATUSDESCRIPTION=FinishedRunning inside one MetaVision ICU stay"
+  },
+  "source_files": {
+    "PATIENTS.csv.gz": {
+      "path": "PATIENTS.csv.gz",
+      "sha256": "0a13db69044d3b01ab9a397f3192792c2a1d2e98c9cb41c4f94e0403996dc7c5"
+    },
+    "ADMISSIONS.csv.gz": {
+      "path": "ADMISSIONS.csv.gz",
+      "sha256": "68f128f19e95434500982d95e623638f22eadf1c6a07f4bfa6c39c21751d8085"
+    },
+    "ICUSTAYS.csv.gz": {
+      "path": "ICUSTAYS.csv.gz",
+      "sha256": "65f8c8686e791bee80df0115fc18f9f3c1087b85889ba9ce2d9c441204e467ab"
+    },
+    "D_ITEMS.csv.gz": {
+      "path": "D_ITEMS.csv.gz",
+      "sha256": "eb18c4084f6c8db49add26cbcfef4ec7627bbf72c2b887c36aa0d5f3dccaf4a0"
+    },
+    "INPUTEVENTS_MV.csv.gz": {
+      "path": "INPUTEVENTS_MV.csv.gz",
+      "sha256": "1f52534074bf0840bb002aa8fa16da1933d01b8cf2cc92f3e30ec42e04685b40"
+    },
+    "PROCEDUREEVENTS_MV.csv.gz": {
+      "path": "PROCEDUREEVENTS_MV.csv.gz",
+      "sha256": "6a1107b6a6f11ab37ac62b3ef3901db2c5f973c5794951141efd0e268e4a9c9e"
+    }
+  },
+  "patient": {
+    "subject_id": "81478",
+    "gender": "M",
+    "provenance": {
+      "dataset": "MIMIC-III Clinical Database v1.4",
+      "source_file": "PATIENTS.csv.gz",
+      "source_line_number": 36392,
+      "row_key": {
+        "ROW_ID": "41695",
+        "SUBJECT_ID": "81478"
+      }
+    }
+  },
+  "admission": {
+    "hadm_id": "163368",
+    "admittime": "2186-01-19 11:33:00",
+    "dischtime": "2186-02-13 12:00:00",
+    "admission_type": "EMERGENCY",
+    "provenance": {
+      "dataset": "MIMIC-III Clinical Database v1.4",
+      "source_file": "ADMISSIONS.csv.gz",
+      "source_line_number": 53378,
+      "row_key": {
+        "ROW_ID": "53095",
+        "SUBJECT_ID": "81478",
+        "HADM_ID": "163368"
+      }
+    }
+  },
+  "icu_stay": {
+    "icustay_id": "261188",
+    "dbsource": "metavision",
+    "first_careunit": "CCU",
+    "last_careunit": "CCU",
+    "intime": "2186-02-11 11:24:04",
+    "outtime": "2186-02-13 13:56:12",
+    "provenance": {
+      "dataset": "MIMIC-III Clinical Database v1.4",
+      "source_file": "ICUSTAYS.csv.gz",
+      "source_line_number": 58817,
+      "row_key": {
+        "ROW_ID": "55371",
+        "SUBJECT_ID": "81478",
+        "HADM_ID": "163368",
+        "ICUSTAY_ID": "261188"
+      }
+    }
+  },
+  "events": {
+    "inputevents_mv": [
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2224176,
+          "row_key": {
+            "ROW_ID": "2226889",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221794",
+            "STARTTIME": "2186-02-11 11:45:00"
+          }
+        },
+        "starttime": "2186-02-11 11:45:00",
+        "endtime": "2186-02-11 11:46:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221794",
+        "label": "Furosemide (Lasix)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "9430392",
+        "linkorderid": "9430392",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9550,
+          "row_key": {
+            "ROW_ID": "12979",
+            "ITEMID": "221794"
+          }
+        },
+        "amount": "200",
+        "amountuom": "mg",
+        "rate": null,
+        "rateuom": null,
+        "ordercategorydescription": "Drug Push"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2250951,
+          "row_key": {
+            "ROW_ID": "2226755",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225158",
+            "STARTTIME": "2186-02-11 11:45:00"
+          }
+        },
+        "starttime": "2186-02-11 11:45:00",
+        "endtime": "2186-02-11 12:15:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225158",
+        "label": "NaCl 0.9%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "6208032",
+        "linkorderid": "6208032",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12128,
+          "row_key": {
+            "ROW_ID": "13758",
+            "ITEMID": "225158"
+          }
+        },
+        "amount": "49.999998",
+        "amountuom": "ml",
+        "rate": "99.999996",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous IV"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217449,
+          "row_key": {
+            "ROW_ID": "2226485",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "220949",
+            "STARTTIME": "2186-02-11 12:08:00"
+          }
+        },
+        "starttime": "2186-02-11 12:08:00",
+        "endtime": "2186-02-11 14:21:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "220949",
+        "label": "Dextrose 5%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "104835",
+        "linkorderid": "9661951",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12077,
+          "row_key": {
+            "ROW_ID": "12865",
+            "ITEMID": "220949"
+          }
+        },
+        "amount": "84.86000229",
+        "amountuom": "ml",
+        "rate": "38.2827078",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217448,
+          "row_key": {
+            "ROW_ID": "2226484",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221986",
+            "STARTTIME": "2186-02-11 12:08:00"
+          }
+        },
+        "starttime": "2186-02-11 12:08:00",
+        "endtime": "2186-02-11 14:21:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221986",
+        "label": "Milrinone",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "104835",
+        "linkorderid": "9661951",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9556,
+          "row_key": {
+            "ROW_ID": "12985",
+            "ITEMID": "221986"
+          }
+        },
+        "amount": "16.97200099",
+        "amountuom": "mg",
+        "rate": ".7506413529",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2218610,
+          "row_key": {
+            "ROW_ID": "2226530",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221794",
+            "STARTTIME": "2186-02-11 12:45:00"
+          }
+        },
+        "starttime": "2186-02-11 12:45:00",
+        "endtime": "2186-02-11 17:30:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221794",
+        "label": "Furosemide (Lasix)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "1179039",
+        "linkorderid": "1179039",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9550,
+          "row_key": {
+            "ROW_ID": "12979",
+            "ITEMID": "221794"
+          }
+        },
+        "amount": "95.0000076",
+        "amountuom": "mg",
+        "rate": "20.0000016",
+        "rateuom": "mg/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2218611,
+          "row_key": {
+            "ROW_ID": "2226531",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225158",
+            "STARTTIME": "2186-02-11 12:45:00"
+          }
+        },
+        "starttime": "2186-02-11 12:45:00",
+        "endtime": "2186-02-11 17:30:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225158",
+        "label": "NaCl 0.9%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "1179039",
+        "linkorderid": "1179039",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12128,
+          "row_key": {
+            "ROW_ID": "13758",
+            "ITEMID": "225158"
+          }
+        },
+        "amount": "95.0000019",
+        "amountuom": "ml",
+        "rate": "20.0000004",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2222474,
+          "row_key": {
+            "ROW_ID": "2226842",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "220949",
+            "STARTTIME": "2186-02-11 14:21:00"
+          }
+        },
+        "starttime": "2186-02-11 14:21:00",
+        "endtime": "2186-02-11 16:50:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "220949",
+        "label": "Dextrose 5%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "8298643",
+        "linkorderid": "8298643",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12077,
+          "row_key": {
+            "ROW_ID": "12865",
+            "ITEMID": "220949"
+          }
+        },
+        "amount": "95.099995",
+        "amountuom": "ml",
+        "rate": "38.2953",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2222473,
+          "row_key": {
+            "ROW_ID": "2226841",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221986",
+            "STARTTIME": "2186-02-11 14:21:00"
+          }
+        },
+        "starttime": "2186-02-11 14:21:00",
+        "endtime": "2186-02-11 16:50:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221986",
+        "label": "Milrinone",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "8298643",
+        "linkorderid": "8298643",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9556,
+          "row_key": {
+            "ROW_ID": "12985",
+            "ITEMID": "221986"
+          }
+        },
+        "amount": "19.02000198",
+        "amountuom": "mg",
+        "rate": ".7508883529",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217473,
+          "row_key": {
+            "ROW_ID": "2226820",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "220949",
+            "STARTTIME": "2186-02-11 16:50:00"
+          }
+        },
+        "starttime": "2186-02-11 16:50:00",
+        "endtime": "2186-02-11 19:02:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "220949",
+        "label": "Dextrose 5%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "7895330",
+        "linkorderid": "7895330",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12077,
+          "row_key": {
+            "ROW_ID": "12865",
+            "ITEMID": "220949"
+          }
+        },
+        "amount": "99.999999",
+        "amountuom": "ml",
+        "rate": "45.454545",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217472,
+          "row_key": {
+            "ROW_ID": "2226819",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221986",
+            "STARTTIME": "2186-02-11 16:50:00"
+          }
+        },
+        "starttime": "2186-02-11 16:50:00",
+        "endtime": "2186-02-11 19:02:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221986",
+        "label": "Milrinone",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "7895330",
+        "linkorderid": "7895330",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9556,
+          "row_key": {
+            "ROW_ID": "12985",
+            "ITEMID": "221986"
+          }
+        },
+        "amount": "20.00000376",
+        "amountuom": "mg",
+        "rate": ".8912657647",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2219152,
+          "row_key": {
+            "ROW_ID": "2226864",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221749",
+            "STARTTIME": "2186-02-11 17:16:00"
+          }
+        },
+        "starttime": "2186-02-11 17:16:00",
+        "endtime": "2186-02-11 17:21:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221749",
+        "label": "Phenylephrine",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "8826656",
+        "linkorderid": "1491127",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9549,
+          "row_key": {
+            "ROW_ID": "12978",
+            "ITEMID": "221749"
+          }
+        },
+        "amount": "1.30600005",
+        "amountuom": "mg",
+        "rate": "1.5364706471",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2219153,
+          "row_key": {
+            "ROW_ID": "2226865",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225158",
+            "STARTTIME": "2186-02-11 17:16:00"
+          }
+        },
+        "starttime": "2186-02-11 17:16:00",
+        "endtime": "2186-02-11 17:21:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225158",
+        "label": "NaCl 0.9%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "8826656",
+        "linkorderid": "1491127",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12128,
+          "row_key": {
+            "ROW_ID": "13758",
+            "ITEMID": "225158"
+          }
+        },
+        "amount": "5.4416675",
+        "amountuom": "ml",
+        "rate": "65.30001",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2225329,
+          "row_key": {
+            "ROW_ID": "2226911",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "220949",
+            "STARTTIME": "2186-02-11 19:02:00"
+          }
+        },
+        "starttime": "2186-02-11 19:02:00",
+        "endtime": "2186-02-11 21:26:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "220949",
+        "label": "Dextrose 5%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "9995896",
+        "linkorderid": "9995896",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12077,
+          "row_key": {
+            "ROW_ID": "12865",
+            "ITEMID": "220949"
+          }
+        },
+        "amount": "99.99999648",
+        "amountuom": "ml",
+        "rate": "41.6666652",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2220312,
+          "row_key": {
+            "ROW_ID": "2226910",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221986",
+            "STARTTIME": "2186-02-11 19:02:00"
+          }
+        },
+        "starttime": "2186-02-11 19:02:00",
+        "endtime": "2186-02-11 21:26:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221986",
+        "label": "Milrinone",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "9995896",
+        "linkorderid": "9995896",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9556,
+          "row_key": {
+            "ROW_ID": "12985",
+            "ITEMID": "221986"
+          }
+        },
+        "amount": "20.00000304",
+        "amountuom": "mg",
+        "rate": ".8169935882",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2225326,
+          "row_key": {
+            "ROW_ID": "2226598",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221668",
+            "STARTTIME": "2186-02-11 19:28:00"
+          }
+        },
+        "starttime": "2186-02-11 19:28:00",
+        "endtime": "2186-02-11 19:29:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221668",
+        "label": "Midazolam (Versed)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "2450270",
+        "linkorderid": "2450270",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 8894,
+          "row_key": {
+            "ROW_ID": "12973",
+            "ITEMID": "221668"
+          }
+        },
+        "amount": "2.0000001",
+        "amountuom": "mg",
+        "rate": null,
+        "rateuom": null,
+        "ordercategorydescription": "Drug Push"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2250403,
+          "row_key": {
+            "ROW_ID": "2226738",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221744",
+            "STARTTIME": "2186-02-11 19:28:00"
+          }
+        },
+        "starttime": "2186-02-11 19:28:00",
+        "endtime": "2186-02-11 19:29:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221744",
+        "label": "Fentanyl",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "5915557",
+        "linkorderid": "5915557",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 8898,
+          "row_key": {
+            "ROW_ID": "12977",
+            "ITEMID": "221744"
+          }
+        },
+        "amount": "49.999999",
+        "amountuom": "mcg",
+        "rate": null,
+        "rateuom": null,
+        "ordercategorydescription": "Drug Push"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2220300,
+          "row_key": {
+            "ROW_ID": "2226898",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221749",
+            "STARTTIME": "2186-02-11 20:03:00"
+          }
+        },
+        "starttime": "2186-02-11 20:03:00",
+        "endtime": "2186-02-11 20:34:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221749",
+        "label": "Phenylephrine",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "9666356",
+        "linkorderid": "1980231",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9549,
+          "row_key": {
+            "ROW_ID": "12978",
+            "ITEMID": "221749"
+          }
+        },
+        "amount": "14.21100078",
+        "amountuom": "mg",
+        "rate": "2.6965845882",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2220301,
+          "row_key": {
+            "ROW_ID": "2226899",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225158",
+            "STARTTIME": "2186-02-11 20:03:00"
+          }
+        },
+        "starttime": "2186-02-11 20:03:00",
+        "endtime": "2186-02-11 20:34:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225158",
+        "label": "NaCl 0.9%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "9666356",
+        "linkorderid": "1980231",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12128,
+          "row_key": {
+            "ROW_ID": "13758",
+            "ITEMID": "225158"
+          }
+        },
+        "amount": "59.212511",
+        "amountuom": "ml",
+        "rate": "114.60486",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2222471,
+          "row_key": {
+            "ROW_ID": "2226839",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221749",
+            "STARTTIME": "2186-02-11 21:06:00"
+          }
+        },
+        "starttime": "2186-02-11 21:06:00",
+        "endtime": "2186-02-11 22:36:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221749",
+        "label": "Phenylephrine",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "8273967",
+        "linkorderid": "5806069",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9549,
+          "row_key": {
+            "ROW_ID": "12978",
+            "ITEMID": "221749"
+          }
+        },
+        "amount": "48.9240054",
+        "amountuom": "mg",
+        "rate": "3.1976474118",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2222472,
+          "row_key": {
+            "ROW_ID": "2226840",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225158",
+            "STARTTIME": "2186-02-11 21:06:00"
+          }
+        },
+        "starttime": "2186-02-11 21:06:00",
+        "endtime": "2186-02-11 22:36:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225158",
+        "label": "NaCl 0.9%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "8273967",
+        "linkorderid": "5806069",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12128,
+          "row_key": {
+            "ROW_ID": "13758",
+            "ITEMID": "225158"
+          }
+        },
+        "amount": "203.850009",
+        "amountuom": "ml",
+        "rate": "135.900006",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2218613,
+          "row_key": {
+            "ROW_ID": "2226533",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "220949",
+            "STARTTIME": "2186-02-11 21:26:00"
+          }
+        },
+        "starttime": "2186-02-11 21:26:00",
+        "endtime": "2186-02-11 23:46:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "220949",
+        "label": "Dextrose 5%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "1228986",
+        "linkorderid": "1228986",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12077,
+          "row_key": {
+            "ROW_ID": "12865",
+            "ITEMID": "220949"
+          }
+        },
+        "amount": "100.0000022",
+        "amountuom": "ml",
+        "rate": "42.8571438",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2218612,
+          "row_key": {
+            "ROW_ID": "2226532",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221986",
+            "STARTTIME": "2186-02-11 21:26:00"
+          }
+        },
+        "starttime": "2186-02-11 21:26:00",
+        "endtime": "2186-02-11 23:46:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221986",
+        "label": "Milrinone",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "1228986",
+        "linkorderid": "1228986",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9556,
+          "row_key": {
+            "ROW_ID": "12985",
+            "ITEMID": "221986"
+          }
+        },
+        "amount": "20.0000038",
+        "amountuom": "mg",
+        "rate": ".8403362941",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2250950,
+          "row_key": {
+            "ROW_ID": "2226754",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225944",
+            "STARTTIME": "2186-02-11 23:30:00"
+          }
+        },
+        "starttime": "2186-02-11 23:30:00",
+        "endtime": "2186-02-12 04:05:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225944",
+        "label": "Sterile Water",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "6167620",
+        "linkorderid": "6167620",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 11678,
+          "row_key": {
+            "ROW_ID": "14376",
+            "ITEMID": "225944"
+          }
+        },
+        "amount": "100.00000175",
+        "amountuom": "ml",
+        "rate": "21.8181822",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2221303,
+          "row_key": {
+            "ROW_ID": "2226801",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "227526",
+            "STARTTIME": "2186-02-11 23:30:00"
+          }
+        },
+        "starttime": "2186-02-11 23:30:00",
+        "endtime": "2186-02-12 04:47:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "227526",
+        "label": "Citrate",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "7593741",
+        "linkorderid": "7593741",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10091,
+          "row_key": {
+            "ROW_ID": "14772",
+            "ITEMID": "227526"
+          }
+        },
+        "amount": "112.90000331",
+        "amountuom": "mmol",
+        "rate": null,
+        "rateuom": null,
+        "ordercategorydescription": "Continuous IV"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2221302,
+          "row_key": {
+            "ROW_ID": "2226800",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "227529",
+            "STARTTIME": "2186-02-11 23:30:00"
+          }
+        },
+        "starttime": "2186-02-11 23:30:00",
+        "endtime": "2186-02-12 04:47:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "227529",
+        "label": "ACD-A Citrate (1000ml)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "7593741",
+        "linkorderid": "7593741",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10094,
+          "row_key": {
+            "ROW_ID": "14775",
+            "ITEMID": "227529"
+          }
+        },
+        "amount": "1000.0000214",
+        "amountuom": "ml",
+        "rate": "189.274452",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous IV"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2250949,
+          "row_key": {
+            "ROW_ID": "2226753",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "227536",
+            "STARTTIME": "2186-02-11 23:30:00"
+          }
+        },
+        "starttime": "2186-02-11 23:30:00",
+        "endtime": "2186-02-12 04:05:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "227536",
+        "label": "KCl (CRRT)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "6167620",
+        "linkorderid": "6167620",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10262,
+          "row_key": {
+            "ROW_ID": "14782",
+            "ITEMID": "227536"
+          }
+        },
+        "amount": "9.999999625",
+        "amountuom": "mEq.",
+        "rate": "2.1818181",
+        "rateuom": "mEq./hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217464,
+          "row_key": {
+            "ROW_ID": "2226500",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "220949",
+            "STARTTIME": "2186-02-11 23:46:00"
+          }
+        },
+        "starttime": "2186-02-11 23:46:00",
+        "endtime": "2186-02-12 02:00:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "220949",
+        "label": "Dextrose 5%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "504213",
+        "linkorderid": "504213",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12077,
+          "row_key": {
+            "ROW_ID": "12865",
+            "ITEMID": "220949"
+          }
+        },
+        "amount": "99.99999642",
+        "amountuom": "ml",
+        "rate": "44.7761178",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217463,
+          "row_key": {
+            "ROW_ID": "2226499",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221986",
+            "STARTTIME": "2186-02-11 23:46:00"
+          }
+        },
+        "starttime": "2186-02-11 23:46:00",
+        "endtime": "2186-02-12 02:00:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221986",
+        "label": "Milrinone",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "504213",
+        "linkorderid": "504213",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9556,
+          "row_key": {
+            "ROW_ID": "12985",
+            "ITEMID": "221986"
+          }
+        },
+        "amount": "20.00000384",
+        "amountuom": "mg",
+        "rate": ".8779632941",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2225322,
+          "row_key": {
+            "ROW_ID": "2226594",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221749",
+            "STARTTIME": "2186-02-11 23:49:00"
+          }
+        },
+        "starttime": "2186-02-11 23:49:00",
+        "endtime": "2186-02-12 00:39:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221749",
+        "label": "Phenylephrine",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "2330839",
+        "linkorderid": "2177112",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9549,
+          "row_key": {
+            "ROW_ID": "12978",
+            "ITEMID": "221749"
+          }
+        },
+        "amount": "25.6749975",
+        "amountuom": "mg",
+        "rate": "3.0205879412",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2225323,
+          "row_key": {
+            "ROW_ID": "2226595",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225158",
+            "STARTTIME": "2186-02-11 23:49:00"
+          }
+        },
+        "starttime": "2186-02-11 23:49:00",
+        "endtime": "2186-02-12 00:39:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225158",
+        "label": "NaCl 0.9%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "2330839",
+        "linkorderid": "2177112",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12128,
+          "row_key": {
+            "ROW_ID": "13758",
+            "ITEMID": "225158"
+          }
+        },
+        "amount": "106.979145",
+        "amountuom": "ml",
+        "rate": "128.374974",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2224171,
+          "row_key": {
+            "ROW_ID": "2226884",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221749",
+            "STARTTIME": "2186-02-12 01:30:00"
+          }
+        },
+        "starttime": "2186-02-12 01:30:00",
+        "endtime": "2186-02-12 02:56:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221749",
+        "label": "Phenylephrine",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "9348574",
+        "linkorderid": "9348574",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9549,
+          "row_key": {
+            "ROW_ID": "12978",
+            "ITEMID": "221749"
+          }
+        },
+        "amount": "240.0000194",
+        "amountuom": "mg",
+        "rate": "16.41587",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2224172,
+          "row_key": {
+            "ROW_ID": "2226885",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225158",
+            "STARTTIME": "2186-02-12 01:30:00"
+          }
+        },
+        "starttime": "2186-02-12 01:30:00",
+        "endtime": "2186-02-12 02:56:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225158",
+        "label": "NaCl 0.9%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "9348574",
+        "linkorderid": "9348574",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12128,
+          "row_key": {
+            "ROW_ID": "13758",
+            "ITEMID": "225158"
+          }
+        },
+        "amount": "249.9999962",
+        "amountuom": "ml",
+        "rate": "174.418602",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2250409,
+          "row_key": {
+            "ROW_ID": "2226744",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "220949",
+            "STARTTIME": "2186-02-12 02:00:00"
+          }
+        },
+        "starttime": "2186-02-12 02:00:00",
+        "endtime": "2186-02-12 04:02:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "220949",
+        "label": "Dextrose 5%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "5971295",
+        "linkorderid": "5971295",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12077,
+          "row_key": {
+            "ROW_ID": "12865",
+            "ITEMID": "220949"
+          }
+        },
+        "amount": "99.99999742",
+        "amountuom": "ml",
+        "rate": "49.1803266",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2250408,
+          "row_key": {
+            "ROW_ID": "2226743",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221986",
+            "STARTTIME": "2186-02-12 02:00:00"
+          }
+        },
+        "starttime": "2186-02-12 02:00:00",
+        "endtime": "2186-02-12 04:02:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221986",
+        "label": "Milrinone",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "5971295",
+        "linkorderid": "5971295",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9556,
+          "row_key": {
+            "ROW_ID": "12985",
+            "ITEMID": "221986"
+          }
+        },
+        "amount": "20.00000412",
+        "amountuom": "mg",
+        "rate": ".9643203529",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2225180,
+          "row_key": {
+            "ROW_ID": "2226780",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221749",
+            "STARTTIME": "2186-02-12 02:56:00"
+          }
+        },
+        "starttime": "2186-02-12 02:56:00",
+        "endtime": "2186-02-12 07:32:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221749",
+        "label": "Phenylephrine",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "6925642",
+        "linkorderid": "6925642",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9549,
+          "row_key": {
+            "ROW_ID": "12978",
+            "ITEMID": "221749"
+          }
+        },
+        "amount": "234.91200696",
+        "amountuom": "mg",
+        "rate": "5.0066497647",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2225181,
+          "row_key": {
+            "ROW_ID": "2226781",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225158",
+            "STARTTIME": "2186-02-12 02:56:00"
+          }
+        },
+        "starttime": "2186-02-12 02:56:00",
+        "endtime": "2186-02-12 07:32:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225158",
+        "label": "NaCl 0.9%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "6925642",
+        "linkorderid": "6925642",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12128,
+          "row_key": {
+            "ROW_ID": "13758",
+            "ITEMID": "225158"
+          }
+        },
+        "amount": "244.69999368",
+        "amountuom": "ml",
+        "rate": "53.1956508",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2249232,
+          "row_key": {
+            "ROW_ID": "2226709",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225942",
+            "STARTTIME": "2186-02-12 04:01:00"
+          }
+        },
+        "starttime": "2186-02-12 04:01:00",
+        "endtime": "2186-02-12 07:26:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225942",
+        "label": "Fentanyl (Concentrate)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "5434980",
+        "linkorderid": "1805110",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 11676,
+          "row_key": {
+            "ROW_ID": "14374",
+            "ITEMID": "225942"
+          }
+        },
+        "amount": ".686999977",
+        "amountuom": "mg",
+        "rate": "201.073164",
+        "rateuom": "mcg/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2249233,
+          "row_key": {
+            "ROW_ID": "2226710",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225943",
+            "STARTTIME": "2186-02-12 04:01:00"
+          }
+        },
+        "starttime": "2186-02-12 04:01:00",
+        "endtime": "2186-02-12 07:26:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225943",
+        "label": "Solution",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "5434980",
+        "linkorderid": "1805110",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 11677,
+          "row_key": {
+            "ROW_ID": "14375",
+            "ITEMID": "225943"
+          }
+        },
+        "amount": "13.740000975",
+        "amountuom": "ml",
+        "rate": "4.0214637",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2218621,
+          "row_key": {
+            "ROW_ID": "2226541",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "220949",
+            "STARTTIME": "2186-02-12 04:02:00"
+          }
+        },
+        "starttime": "2186-02-12 04:02:00",
+        "endtime": "2186-02-12 06:30:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "220949",
+        "label": "Dextrose 5%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "1354236",
+        "linkorderid": "1354236",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12077,
+          "row_key": {
+            "ROW_ID": "12865",
+            "ITEMID": "220949"
+          }
+        },
+        "amount": "100.00000212",
+        "amountuom": "ml",
+        "rate": "40.5405414",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2218620,
+          "row_key": {
+            "ROW_ID": "2226540",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221986",
+            "STARTTIME": "2186-02-12 04:02:00"
+          }
+        },
+        "starttime": "2186-02-12 04:02:00",
+        "endtime": "2186-02-12 06:30:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221986",
+        "label": "Milrinone",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "1354236",
+        "linkorderid": "1354236",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9556,
+          "row_key": {
+            "ROW_ID": "12985",
+            "ITEMID": "221986"
+          }
+        },
+        "amount": "20.0000022",
+        "amountuom": "mg",
+        "rate": ".7949126471",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2222448,
+          "row_key": {
+            "ROW_ID": "2226504",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225944",
+            "STARTTIME": "2186-02-12 04:05:00"
+          }
+        },
+        "starttime": "2186-02-12 04:05:00",
+        "endtime": "2186-02-12 09:00:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "225944",
+        "label": "Sterile Water",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "600326",
+        "linkorderid": "600326",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 11678,
+          "row_key": {
+            "ROW_ID": "14376",
+            "ITEMID": "225944"
+          }
+        },
+        "amount": "98.3000062",
+        "amountuom": "ml",
+        "rate": "19.9932216",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2222447,
+          "row_key": {
+            "ROW_ID": "2226503",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "227536",
+            "STARTTIME": "2186-02-12 04:05:00"
+          }
+        },
+        "starttime": "2186-02-12 04:05:00",
+        "endtime": "2186-02-12 09:00:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "227536",
+        "label": "KCl (CRRT)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "600326",
+        "linkorderid": "600326",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10262,
+          "row_key": {
+            "ROW_ID": "14782",
+            "ITEMID": "227536"
+          }
+        },
+        "amount": "9.829999735",
+        "amountuom": "mEq.",
+        "rate": "1.99932198",
+        "rateuom": "mEq./hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217605,
+          "row_key": {
+            "ROW_ID": "2226624",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "227526",
+            "STARTTIME": "2186-02-12 04:47:00"
+          }
+        },
+        "starttime": "2186-02-12 04:47:00",
+        "endtime": "2186-02-12 09:44:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "227526",
+        "label": "Citrate",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "3090875",
+        "linkorderid": "3090875",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10091,
+          "row_key": {
+            "ROW_ID": "14772",
+            "ITEMID": "227526"
+          }
+        },
+        "amount": "100.59390594",
+        "amountuom": "mmol",
+        "rate": null,
+        "rateuom": null,
+        "ordercategorydescription": "Continuous IV"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217604,
+          "row_key": {
+            "ROW_ID": "2226623",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "227529",
+            "STARTTIME": "2186-02-12 04:47:00"
+          }
+        },
+        "starttime": "2186-02-12 04:47:00",
+        "endtime": "2186-02-12 09:44:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "227529",
+        "label": "ACD-A Citrate (1000ml)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "3090875",
+        "linkorderid": "3090875",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10094,
+          "row_key": {
+            "ROW_ID": "14775",
+            "ITEMID": "227529"
+          }
+        },
+        "amount": "891",
+        "amountuom": "ml",
+        "rate": "180",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous IV"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217455,
+          "row_key": {
+            "ROW_ID": "2226491",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "220949",
+            "STARTTIME": "2186-02-12 06:30:00"
+          }
+        },
+        "starttime": "2186-02-12 06:30:00",
+        "endtime": "2186-02-12 08:59:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "220949",
+        "label": "Dextrose 5%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "290544",
+        "linkorderid": "290544",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12077,
+          "row_key": {
+            "ROW_ID": "12865",
+            "ITEMID": "220949"
+          }
+        },
+        "amount": "95.099995",
+        "amountuom": "ml",
+        "rate": "38.2953",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217454,
+          "row_key": {
+            "ROW_ID": "2226490",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221986",
+            "STARTTIME": "2186-02-12 06:30:00"
+          }
+        },
+        "starttime": "2186-02-12 06:30:00",
+        "endtime": "2186-02-12 08:59:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221986",
+        "label": "Milrinone",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "290544",
+        "linkorderid": "290544",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9556,
+          "row_key": {
+            "ROW_ID": "12985",
+            "ITEMID": "221986"
+          }
+        },
+        "amount": "19.02000198",
+        "amountuom": "mg",
+        "rate": ".7508883529",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2219305,
+          "row_key": {
+            "ROW_ID": "2226660",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225942",
+            "STARTTIME": "2186-02-12 07:26:00"
+          }
+        },
+        "starttime": "2186-02-12 07:26:00",
+        "endtime": "2186-02-12 12:18:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "225942",
+        "label": "Fentanyl (Concentrate)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "4283124",
+        "linkorderid": "4283124",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 11676,
+          "row_key": {
+            "ROW_ID": "14374",
+            "ITEMID": "225942"
+          }
+        },
+        "amount": ".9749997384",
+        "amountuom": "mg",
+        "rate": "200.342412",
+        "rateuom": "mcg/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2219306,
+          "row_key": {
+            "ROW_ID": "2226661",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225943",
+            "STARTTIME": "2186-02-12 07:26:00"
+          }
+        },
+        "starttime": "2186-02-12 07:26:00",
+        "endtime": "2186-02-12 12:18:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "225943",
+        "label": "Solution",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "4283124",
+        "linkorderid": "4283124",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 11677,
+          "row_key": {
+            "ROW_ID": "14375",
+            "ITEMID": "225943"
+          }
+        },
+        "amount": "19.49999944",
+        "amountuom": "ml",
+        "rate": "4.0068492",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2218608,
+          "row_key": {
+            "ROW_ID": "2226528",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221749",
+            "STARTTIME": "2186-02-12 07:32:00"
+          }
+        },
+        "starttime": "2186-02-12 07:32:00",
+        "endtime": "2186-02-12 12:10:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "221749",
+        "label": "Phenylephrine",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "1151574",
+        "linkorderid": "1151574",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9549,
+          "row_key": {
+            "ROW_ID": "12978",
+            "ITEMID": "221749"
+          }
+        },
+        "amount": "236.64001346",
+        "amountuom": "mg",
+        "rate": "5.0071945294",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2218609,
+          "row_key": {
+            "ROW_ID": "2226529",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225158",
+            "STARTTIME": "2186-02-12 07:32:00"
+          }
+        },
+        "starttime": "2186-02-12 07:32:00",
+        "endtime": "2186-02-12 12:10:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "225158",
+        "label": "NaCl 0.9%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "1151574",
+        "linkorderid": "1151574",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12128,
+          "row_key": {
+            "ROW_ID": "13758",
+            "ITEMID": "225158"
+          }
+        },
+        "amount": "246.50000904",
+        "amountuom": "ml",
+        "rate": "53.2014408",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2219143,
+          "row_key": {
+            "ROW_ID": "2226855",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221668",
+            "STARTTIME": "2186-02-12 07:33:00"
+          }
+        },
+        "starttime": "2186-02-12 07:33:00",
+        "endtime": "2186-02-12 07:34:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221668",
+        "label": "Midazolam (Versed)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "8587792",
+        "linkorderid": "8587792",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 8894,
+          "row_key": {
+            "ROW_ID": "12973",
+            "ITEMID": "221668"
+          }
+        },
+        "amount": ".50000002",
+        "amountuom": "mg",
+        "rate": null,
+        "rateuom": null,
+        "ordercategorydescription": "Drug Push"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217606,
+          "row_key": {
+            "ROW_ID": "2226625",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221744",
+            "STARTTIME": "2186-02-12 07:33:00"
+          }
+        },
+        "starttime": "2186-02-12 07:33:00",
+        "endtime": "2186-02-12 07:34:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221744",
+        "label": "Fentanyl",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "3107116",
+        "linkorderid": "3107116",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 8898,
+          "row_key": {
+            "ROW_ID": "12977",
+            "ITEMID": "221744"
+          }
+        },
+        "amount": "24.999999",
+        "amountuom": "mcg",
+        "rate": null,
+        "rateuom": null,
+        "ordercategorydescription": "Drug Push"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217603,
+          "row_key": {
+            "ROW_ID": "2226622",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "220949",
+            "STARTTIME": "2186-02-12 08:59:00"
+          }
+        },
+        "starttime": "2186-02-12 08:59:00",
+        "endtime": "2186-02-12 11:29:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "220949",
+        "label": "Dextrose 5%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "2989185",
+        "linkorderid": "2989185",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12077,
+          "row_key": {
+            "ROW_ID": "12865",
+            "ITEMID": "220949"
+          }
+        },
+        "amount": "95.6999925",
+        "amountuom": "ml",
+        "rate": "38.279997",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217602,
+          "row_key": {
+            "ROW_ID": "2226621",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221986",
+            "STARTTIME": "2186-02-12 08:59:00"
+          }
+        },
+        "starttime": "2186-02-12 08:59:00",
+        "endtime": "2186-02-12 11:29:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "221986",
+        "label": "Milrinone",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "2989185",
+        "linkorderid": "2989185",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9556,
+          "row_key": {
+            "ROW_ID": "12985",
+            "ITEMID": "221986"
+          }
+        },
+        "amount": "19.1400015",
+        "amountuom": "mg",
+        "rate": ".7505882941",
+        "rateuom": "mcg/kg/min",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217616,
+          "row_key": {
+            "ROW_ID": "2226635",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225944",
+            "STARTTIME": "2186-02-12 09:00:00"
+          }
+        },
+        "starttime": "2186-02-12 09:00:00",
+        "endtime": "2186-02-12 13:54:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "225944",
+        "label": "Sterile Water",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "3207150",
+        "linkorderid": "3207150",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 11678,
+          "row_key": {
+            "ROW_ID": "14376",
+            "ITEMID": "225944"
+          }
+        },
+        "amount": "98.00000196",
+        "amountuom": "ml",
+        "rate": "20.0000004",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2217615,
+          "row_key": {
+            "ROW_ID": "2226634",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "227536",
+            "STARTTIME": "2186-02-12 09:00:00"
+          }
+        },
+        "starttime": "2186-02-12 09:00:00",
+        "endtime": "2186-02-12 13:54:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "227536",
+        "label": "KCl (CRRT)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "3207150",
+        "linkorderid": "3207150",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10262,
+          "row_key": {
+            "ROW_ID": "14782",
+            "ITEMID": "227536"
+          }
+        },
+        "amount": "9.80000049",
+        "amountuom": "mEq.",
+        "rate": "2.0000001",
+        "rateuom": "mEq./hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2224156,
+          "row_key": {
+            "ROW_ID": "2226559",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "220949",
+            "STARTTIME": "2186-02-12 09:42:00"
+          }
+        },
+        "starttime": "2186-02-12 09:42:00",
+        "endtime": "2186-02-12 14:00:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "220949",
+        "label": "Dextrose 5%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "1537516",
+        "linkorderid": "6791622",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12077,
+          "row_key": {
+            "ROW_ID": "12865",
+            "ITEMID": "220949"
+          }
+        },
+        "amount": "171.8250201",
+        "amountuom": "ml",
+        "rate": "39.959307",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2224155,
+          "row_key": {
+            "ROW_ID": "2226558",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "227525",
+            "STARTTIME": "2186-02-12 09:42:00"
+          }
+        },
+        "starttime": "2186-02-12 09:42:00",
+        "endtime": "2186-02-12 14:00:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "227525",
+        "label": "Calcium Gluconate (CRRT)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "1537516",
+        "linkorderid": "6791622",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9935,
+          "row_key": {
+            "ROW_ID": "14855",
+            "ITEMID": "227525"
+          }
+        },
+        "amount": "6.873000288",
+        "amountuom": "grams",
+        "rate": "1.59837216",
+        "rateuom": "grams/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2221313,
+          "row_key": {
+            "ROW_ID": "2226811",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "227526",
+            "STARTTIME": "2186-02-12 09:44:00"
+          }
+        },
+        "starttime": "2186-02-12 09:44:00",
+        "endtime": "2186-02-12 15:11:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "227526",
+        "label": "Citrate",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "7732817",
+        "linkorderid": "7732817",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10091,
+          "row_key": {
+            "ROW_ID": "14772",
+            "ITEMID": "227526"
+          }
+        },
+        "amount": "110.75491635",
+        "amountuom": "mmol",
+        "rate": null,
+        "rateuom": null,
+        "ordercategorydescription": "Continuous IV"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2221312,
+          "row_key": {
+            "ROW_ID": "2226810",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "227529",
+            "STARTTIME": "2186-02-12 09:44:00"
+          }
+        },
+        "starttime": "2186-02-12 09:44:00",
+        "endtime": "2186-02-12 15:11:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "227529",
+        "label": "ACD-A Citrate (1000ml)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "7732817",
+        "linkorderid": "7732817",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10094,
+          "row_key": {
+            "ROW_ID": "14775",
+            "ITEMID": "227529"
+          }
+        },
+        "amount": "981",
+        "amountuom": "ml",
+        "rate": "180",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous IV"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2219144,
+          "row_key": {
+            "ROW_ID": "2226856",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221668",
+            "STARTTIME": "2186-02-12 10:04:00"
+          }
+        },
+        "starttime": "2186-02-12 10:04:00",
+        "endtime": "2186-02-12 12:19:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "221668",
+        "label": "Midazolam (Versed)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "8646698",
+        "linkorderid": "1829299",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 8894,
+          "row_key": {
+            "ROW_ID": "12973",
+            "ITEMID": "221668"
+          }
+        },
+        "amount": "7.86100113",
+        "amountuom": "mg",
+        "rate": "3.49377828",
+        "rateuom": "mg/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2219145,
+          "row_key": {
+            "ROW_ID": "2226857",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225158",
+            "STARTTIME": "2186-02-12 10:04:00"
+          }
+        },
+        "starttime": "2186-02-12 10:04:00",
+        "endtime": "2186-02-12 12:19:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "225158",
+        "label": "NaCl 0.9%",
+        "category": "Fluids/Intake",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "8646698",
+        "linkorderid": "1829299",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 12128,
+          "row_key": {
+            "ROW_ID": "13758",
+            "ITEMID": "225158"
+          }
+        },
+        "amount": "7.861000455",
+        "amountuom": "ml",
+        "rate": "3.49377798",
+        "rateuom": "mL/hour",
+        "ordercategorydescription": "Continuous Med"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2224173,
+          "row_key": {
+            "ROW_ID": "2226886",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221668",
+            "STARTTIME": "2186-02-12 10:22:00"
+          }
+        },
+        "starttime": "2186-02-12 10:22:00",
+        "endtime": "2186-02-12 10:23:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221668",
+        "label": "Midazolam (Versed)",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "9360933",
+        "linkorderid": "9360933",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 8894,
+          "row_key": {
+            "ROW_ID": "12973",
+            "ITEMID": "221668"
+          }
+        },
+        "amount": ".50000002",
+        "amountuom": "mg",
+        "rate": null,
+        "rateuom": null,
+        "ordercategorydescription": "Drug Push"
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "INPUTEVENTS_MV.csv.gz",
+          "source_line_number": 2244108,
+          "row_key": {
+            "ROW_ID": "2226698",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "221744",
+            "STARTTIME": "2186-02-12 10:22:00"
+          }
+        },
+        "starttime": "2186-02-12 10:22:00",
+        "endtime": "2186-02-12 10:23:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "221744",
+        "label": "Fentanyl",
+        "category": "Medications",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "5244338",
+        "linkorderid": "5244338",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 8898,
+          "row_key": {
+            "ROW_ID": "12977",
+            "ITEMID": "221744"
+          }
+        },
+        "amount": "24.999999",
+        "amountuom": "mcg",
+        "rate": null,
+        "rateuom": null,
+        "ordercategorydescription": "Drug Push"
+      }
+    ],
+    "procedureevents_mv": [
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "PROCEDUREEVENTS_MV.csv.gz",
+          "source_line_number": 160122,
+          "row_key": {
+            "ROW_ID": "157723",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "224264",
+            "STARTTIME": "2186-02-11 11:39:00"
+          }
+        },
+        "starttime": "2186-02-11 11:39:00",
+        "endtime": "2186-02-13 13:56:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "224264",
+        "label": "PICC Line",
+        "category": "Access Lines - Invasive",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "2214339",
+        "linkorderid": "2214339",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9339,
+          "row_key": {
+            "ROW_ID": "13073",
+            "ITEMID": "224264"
+          }
+        },
+        "value": "3017",
+        "valueuom": "min",
+        "location": null,
+        "locationcategory": null
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "PROCEDUREEVENTS_MV.csv.gz",
+          "source_line_number": 160123,
+          "row_key": {
+            "ROW_ID": "157724",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225752",
+            "STARTTIME": "2186-02-11 14:14:00"
+          }
+        },
+        "starttime": "2186-02-11 14:14:00",
+        "endtime": "2186-02-13 13:56:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "225752",
+        "label": "Arterial Line",
+        "category": "Access Lines - Invasive",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "9155113",
+        "linkorderid": "9155113",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10788,
+          "row_key": {
+            "ROW_ID": "14179",
+            "ITEMID": "225752"
+          }
+        },
+        "value": "2862",
+        "valueuom": "min",
+        "location": null,
+        "locationcategory": null
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "PROCEDUREEVENTS_MV.csv.gz",
+          "source_line_number": 160124,
+          "row_key": {
+            "ROW_ID": "157725",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "224385",
+            "STARTTIME": "2186-02-11 19:22:00"
+          }
+        },
+        "starttime": "2186-02-11 19:22:00",
+        "endtime": "2186-02-11 19:23:00",
+        "temporal_role": "initiated_and_ended_in_window",
+        "itemid": "224385",
+        "label": "Intubation",
+        "category": "1-Intubation/Extubation",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "7996145",
+        "linkorderid": "7996145",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10743,
+          "row_key": {
+            "ROW_ID": "13321",
+            "ITEMID": "224385"
+          }
+        },
+        "value": "1",
+        "valueuom": "None",
+        "location": null,
+        "locationcategory": null
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "PROCEDUREEVENTS_MV.csv.gz",
+          "source_line_number": 160125,
+          "row_key": {
+            "ROW_ID": "157726",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225792",
+            "STARTTIME": "2186-02-11 19:39:00"
+          }
+        },
+        "starttime": "2186-02-11 19:39:00",
+        "endtime": "2186-02-13 11:20:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "225792",
+        "label": "Invasive Ventilation",
+        "category": "2-Ventilation",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "6909301",
+        "linkorderid": "6909301",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10215,
+          "row_key": {
+            "ROW_ID": "13977",
+            "ITEMID": "225792"
+          }
+        },
+        "value": "2381",
+        "valueuom": "min",
+        "location": null,
+        "locationcategory": null
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "PROCEDUREEVENTS_MV.csv.gz",
+          "source_line_number": 160126,
+          "row_key": {
+            "ROW_ID": "157727",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "224270",
+            "STARTTIME": "2186-02-11 21:00:00"
+          }
+        },
+        "starttime": "2186-02-11 21:00:00",
+        "endtime": "2186-02-13 13:56:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "224270",
+        "label": "Dialysis Catheter",
+        "category": "Access Lines - Invasive",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "3822442",
+        "linkorderid": "3822442",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 9343,
+          "row_key": {
+            "ROW_ID": "13077",
+            "ITEMID": "224270"
+          }
+        },
+        "value": "2456",
+        "valueuom": "min",
+        "location": null,
+        "locationcategory": null
+      },
+      {
+        "provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "PROCEDUREEVENTS_MV.csv.gz",
+          "source_line_number": 160127,
+          "row_key": {
+            "ROW_ID": "157728",
+            "SUBJECT_ID": "81478",
+            "HADM_ID": "163368",
+            "ICUSTAY_ID": "261188",
+            "ITEMID": "225802",
+            "STARTTIME": "2186-02-11 23:15:00"
+          }
+        },
+        "starttime": "2186-02-11 23:15:00",
+        "endtime": "2186-02-13 08:01:00",
+        "temporal_role": "initiated_in_window_continues_past_end",
+        "itemid": "225802",
+        "label": "Dialysis - CRRT",
+        "category": "Dialysis",
+        "statusdescription": "FinishedRunning",
+        "cancelreason": "0",
+        "orderid": "7167700",
+        "linkorderid": "7167700",
+        "item_dictionary_provenance": {
+          "dataset": "MIMIC-III Clinical Database v1.4",
+          "source_file": "D_ITEMS.csv.gz",
+          "source_line_number": 10223,
+          "row_key": {
+            "ROW_ID": "13985",
+            "ITEMID": "225802"
+          }
+        },
+        "value": "1966",
+        "valueuom": "min",
+        "location": "L Femoral",
+        "locationcategory": "Dialysis"
+      }
+    ]
+  },
+  "summary": {
+    "raw_inputevent_rows_in_starttime_window": 236,
+    "inputevent_row_count": 64,
+    "raw_procedureevent_rows_in_starttime_window": 6,
+    "procedureevent_row_count": 6,
+    "input_counts": {
+      "ACD-A Citrate (1000ml)": 3,
+      "Calcium Gluconate (CRRT)": 1,
+      "Citrate": 3,
+      "Dextrose 5%": 11,
+      "Fentanyl": 3,
+      "Fentanyl (Concentrate)": 2,
+      "Furosemide (Lasix)": 2,
+      "KCl (CRRT)": 3,
+      "Midazolam (Versed)": 4,
+      "Milrinone": 10,
+      "NaCl 0.9%": 10,
+      "Phenylephrine": 7,
+      "Solution": 2,
+      "Sterile Water": 3
+    },
+    "procedure_counts": {
+      "Arterial Line": 1,
+      "Dialysis - CRRT": 1,
+      "Dialysis Catheter": 1,
+      "Intubation": 1,
+      "Invasive Ventilation": 1,
+      "PICC Line": 1
+    }
+  },
+  "interpretation": "Observed documentation from an independent historical ICU episode; not a CXR-patient treatment history and not causal evidence."
+}

@@ -1,0 +1,197 @@
+{
+  "schema_version": "mimic-cross-database-examples-v1",
+  "purpose": "small traceable examples spanning all three local MIMIC releases without fabricating a three-way patient join",
+  "source_transition_manifest": "/home/data2/chk/workspace/2026/08/04/medical_world_model/data/mimic_vla_jepa_serious/validate/transitions.jsonl",
+  "source_transition_manifest_sha256": "922cdd3e63e043ddb871c1f203d8c14e7a9f940cae1faf6636c5061e9c05f705",
+  "relationships": {
+    "mimic_cxr_to_mimic_iv": "same-patient linkage by exact subject_id plus aligned shifted timestamps",
+    "mimic_iii_to_mimic_iv": "no public patient crosswalk; independent episode only",
+    "mimic_iii_to_mimic_cxr": "no patient-level linkage"
+  },
+  "single_interval_examples": [
+    {
+      "example_id": "single_interval/example_01",
+      "source_manifest": "data/mimic_vla_jepa_serious/validate/transitions.jsonl",
+      "transition_id": "mimiccxr_157405b98fa6b2f2304f",
+      "split": "validate",
+      "patient_id": "p19112585",
+      "view": "AP",
+      "pairing": "adjacent_studies_in_full_patient_timeline",
+      "elapsed_hours": 17.698321,
+      "elapsed_human": "17.7 hours",
+      "states": [
+        {
+          "state_index": 0,
+          "role": "current_model_input",
+          "elapsed_from_current_hours": 0.0,
+          "study_id": "s50907555",
+          "timeline_order": 1,
+          "timestamp": "2182-05-13T00:58:41.170999",
+          "dicom_id": "98e92146-cf132a6d-d90a4651-242ac169-fea4e9f8",
+          "view": "AP",
+          "image_file": "research_notes/assets/mimic_cross_database_examples/single_interval/example_01/state_0_current.png",
+          "text_file": "research_notes/assets/mimic_cross_database_examples/single_interval/example_01/state_0_current.txt",
+          "source_image_relative_path": "files/p19/p19112585/s50907555/98e92146-cf132a6d-d90a4651-242ac169-fea4e9f8.jpg",
+          "source_report_relative_path": "files/p19/p19112585/s50907555.txt",
+          "source_transition_id": "mimiccxr_157405b98fa6b2f2304f",
+          "source_transition_jsonl_line": 108,
+          "source_image_sha256": "06c45e24601ec8aa88a0e84237181f0b2d7d46361f286312f4fd7f5aed013a71",
+          "output_image_sha256": "bb5d273a291f4e3735ff3dd8191e513bb50bef4bdb67aa967113cd73d3d6f92f",
+          "source_report_sha256": "ee79d7b4e065029fcf2acc977809031e9f41da30ab36244b860546557fc4a525",
+          "output_text_sha256": "85ec6dfaebaf8da4ae44ae1c54cca20a6053838681aad2c0d40c97bd7f989a14",
+          "image_transformation": "decoded source JPEG to 8-bit grayscale PNG; metadata stripped; no crop, resize, or enhancement"
+        },
+        {
+          "state_index": 1,
+          "role": "future_target_or_evaluation_only",
+          "elapsed_from_current_hours": 17.698320555833334,
+          "study_id": "s55747398",
+          "timeline_order": 2,
+          "timestamp": "2182-05-13T18:40:35.125000",
+          "dicom_id": "2245b56c-bef29181-03fb974d-088f889f-31d7c6e7",
+          "view": "AP",
+          "image_file": "research_notes/assets/mimic_cross_database_examples/single_interval/example_01/state_1_future.png",
+          "text_file": "research_notes/assets/mimic_cross_database_examples/single_interval/example_01/state_1_future.txt",
+          "source_image_relative_path": "files/p19/p19112585/s55747398/2245b56c-bef29181-03fb974d-088f889f-31d7c6e7.jpg",
+          "source_report_relative_path": "files/p19/p19112585/s55747398.txt",
+          "source_transition_id": "mimiccxr_157405b98fa6b2f2304f",
+          "source_transition_jsonl_line": 108,
+          "source_image_sha256": "1d58e80b3fa6f98d163535d07f4f7e1e56e6f36db9e563a507e0622afdd837fd",
+          "output_image_sha256": "45185c4dfcca75939c896d5b85ccc96b8ea60565733be12d2254c207a2fede5c",
+          "source_report_sha256": "7582ff91a9b0c4ab092efac377eb6c92d1bd271d338d9c6347baa6f1735a2813",
+          "output_text_sha256": "66e1eb66a39821e5d69d9a0c258383ddb8cb8f34d61cda84e7eb95b98d4755d2",
+          "image_transformation": "decoded source JPEG to 8-bit grayscale PNG; metadata stripped; no crop, resize, or enhancement"
+        }
+      ]
+    }
+  ],
+  "multi_interval_examples": [
+    {
+      "example_id": "multi_interval/example_01",
+      "source_manifest": "data/mimic_vla_jepa_serious/validate/transitions.jsonl",
+      "adjacent_transition_ids": [
+        "mimiccxr_8ebef578264041a93579",
+        "mimiccxr_4e7bafc86521f267d2b8",
+        "mimiccxr_0e131749570d0e386451"
+      ],
+      "split": "validate",
+      "patient_id": "p17945610",
+      "view": "AP",
+      "pairing": "four consecutive studies; state 0 is compared with each later state at its cumulative horizon",
+      "longer_horizon_note": "state 0 to states 2/3 includes displayed intermediate studies and is not called adjacent",
+      "adjacent_elapsed_hours": [
+        10.169874,
+        13.339162,
+        11.169245
+      ],
+      "states": [
+        {
+          "state_index": 0,
+          "role": "current_model_input",
+          "elapsed_from_current_hours": 0.0,
+          "study_id": "s53456512",
+          "timeline_order": 1,
+          "timestamp": "2150-05-02T17:22:02.906000",
+          "dicom_id": "ba6dbc8f-1a49e9ff-024c2020-64ad895a-bca8cb55",
+          "view": "AP",
+          "image_file": "research_notes/assets/mimic_cross_database_examples/multi_interval/example_01/state_0_current.png",
+          "text_file": "research_notes/assets/mimic_cross_database_examples/multi_interval/example_01/state_0_current.txt",
+          "source_image_relative_path": "files/p17/p17945610/s53456512/ba6dbc8f-1a49e9ff-024c2020-64ad895a-bca8cb55.jpg",
+          "source_report_relative_path": "files/p17/p17945610/s53456512.txt",
+          "source_transition_id": "mimiccxr_8ebef578264041a93579",
+          "source_transition_jsonl_line": 411,
+          "source_image_sha256": "72a4a9d7b32a1bd31ffc25a93f070dc98f4b8f4c0f4b4a598b427bcefa1b1993",
+          "output_image_sha256": "3da098a5920959be61b320060e5501cdc5639445dc39164020813e199030714d",
+          "source_report_sha256": "6b9db2e799fb69b11a7b409d07f682504b0c2a857828204fc875f3f4b9a37897",
+          "output_text_sha256": "7fbec92e006c77b209c4c4ef9343a244a25ebdc450729a2412860e9ca80e8946",
+          "image_transformation": "decoded source JPEG to 8-bit grayscale PNG; metadata stripped; no crop, resize, or enhancement"
+        },
+        {
+          "state_index": 1,
+          "role": "future_target_or_evaluation_only",
+          "elapsed_from_current_hours": 10.169874166666666,
+          "study_id": "s58920910",
+          "timeline_order": 2,
+          "timestamp": "2150-05-03T03:32:14.453000",
+          "dicom_id": "ccdf59cc-7eee47c2-02d0bc2e-3a7bcf33-0a35c23e",
+          "view": "AP",
+          "image_file": "research_notes/assets/mimic_cross_database_examples/multi_interval/example_01/state_1_future.png",
+          "text_file": "research_notes/assets/mimic_cross_database_examples/multi_interval/example_01/state_1_future.txt",
+          "source_image_relative_path": "files/p17/p17945610/s58920910/ccdf59cc-7eee47c2-02d0bc2e-3a7bcf33-0a35c23e.jpg",
+          "source_report_relative_path": "files/p17/p17945610/s58920910.txt",
+          "source_transition_id": "mimiccxr_8ebef578264041a93579",
+          "source_transition_jsonl_line": 411,
+          "source_image_sha256": "3208014379c4502fee1a84dc4fd3a9ce0a26a0ddd0ee16af01de3b0cecfda634",
+          "output_image_sha256": "9fc6b36c66c36561a950d8e0fd49c1f01a23fe14fa0b729852a3dfd1ca020abc",
+          "source_report_sha256": "8b40c9cb3d8aa02eefaa52e45517c6215c5e44ab3dee03b638abc74d0c72fa1a",
+          "output_text_sha256": "29b2d20185a0c38e6f2e0ed9d040c3e6fcb8d41ad2b10f459802dbc4c1f60c7b",
+          "image_transformation": "decoded source JPEG to 8-bit grayscale PNG; metadata stripped; no crop, resize, or enhancement"
+        },
+        {
+          "state_index": 2,
+          "role": "future_target_or_evaluation_only",
+          "elapsed_from_current_hours": 23.50903638888889,
+          "study_id": "s59139883",
+          "timeline_order": 3,
+          "timestamp": "2150-05-03T16:52:35.437000",
+          "dicom_id": "d1049806-4b17d015-4e13b1d0-05247bd2-7b72efcb",
+          "view": "AP",
+          "image_file": "research_notes/assets/mimic_cross_database_examples/multi_interval/example_01/state_2_future.png",
+          "text_file": "research_notes/assets/mimic_cross_database_examples/multi_interval/example_01/state_2_future.txt",
+          "source_image_relative_path": "files/p17/p17945610/s59139883/d1049806-4b17d015-4e13b1d0-05247bd2-7b72efcb.jpg",
+          "source_report_relative_path": "files/p17/p17945610/s59139883.txt",
+          "source_transition_id": "mimiccxr_4e7bafc86521f267d2b8",
+          "source_transition_jsonl_line": 880,
+          "source_image_sha256": "741afff8ee79f43fde4f4d325c487bd2dd44e6fbd7430880a1e0ffbcdabd0138",
+          "output_image_sha256": "297242d7826efa58f63b5233c139a0744eb1d7e967508a29f6eb24df97f978a6",
+          "source_report_sha256": "db25458d3efba8970af8a116effc2b551f140650a4b37c7424abe60eef59be2e",
+          "output_text_sha256": "5ab20dc14f1a0cb45774152b827c840eac8239d955328dbb3c3b601acabcc101",
+          "image_transformation": "decoded source JPEG to 8-bit grayscale PNG; metadata stripped; no crop, resize, or enhancement"
+        },
+        {
+          "state_index": 3,
+          "role": "future_target_or_evaluation_only",
+          "elapsed_from_current_hours": 34.67828111111111,
+          "study_id": "s51154172",
+          "timeline_order": 4,
+          "timestamp": "2150-05-04T04:02:44.718000",
+          "dicom_id": "53aeee8a-c2f7a428-34ede058-f7d0aa79-183fc763",
+          "view": "AP",
+          "image_file": "research_notes/assets/mimic_cross_database_examples/multi_interval/example_01/state_3_future.png",
+          "text_file": "research_notes/assets/mimic_cross_database_examples/multi_interval/example_01/state_3_future.txt",
+          "source_image_relative_path": "files/p17/p17945610/s51154172/53aeee8a-c2f7a428-34ede058-f7d0aa79-183fc763.jpg",
+          "source_report_relative_path": "files/p17/p17945610/s51154172.txt",
+          "source_transition_id": "mimiccxr_0e131749570d0e386451",
+          "source_transition_jsonl_line": 344,
+          "source_image_sha256": "0ef0f9b994f18612dea50a83258074e1eb2515463a63dd5e07aa6f8b106840e6",
+          "output_image_sha256": "50cd9812cb352c6306af52eb4cf5d8857bd54942fbed334f2d42d1749e2058db",
+          "source_report_sha256": "46750c371fb931b96cdc4f2264b21b722141455782f185af5edace1b2be4aacd",
+          "output_text_sha256": "b7c14e1135b452c508040421008bd9afd6e6139cd9d5656eff1aa1a45f76b0d2",
+          "image_transformation": "decoded source JPEG to 8-bit grayscale PNG; metadata stripped; no crop, resize, or enhancement"
+        }
+      ]
+    }
+  ],
+  "mimic_iii_reference_examples": [
+    {
+      "example_id": "mimic_iii_reference/episode_01",
+      "patient_relationship_to_cxr_iv_examples": "none; independent cohort episode",
+      "subject_id": "81478",
+      "hadm_id": "163368",
+      "icustay_id": "261188",
+      "window_start_inclusive": "2186-02-11 11:24:04",
+      "window_end_exclusive": "2186-02-12 11:24:04",
+      "episode_file": "mimic_iii_reference/episode_01/episode.json",
+      "treatment_summary_file": "mimic_iii_reference/episode_01/treatment_summary.txt"
+    }
+  ],
+  "generated_by": {
+    "path": "/home/data2/chk/workspace/2026/08/11/mimic_linkage/build_cross_database_examples.py",
+    "sha256": "ba8523e95a87d8fcd6caad9d5a46bc56136371897242b1ef32e875b5530b23a4"
+  },
+  "source_cxr_metadata": {
+    "dataset": "MIMIC-CXR-JPG v2.0.0",
+    "path": "/home/data1/data/MIMIC/MIMIC_CXR/mimic-cxr-2.0.0-metadata.csv",
+    "sha256": "bffbd01c24dfa84586f0eb81a90d1aacd8091e4cd6df41e257b03d6930059a0f"
+  }
+}

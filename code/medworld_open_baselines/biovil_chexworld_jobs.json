@@ -1,0 +1,250 @@
+{
+  "jobs": [
+    {
+      "id": "biovil_table1_features",
+      "argv": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_table1/.venv/bin/python",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_features.py",
+        "--config",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/config.json",
+        "--encoder",
+        "biovil_t",
+        "--batch-size",
+        "32",
+        "--workers",
+        "16"
+      ],
+      "artifacts": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/cache/features.json"
+      ],
+      "deps": [],
+      "gpus": 1,
+      "priority": 20,
+      "minimum_seconds": 0,
+      "max_attempts": 1,
+      "success_fields": {
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/cache/features.json": {
+          "encoder": "biovil_t",
+          "partial": false,
+          "count": 28202,
+          "strict_load": true
+        }
+      }
+    },
+    {
+      "id": "biovil_table1_train",
+      "argv": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_table1/.venv/bin/python",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_forecast.py",
+        "train",
+        "--config",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/config.json",
+        "--run",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/train"
+      ],
+      "artifacts": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/train/checkpoint_final.pt",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/train/status.json"
+      ],
+      "deps": [
+        "biovil_table1_features"
+      ],
+      "gpus": 1,
+      "priority": 20,
+      "minimum_seconds": 0,
+      "max_attempts": 1,
+      "success_fields": {
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/train/status.json": {
+          "state": "complete",
+          "stage": 2,
+          "stage_step": 2400
+        }
+      }
+    },
+    {
+      "id": "biovil_table1_eval",
+      "argv": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_table1/.venv/bin/python",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_forecast.py",
+        "evaluate",
+        "--config",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/config.json",
+        "--checkpoint",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/train/checkpoint_final.pt",
+        "--out",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/evaluation_test"
+      ],
+      "artifacts": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/evaluation_test/metrics.json",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/evaluation_test/generation.json"
+      ],
+      "deps": [
+        "biovil_table1_train"
+      ],
+      "gpus": 1,
+      "priority": 20,
+      "minimum_seconds": 0,
+      "max_attempts": 1,
+      "success_fields": {
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/evaluation_test/generation.json": {
+          "count": 297,
+          "target_inputs": false,
+          "teacher_forcing": false
+        }
+      }
+    },
+    {
+      "id": "biovil_table1_green",
+      "argv": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_table1/.venv/bin/python",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_forecast.py",
+        "green",
+        "--config",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/config.json",
+        "--predictions",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/evaluation_test/predictions.jsonl",
+        "--out",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/green"
+      ],
+      "artifacts": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/green/biovil_t_adapted/test/green_metrics.json"
+      ],
+      "deps": [
+        "biovil_table1_eval"
+      ],
+      "gpus": 1,
+      "priority": 20,
+      "minimum_seconds": 0,
+      "max_attempts": 1,
+      "success_fields": {
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_runs/forecast_16k/green/biovil_t_adapted/test/green_metrics.json": {
+          "status": "complete",
+          "completed": 297
+        }
+      }
+    },
+    {
+      "id": "chexworld_table1_features",
+      "argv": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_table1/.venv/bin/python",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_features.py",
+        "--config",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/config.json",
+        "--encoder",
+        "chexworld",
+        "--batch-size",
+        "32",
+        "--workers",
+        "16"
+      ],
+      "artifacts": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/cache/features.json"
+      ],
+      "deps": [],
+      "gpus": 1,
+      "priority": 20,
+      "minimum_seconds": 0,
+      "max_attempts": 1,
+      "success_fields": {
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/cache/features.json": {
+          "encoder": "chexworld",
+          "partial": false,
+          "count": 28202,
+          "strict_load": true
+        }
+      }
+    },
+    {
+      "id": "chexworld_table1_train",
+      "argv": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_table1/.venv/bin/python",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_forecast.py",
+        "train",
+        "--config",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/config.json",
+        "--run",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/train"
+      ],
+      "artifacts": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/train/checkpoint_final.pt",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/train/status.json"
+      ],
+      "deps": [
+        "chexworld_table1_features"
+      ],
+      "gpus": 1,
+      "priority": 20,
+      "minimum_seconds": 0,
+      "max_attempts": 1,
+      "success_fields": {
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/train/status.json": {
+          "state": "complete",
+          "stage": 2,
+          "stage_step": 2400
+        }
+      }
+    },
+    {
+      "id": "chexworld_table1_eval",
+      "argv": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_table1/.venv/bin/python",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_forecast.py",
+        "evaluate",
+        "--config",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/config.json",
+        "--checkpoint",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/train/checkpoint_final.pt",
+        "--out",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/evaluation_test"
+      ],
+      "artifacts": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/evaluation_test/metrics.json",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/evaluation_test/generation.json"
+      ],
+      "deps": [
+        "chexworld_table1_train"
+      ],
+      "gpus": 1,
+      "priority": 20,
+      "minimum_seconds": 0,
+      "max_attempts": 1,
+      "success_fields": {
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/evaluation_test/generation.json": {
+          "count": 297,
+          "target_inputs": false,
+          "teacher_forcing": false
+        }
+      }
+    },
+    {
+      "id": "chexworld_table1_green",
+      "argv": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_table1/.venv/bin/python",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_forecast.py",
+        "green",
+        "--config",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/config.json",
+        "--predictions",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/evaluation_test/predictions.jsonl",
+        "--out",
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/green"
+      ],
+      "artifacts": [
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/green/chexworld_adapted/test/green_metrics.json"
+      ],
+      "deps": [
+        "chexworld_table1_eval"
+      ],
+      "gpus": 1,
+      "priority": 20,
+      "minimum_seconds": 0,
+      "max_attempts": 1,
+      "success_fields": {
+        "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/chexworld_runs/forecast_16k/green/chexworld_adapted/test/green_metrics.json": {
+          "status": "complete",
+          "completed": 297
+        }
+      }
+    }
+  ]
+}
