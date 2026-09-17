@@ -16,6 +16,8 @@
 
 ## 当前决定与执行
 
+**2026-09-17 sparse 空间任务试验：** 基线已提交为 `cc72e88`；新增 FeatUp 多视图一致性、VLM 图块软语义对齐及真实 attention 导出，安排整体 8 小时的六组匹配对照。见 [实验协议](0917_featup_sparse_spatial_experiment.md) 与[运行报告](../code/medworld_spatial/runs/featup_8h_20260917/REPORT.md)。
+
 **2026-09-17 Results 配图决定：** “胸片时间线＋预测报告＋finding 轨迹”双栏主图，以及真实 visual-slot attention 单栏小图，已替换论文原有候选图占位，分别进入新增的 **Patient trajectory** 和 **Attention visualization** 小节；真实预测与 attention 图件仍待制作。见 [trajectory 与 slot attention 配图计划](0917_trajectory_and_slot_attention_plan.md)。
 
 **2026-09-16 VQA 文献核对与复测：** 解释 EM/F1、原论文监督训练与生成式评测差异；四模型各 1,024 题已完成并通过独立复算，保留输出解析限制。见 [MIMIC-CXR-VQA 指标与复测](0916_mimic_cxr_vqa_literature.md)。
@@ -30,6 +32,7 @@
 
 | 文档 | 用途 |
 |---|---|
+| [09-17 FeatUp 与 sparse 空间任务](0917_featup_sparse_spatial_experiment.md) | 8 小时六组对照、弱语义／多视图约束、真实 attention 导出与 GPU 范围 |
 | [09-17 trajectory 与真实 slot attention](0917_trajectory_and_slot_attention_plan.md) | 两张图已进入 Results 独立小节并替换旧占位；测试序列可行性、真实 visual readout 权重来源与待制作步骤 |
 | [09-15 slots 版本与文本解码](0915_slots_version_and_text_codec.md) | 核对两表旧结果与新版 4＋4 的归属；补充预测 latent 直接生成报告的接口、0.8B／9B 检查及正式质量验收边界 |
 | [09-15 Table 1 原生图文预测重做](0915_table1_native_forecast_redesign.md) | 保留当前原图／历史的 Qwen decoder，新增预测 4＋4 slots；匹配 native SFT／slots／shuffled，新旧结果分开记录 |

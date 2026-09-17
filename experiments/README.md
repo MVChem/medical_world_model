@@ -1,5 +1,7 @@
 # 实验索引
 
+新增：[09-17 FeatUp sparse 空间任务](../research_notes/0917_featup_sparse_spatial_experiment.md)：整体 8 小时，空闲 GPU 0／1／2／6／7，六组条件、三个 seed；训练 slot readout 和空间头，比较多视图一致性及 VLM 弱语义对齐。[实时报告](../code/medworld_spatial/runs/featup_8h_20260917/REPORT.md) · [队列状态](../code/medworld_spatial/runs/featup_8h_20260917/status.json)。
+
 新增：[09-16 与融合模型匹配的 zero-shot 评测](../code/medworld_zero_shot/README.md)：Qwen3.5-0.8B、
 MedGemma-1.5-4B、Qwen3.5-4B／9B，单卡串行；Table 1 正向／回溯各 297 对，Table 2 分类 353／报告 507。
 使用当前训练的测试像素、源证据和标签，报告生成统一 384 tokens。

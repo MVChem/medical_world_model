@@ -4,6 +4,7 @@
 
 | 目录 | 职责 | 状态 |
 |---|---|---|
+| [medworld_spatial](medworld_spatial/README.md) | Sparse slots 的多视图特征一致性、VLM 弱语义对齐与 attention 导出 | 独立空间任务试验；8 小时六组对照 |
 | [medworld](medworld/README.md) | Table 1／2 融合：4＋4 状态、EMA、双向时间预测、状态独立文本解码 | 当前开发入口；正式融合结果待训练 |
 | [medworld_multitask](medworld_multitask/README.md) | 融合前 Table 2：当前状态四任务 | 旧版快照 |
 | [medworld_native_forecast](medworld_native_forecast/README.md) | 融合前 Table 1：原生 VLM＋未来状态 | 旧版快照 |
