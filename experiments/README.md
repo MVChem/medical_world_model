@@ -1,5 +1,11 @@
 # 实验索引
 
+新增：[09-16 与融合模型匹配的 zero-shot 评测](../code/medworld_zero_shot/README.md)：Qwen3.5-0.8B、
+MedGemma-1.5-4B、Qwen3.5-4B／9B，单卡串行；Table 1 正向／回溯各 297 对，Table 2 分类 353／报告 507。
+使用当前训练的测试像素、源证据和标签，报告生成统一 384 tokens。
+[实时结果](../code/medworld_zero_shot/runs/unified_20260916/REPORT.md) ·
+[协议说明](../research_notes/0916_matched_zero_shot.md)。旧 09-11 结果单独保留，不混填。
+
 新增：[09-15 Table 1 原生 Qwen3.5-9B 重做协议](../research_notes/0915_table1_native_forecast_redesign.md)：decoder 保留当前原图与历史，对比 native SFT／预测 4＋4 slots／shuffled。0.8B 与 9B 执行检查通过，新的正式 9B 队列已启动；[运行入口](../code/medworld_native_forecast/runs/qwen9b_native_20260915/REPORT.md)与[实时状态](../code/medworld_native_forecast/runs/qwen9b_native_20260915/queue_status.json)。旧 Table 1 分数仍属于 legacy prototype。
 
 新增：[09-13 开源对比方法复现](../research_notes/0913_open_comparators.md)：DINOv2／CheXWorld任务头、BioViL-T／CheXWorld未来预测、SwinIR，以及表中其他公开ZS模型。[持久队列与结果](../code/medworld_open_baselines/runs/comparators_20260913/LIVE.md)自动更新；所有空闲GPU可调度，真实GPU小时单独记录。

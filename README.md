@@ -1,12 +1,13 @@
 # MedWorld-JEPA
 
-## 融合前旧版本快照：2026-09-15
+## 当前开发：Table 1／Table 2 融合版本
 
-本次提交保存 Table 1 与 Table 2 尚未融合的实现，标签为
-`pre-table1-table2-unification-20260915`。下一版本将统一状态编码器、
-checkpoint 和两阶段训练，以同一个模型完成未来预测与当前状态下游评测。
-本快照不代表融合版本或完整六任务实验已经完成。
-当前代码入口、已知差异和归档范围见
+融合实现位于 **[code/medworld/](code/medworld/README.md)**：统一状态编码器与两阶段训练，
+使用 EMA target、带正负时间条件的 World Model 和状态独立文本 decoder。
+当前已进入实现验证，正式融合实验和完整六任务实验尚未完成。
+
+融合前代码已归档为标签 `pre-table1-table2-unification-20260915`。
+旧版代码入口、已知差异和归档范围见
 [融合前快照说明](research_notes/0915_pre_unification_snapshot.md)。
 
 医疗多模态状态表示与未来预测研究。主模型使用 Qwen3.5-0.8B，论文以两个问题组织实验：**Table 1：未来预测；Table 2：当前状态的下游任务**。已有四任务训练，并在补充原始 VLM 与冻结主干的下游适配基线。
@@ -46,6 +47,7 @@ medical_world_model/
 ├── README.md                项目入口
 ├── code/                    自有代码、独立第三方仓库及本地运行目录
 │   ├── medworld_common/     公共 Qwen 组件与运行工具
+│   ├── medworld/            Table 1／2 融合开发：EMA 与统一两阶段训练
 │   ├── medworld_stage1/     Table 2：当前状态四任务
 │   ├── medworld_table1/     Table 1：未来预测
 │   ├── medworld_baselines/ 原始 VLM 零样本评测

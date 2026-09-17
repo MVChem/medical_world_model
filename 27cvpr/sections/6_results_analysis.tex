@@ -4,6 +4,8 @@
 % Declare both wide tables early so they can float near the results text.
 \input{tables/table1_future}
 \input{tables/table2_downstream}
+% Queue the wide trajectory panel early so it can float near its subsection.
+\input{figures/candidate_forecasting}
 
 \input{sections/5_experiments}
 
@@ -57,9 +59,6 @@ current-slot and full-token controls with the same encoders are needed to
 separate prediction and compression effects. Historical 0.8B ablation scores
 remain archived separately.
 
-% Draft candidate; select the final figures after inspecting actual outputs.
-\input{figures/candidate_forecasting}
-
 \subsection{Downstream tasks}
 
 \Cref{tab:downstream_tasks} covers six tasks without the future predictor:
@@ -93,8 +92,29 @@ This is not an equal-compute comparison. Formal VQA, MS-CXR grounding, and the
 full six-task model rows remain pending; derived QA and anatomical-region
 localization scores are excluded.
 
-% Candidate visualizations, not completed experiments or performance claims.
-\input{figures/candidate_clinical_evidence}
-\input{figures/candidate_state_retrieval}
-\input{figures/candidate_slot_perturbation}
-\input{figures/candidate_spatial_outputs}
+\subsection{Patient trajectory}
+\label{sec:patient_trajectory}
+
+\Cref{fig:candidate_longitudinal_forecasting} reserves a longitudinal case study
+with four to five observations from one test patient. The planned analysis
+predicts each follow-up independently from the same Day~0 radiograph and report,
+conditioned on the actual elapsed time. Observed follow-up images and reports
+provide references only. Predicted reports and finding probabilities will be
+compared with Copy Current and a matched forecaster at the irregular observation
+times. This is fixed-origin, multi-horizon forecasting; connecting the predictions
+does not constitute an autoregressive rollout. Case selection and predictions
+remain pending.
+
+\subsection{Attention visualization}
+\label{sec:attention_visualization}
+
+\Cref{fig:candidate_slot_attention} reserves a view of how the four visual slots
+aggregate patches from the current radiograph. The planned visualization uses
+the actual softmax weights of the learned visual-slot readout at each selected
+encoder depth, with a shared color scale. These weights describe current-state
+construction; the accompanying report text supplies case context, not a
+finding-specific attention query. Slots have no prescribed anatomical roles,
+and the maps do not establish future lesion locations or forecasting accuracy.
+Weight export and verification of the token-to-image mapping remain pending.
+
+\input{figures/candidate_slot_attention}

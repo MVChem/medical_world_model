@@ -16,6 +16,12 @@
 
 ## 当前决定与执行
 
+**2026-09-17 Results 配图决定：** “胸片时间线＋预测报告＋finding 轨迹”双栏主图，以及真实 visual-slot attention 单栏小图，已替换论文原有候选图占位，分别进入新增的 **Patient trajectory** 和 **Attention visualization** 小节；真实预测与 attention 图件仍待制作。见 [trajectory 与 slot attention 配图计划](0917_trajectory_and_slot_attention_plan.md)。
+
+**2026-09-16 VQA 文献核对与复测：** 解释 EM/F1、原论文监督训练与生成式评测差异；四模型各 1,024 题已完成并通过独立复算，保留输出解析限制。见 [MIMIC-CXR-VQA 指标与复测](0916_mimic_cxr_vqa_literature.md)。
+
+**2026-09-16 CLARITY 数据调研：** 建议 MU-Glioma-Post 优先、UCSF-ALPTDG 外部验证、ISPY2 后置；已核对公开规模、下载／DUA 门槛，并实际审计临床表。见 [CLARITY 数据与本项目适配](0916_clarity_datasets_feasibility.md)。
+
 **2026-09-15 融合前快照：** 当前两表的新版代码仍独立训练，先归档为旧版本；下一步统一状态编码、checkpoint 和两阶段训练。见[快照说明与后续方向](0915_pre_unification_snapshot.md)。
 
 **2026-09-15 回填：9B 三组预测对照及 CheXagent 的正式结果已写入两表，新增 32 个指标值。** Table 1 现有 70 个、Table 2 有 42 个已填指标；完整多深度模型、Direction、正式 VQA／grounding 等缺项见[本次回填记录](0915_table_results_filled.md)。
@@ -24,6 +30,7 @@
 
 | 文档 | 用途 |
 |---|---|
+| [09-17 trajectory 与真实 slot attention](0917_trajectory_and_slot_attention_plan.md) | 两张图已进入 Results 独立小节并替换旧占位；测试序列可行性、真实 visual readout 权重来源与待制作步骤 |
 | [09-15 slots 版本与文本解码](0915_slots_version_and_text_codec.md) | 核对两表旧结果与新版 4＋4 的归属；补充预测 latent 直接生成报告的接口、0.8B／9B 检查及正式质量验收边界 |
 | [09-15 Table 1 原生图文预测重做](0915_table1_native_forecast_redesign.md) | 保留当前原图／历史的 Qwen decoder，新增预测 4＋4 slots；匹配 native SFT／slots／shuffled，新旧结果分开记录 |
 | [09-15 共享模型短测、baseline 与缓存范围](0915_table2_joint_prototype_and_baselines.md) | 0.8B 四组与 9B 两组真实短测；区分原生 Qwen 微调、JEPA 结构对照、SwinIR 参照及缓存特征训练 |
@@ -46,7 +53,7 @@
 | [Table 1 旧指标与来源](0910_table1_metrics_and_data_sources.md) | 早期实验评分解释与 MIMIC 数据来源 |
 | [数据总览](0910_dataset_summary.md) | 数据规模、变化与时间分布 |
 
-当前论文 Results 使用简短 setup、Table 1 future prediction、Table 2 downstream tasks。Table 1 已固定为临床状态、病情演变、报告内容、概率可靠性四组，每组两项指标；已完成且符合对应协议的结果已回填。
+当前论文 Results 使用简短 setup、Table 1 future prediction、Table 2 downstream tasks，以及 Patient trajectory、Attention visualization 两个配图小节。Table 1 已固定为临床状态、病情演变、报告内容、概率可靠性四组，每组两项指标；已完成且符合对应协议的结果已回填。
 
 原始 VLM 评测已得到其中七项指标并写入论文主表；Direction 的新增 82 对子集另有输入和参考协议，不能直接当作原 297 对的第八列。
 

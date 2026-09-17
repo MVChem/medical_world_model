@@ -6,11 +6,17 @@ from the separate `candidate_*.tex` placeholders without these exports.
 
 Open [the four-figure review PDF](generated/candidate_figures_v1.pdf) or
 [the overview](generated/candidate_figures_v1_overview.png).
-The four pages correspond to the downstream candidates currently shown as
-Figures 4–7 in `main.pdf`. These are initial attempts made from available
+The four pages correspond to the downstream candidates previously reserved as
+Figures 4–7 in the September 14 manuscript. These are initial attempts made from available
 local data and final checkpoints, with their actual scope labeled on each page.
-The full-method manuscript placeholders remain separate because several of
-their planned conditions have not been trained or evaluated.
+Several of their planned full-method conditions have not been trained or evaluated.
+On September 17, Results selected two placeholders in dedicated subsections:
+[Patient trajectory](candidate_forecasting.tex) spans both columns, and
+[Attention visualization](candidate_slot_attention.tex) uses one column.
+The four earlier downstream candidates are no longer included in the manuscript;
+their sources and review exports remain available here. Neither selected figure
+has final empirical outputs yet. See the
+[current plan](../../research_notes/0917_trajectory_and_slot_attention_plan.md).
 
 | Candidate | First version | What is still missing |
 |---|---|---|
@@ -57,7 +63,9 @@ encoding after each perturbation; `--render-only` redraws its saved numerical
 results. The review script simply combines the four completed downstream PDFs
 without rasterizing their vector layers.
 
-The supplementary slot-attention candidate remains pending. The frozen visual
-cache uses mean pooling and has no learned slot-to-patch attention. Decoder
-attention over four aggregated slots cannot be relabeled as slot-to-image
+The slot-attention figure is now reserved in the main Results and remains pending.
+The unified model's learned visual readout computes the required patch weights;
+export and spatial-mapping verification are still needed. The historical frozen
+visual cache uses mean pooling and has no learned slot-to-patch attention.
+Decoder attention over four aggregated slots cannot be relabeled as slot-to-image
 attention.

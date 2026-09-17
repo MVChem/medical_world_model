@@ -4,7 +4,10 @@
 
 | 目录 | 职责 | 状态 |
 |---|---|---|
-| [medworld_stage1](medworld_stage1/README.md) | Table 2：分类、疾病识别、分割、SR | 当前开发主线 |
+| [medworld](medworld/README.md) | Table 1／2 融合：4＋4 状态、EMA、双向时间预测、状态独立文本解码 | 当前开发入口；正式融合结果待训练 |
+| [medworld_multitask](medworld_multitask/README.md) | 融合前 Table 2：当前状态四任务 | 旧版快照 |
+| [medworld_native_forecast](medworld_native_forecast/README.md) | 融合前 Table 1：原生 VLM＋未来状态 | 旧版快照 |
+| [medworld_stage1](medworld_stage1/README.md) | 早期 Table 2：分类、疾病识别、分割、SR | 历史训练入口 |
 | [medworld_table1](medworld_table1/README.md) | Table 1：未来状态／报告／finding 预测，DirectQwen 对照 | 保留纵向实验 |
 | [medworld_baselines](medworld_baselines/README.md) | 六个原始 Qwen／MedGemma 的未来预测、分类、报告和派生 QA | 09-11 零样本评测已完成 |
 | [medworld_dense_baselines](medworld_dense_baselines/README.md) | 冻结 VLM 密集任务对照；冻结多层视觉 slots 的分割／×4 SR 对照 | 09-12 队列 55/55 已完成；09-13 独立运行见下方入口 |
@@ -19,7 +22,7 @@
 
 ## 运行和开发
 
-当前解释器是 `/home/data2/chk/workspace/2026/.venv/bin/python`。从项目根目录执行命令；新 Stage 1 训练统一使用 `code/medworld_stage1/launch.py`，具体配置和启动示例见 [Stage 1 README](medworld_stage1/README.md)。
+当前解释器是 `/home/data2/chk/workspace/2026/.venv/bin/python`。从项目根目录执行命令；融合版本使用 `PYTHONPATH=code python -m medworld.train`，配置与命令见 [MedWorld README](medworld/README.md)。以下为历史代码的兼容关系。
 
 - Stage 1 三种训练共用 `training.py`；`training_variants.py` 管理模型选择与梯度约束。
 - `train.py` 根据配置选择变体；`slot44_train.py`、`noslots_train.py` 是旧命令兼容入口。

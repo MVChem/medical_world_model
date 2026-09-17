@@ -52,20 +52,30 @@ See the [September 15 backfill record](../research_notes/0915_table_results_fill
 the previous 0.8B results are preserved in the
 [upgrade record](../research_notes/0914_qwen9b_forecast_upgrade.md).
 
-Results retains three subsections: Experimental setup, Future prediction, and
-Downstream tasks. `sections/6_results_analysis.tex` includes the brief setup from
+Results has five subsections: Experimental setup, Future prediction, Downstream
+tasks, Patient trajectory, and Attention visualization.
+`sections/6_results_analysis.tex` includes the brief setup from
 `sections/5_experiments.tex` and the two shared table sources.
 
-The **2026-09-14 candidate visualization plan** adds five compact figure
-placeholders to Results: longitudinal forecasting, clinical evidence, state-based
-retrieval, slot-condition perturbations, and segmentation/SR output comparisons.
-A sixth placeholder for actual slot-readout attention is in the supplement,
-conditional on an attention-based readout. Each has a brief planned caption;
-none represents a completed visualization. The editable sources are in
-`figures/candidate_*.tex`. All candidates will be tried before final selection
-and placement; see the [figure plan](../research_notes/0914_candidate_figure_plan.md).
-With these placeholders retained, the main PDF has 10 pages (body through
-page 8) and the supplement has 5; page previews have been refreshed.
+The **2026-09-17 figure selection** replaces the five earlier Results candidates
+with two planned visualizations in dedicated subsections:
+
+- [Patient trajectory](figures/candidate_forecasting.tex), spanning both columns:
+  observed CXR timeline, predicted reports, and finding probabilities from a
+  fixed Day 0 at the actual follow-up horizons.
+- [Attention visualization](figures/candidate_slot_attention.tex), in one column:
+  the current CXR and four actual visual-slot readout maps in a 2×2 grid.
+
+Attention is now in the main paper; the supplementary Candidate Visual Analysis
+section is no longer included. Both figures remain explicitly marked as pending
+until test-case predictions and verified attention exports are available. Other
+candidate sources and trial exports remain archived. See the
+[selected figure plan](../research_notes/0917_trajectory_and_slot_attention_plan.md).
+
+The September 17 build has 10 main-paper pages (body through page 9) and
+5 supplementary pages. Both PDFs compile without unresolved references or box
+overflows, and `preview/` has been refreshed. The draft still needs shortening
+to fit the eight-page body limit noted above.
 
 First empirical attempts are now available in the separate
 [four-figure review PDF](figures/generated/candidate_figures_v1.pdf), with
