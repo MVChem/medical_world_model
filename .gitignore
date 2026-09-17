@@ -52,5 +52,5 @@
 **/dinov2_assets
 /code/medworld_open_baselines/repair_forecast_20260914/scheduler_recovery/
 
-# The original discussion bundle contains logs; use the no-logs snapshot copy.
-/results/medworld_jepa_discussion_20260909.zip
+# Generated results and exports stay local.
+/results/
