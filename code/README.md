@@ -29,6 +29,7 @@
 - `train.py` 根据配置选择变体；`slot44_train.py`、`noslots_train.py` 是旧命令兼容入口。
 - 公共 Qwen 实现在 `medworld_common/qwen.py`。Table 1 的 `model.py` 保留未来预测模型，Stage 1 的 `model.py` 仅转发公共组件。
 - 运行时第三方 Python 包仍位于 `medworld_table1/vendor/`、`metric_vendor/`，模型权重仍位于原路径；这些不是实验源码依赖。
-- 训练缓存、checkpoint、日志和预测实际位于各实验的 `data/`、`weights/`、`runs/` 中，不纳入根 Git。
+- 特征、slots、hidden states 和可重算的图像预处理结果应按 batch 即时计算，不落盘缓存；测试时直接从图像前向。已清理历史缓存；遇到旧代码找不到缓存时，重构计算路径，不恢复或重建缓存。本轮未完成这些旧代码的重构。完整约定见[根 README](../README.md#目录与存放规则)和 [AGENTS.md](../AGENTS.md)。
+- 原始数据、固定标注、模型权重、checkpoint、日志和最终预测保留，不纳入根 Git；新增大体积产物存放于 `/home/data2/chk/data`，仓库通过 symbolic link 引用。
 
 [开发与检查命令](../research_notes/DEVELOPMENT.md) · [实时状态](../scripts/project_status.py)
