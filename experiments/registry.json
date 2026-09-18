@@ -1,10 +1,18 @@
 [
   {
-    "id": "featup_online_seed42_20260918",
-    "summary": "Six matched slot and FeatUp-inspired alignment variants for segmentation and 4x super-resolution; seed 42.",
-    "status": "training",
-    "status_observed_at": "2026-09-18T15:47:28+08:00",
-    "run_dir": "code/medworld_spatial/runs/featup_online_seed42_20260918",
-    "live_status": "code/medworld_spatial/runs/featup_online_seed42_20260918/groups/seed42/status.json"
+    "id": "sr_area64_only_seed42_20260918",
+    "summary": "Six matched variants; tasks: sr; SR 64x64 to 512x512 (8x per axis, 64x pixels); seed(s) 42.",
+    "status": "running",
+    "status_observed_at": "2026-09-18T21:43:21+08:00",
+    "run_dir": "code/medworld_spatial/runs/sr_area64_only_seed42_20260918",
+    "live_status": "code/medworld_spatial/runs/sr_area64_only_seed42_20260918/status.json"
+  },
+  {
+    "id": "sr_area16_only_seed42_20260918",
+    "summary": "Six matched variants; tasks: sr; SR 128 to 512 (4x per axis, 16x pixels); seed(s) 42.",
+    "status": "running",
+    "status_observed_at": "2026-09-18T21:43:27+08:00",
+    "run_dir": "code/medworld_spatial/runs/sr_area16_only_seed42_20260918",
+    "live_status": "code/medworld_spatial/runs/sr_area16_only_seed42_20260918/status.json"
   }
 ]
