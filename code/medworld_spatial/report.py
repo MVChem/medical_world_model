@@ -130,13 +130,15 @@ def build(run, render=False):
             " | ".join((value(row, "test", "segmentation", "dice"), value(row, "human_test", "segmentation", "dice"),
                        value(row, "test", "sr", "psnr"), value(row, "test", "sr", "ssim"))) + " |")
     if not results:
-        lines += ["", "Preparation/training is in progress. No completed results yet."]
+        lines += ["", "No completed training/evaluation results are available."]
     state_path = run / "status.json"
     if state_path.exists():
         state = json.loads(state_path.read_text())
         lines += ["", f"Queue state: `{state['state']}`. GPU indices: 0, 1, 2, 6, 7.", "",
                   "| Job | State | GPU | Return code |", "|---|---|---|---|"]
         lines += [f"| {j['id']} | {j['state']} | {j.get('gpu', '')} | {j.get('returncode', '')} |" for j in state["jobs"]]
+        if state.get("reason"):
+            lines += ["", state["reason"]]
     # Paired seed / update-count contrasts; no significance claim from a pilot.
     lines += ["", "## Matched contrasts", "", "Positive deltas favor the first condition; compare only equal completed budgets."]
     for first, second in (("slots", "image_only"), ("slots", "visual_slots"), ("featup", "slots"),
