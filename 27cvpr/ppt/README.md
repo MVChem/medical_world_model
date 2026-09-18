@@ -7,4 +7,6 @@ Vector figures for the paper, mainly editable recreations of AI-generated images
 - `scripts/`: one folder per figure, containing build scripts and required assets.
 - `ppt/`: PowerPoint files and exported figures, including script-generated outputs.
 
+Keep PowerPoint sources and images in Git; PDFs stay local and can be rebuilt with `make -C 27cvpr figures`.
+
 Use the `image-to-ppt` skill to recreate reference images as editable PowerPoint figures.

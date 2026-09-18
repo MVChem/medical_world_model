@@ -3,7 +3,7 @@
 本轮按 2026-09-11 晚间需求运行本地 Qwen3.5-0.8B / 4B / 9B / 27B-FP8、MedGemma-1.5-4B、MedGemma-27B；不训练、不加载本项目 LoRA 或 Ours checkpoint。
 
 - [实时报告](runs/raw_models_20260911/REPORT.md)
-- [本轮协议](../../research_notes/0911_raw_model_baseline_sweep.md)
+- [本轮协议](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0911_raw_model_baseline_sweep.md)
 - [冻结配置与数据指纹](runs/raw_models_20260911/protocol.json)
 
 Table 1 测试 297 对 / 94 位患者；Table 2 分类 353 张、报告 507 张。同次报告不会进入 Table 2 输入。另测 207 个 Chest ImaGenome 派生问答，单独报告。缺少可靠方向标签、官方 VQA 和 MS-CXR 数据的格子保留空值；原生 VLM 的分割、SR 接口记不适用。
@@ -16,7 +16,7 @@ Table 1 测试 297 对 / 94 位患者；Table 2 分类 353 张、报告 507 张�
 PY=/home/data2/chk/workspace/2026/.venv/bin/python
 $PY -m unittest discover -s code/medworld_baselines/tests -v
 $PY code/medworld_baselines/report.py --run code/medworld_baselines/runs/raw_models_20260911
-python scripts/project_status.py
+# See the status.json and report files in the relevant runs/ folder.
 ```
 
 恢复推理使用本轮 `source*/infer.py`、相同 run/model/endpoint；协议、模型、提示词指纹不匹配会拒绝恢复。成功记录按任务/样本/征象去重；失败请求最多自动重试三次，再由调度器补跑失败项。输出解析失败不删除参考样本。每个完整面板才进入汇总指标，避免不同模型只比较各自成功的子集。

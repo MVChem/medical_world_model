@@ -1,9 +1,0 @@
-{
-  "transformers": "4.57.1",
-  "transformers_path": "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_table1/metric_vendor/transformers/__init__.py",
-  "radgraph": "0.1.18",
-  "worker": "/home/data2/chk/workspace/2026/08/04/medical_world_model/code/medworld_open_baselines/biovil_score.py",
-  "isolated_process": true,
-  "radgraph_import_success": true,
-  "radgraph_import_error": null
-}

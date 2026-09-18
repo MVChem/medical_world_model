@@ -31,7 +31,7 @@ def render(state):
     lines=['# 四任务 Stage 1 夜间实验','',f'更新时间：{datetime.now().astimezone().isoformat(timespec="seconds")}',
            '',f'协调器状态：**{state}**。Qwen3.5-0.8B，8×1024 多模态 slots。',
            f'训练截止：{cfg["train_deadline"]}。超分线性倍率 {cfg["scale"]}，像素数倍率 {cfg["scale"]**2}。','',
-           '[完整计划](../../../../research_notes/0910_stage1_four_task_plan.md)','']
+           '[完整计划](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0910_stage1_four_task_plan.md)','']
     if manifest:
         lines+=['| 划分 | 图像 | 患者 | 分类 | diagnosis | 分割候选 | SR |','|---|---:|---:|---:|---:|---:|---:|']
         for split,c in manifest['coverage'].items():

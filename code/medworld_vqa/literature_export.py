@@ -236,7 +236,7 @@ def main(run, out):
         "Verify 接受句首独立 yes/no；Choose/Query 接受规范标签文本列表、JSON 列表、标点和项目符号，female/male 映射至 f/m。none/no/nothing/no abnormalities/no abnormality 的独立回答视为空集。",
         "其他同义词和完整解释不做语义匹配；非规范片段保留一个无效标签 FP，规范列表项保留部分分数；截断、空响应和失败整题计错。无法解析不等于正确空集。",
         "因此 Query label μF1 是保守自动解析结果，不能直接等同于临床答案质量或 AOR 官方实现。论文主表正式使用前，需要验证集确定更可靠的答案规范化或任务微调，并重新评测。",
-        "[指标解释、文献核对与协议差异](../../research_notes/0916_mimic_cxr_vqa_literature.md)。",
+        "[指标解释、文献核对与协议差异](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0916_mimic_cxr_vqa_literature.md)。",
         f"\n完整本地输入、逐题输出、协议与源码快照：[运行目录]({run})。本目录只导出汇总，不包含患者标识。",
     ]
     (out / "README.md").write_text("\n".join(lines) + "\n")

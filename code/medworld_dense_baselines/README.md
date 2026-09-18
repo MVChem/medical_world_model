@@ -10,7 +10,7 @@ checkpoints. Results are recorded per run; manuscript tables are maintained in
 This separate experiment extracts four fixed slots from different depths of each
 checkpoint's native vision encoder, corresponding to visual slots 5–8. Only the
 segmentation and ×4 SR decoders are trained, with a matched image-only control.
-The [fixed protocol](../../research_notes/0913_frozen_multidepth_slots.md) defines
+The [fixed protocol](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0913_frozen_multidepth_slots.md) defines
 the representation, data, training budget, and supplementary shuffled-slot controls.
 
 - Code: [extraction](frozen_slots_extract.py), [training](frozen_slots_train.py),
@@ -25,7 +25,7 @@ This run is `runs/dense_20260912`. Read
 [full_tables.md](runs/dense_20260912/preview/full_tables.md) for the original
 Table 1/2 rows, completed zero-shot measurements, and trained-head rows.
 [preview.md](runs/dense_20260912/preview/preview.md) documents the dense experiment
-and queue in detail. The [experiment record](../../research_notes/0912_frozen_vlm_dense_baselines.md)
+and queue in detail. The [experiment record](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0912_frozen_vlm_dense_baselines.md)
 and the sections below describe this September 12 protocol.
 Empty cells mean unmeasured/pending, never zero.
 

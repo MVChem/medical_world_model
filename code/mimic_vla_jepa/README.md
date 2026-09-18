@@ -1,7 +1,7 @@
 # MIMIC VLA-JEPA baseline
 
 This package implements the first baseline in
-[`../../research_notes/0812_mimic_vla_jepa_small_scale.md`](../../research_notes/0812_mimic_vla_jepa_small_scale.md):
+[`https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0812_mimic_vla_jepa_small_scale.md`](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0812_mimic_vla_jepa_small_scale.md):
 
 ```text
 current frontal CXR + current report + prespecified coarse horizon bin

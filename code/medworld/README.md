@@ -209,12 +209,12 @@ PYTHONPATH=code "$MEDWORLD_PYTHON" -m medworld.launch_distributed \
 ## 验证和范围
 
 验收检查见 [tests/](tests/) 和 [smoke.py](smoke.py)，真实模型测试记录见
-[融合实现验证记录](../../research_notes/0915_unified_medworld_implementation.md)。
-2026-09-16 已补齐 [RTX 4090 GPU 短测](../../research_notes/0916_unified_medworld_gpu_smoke.md)：
+[融合实现验证记录](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0915_unified_medworld_implementation.md)。
+2026-09-16 已补齐 [RTX 4090 GPU 短测](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0916_unified_medworld_gpu_smoke.md)：
 两阶段、梯度／EMA、状态独立解码和 checkpoint 恢复均通过；batch 1、报告 64 tokens
 时训练 allocated 峰值约 2.36 GiB，PyTorch reserved 峰值约 2.53 GiB。
 训练步骤显存记录在 `metrics.jsonl`，重载审计的显存另记在 `smoke_audit.json`。
 短测验证计算图、训练流程与保存恢复，不证明报告可靠或时间预测准确。
-同日已启动 [两卡一天训练](../../research_notes/0916_two_gpu_day_run.md)：当前使用 GPU 6、7，
+同日已启动 [两卡一天训练](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0916_two_gpu_day_run.md)：当前使用 GPU 6、7，
 计划 Stage 1 六小时＋Stage 2 剩余十八小时；正式大 batch、四种 replay 和中断恢复已短测通过。
 官方 VQA、grounding、纯报告输入和完整临床评测仍待实现；当前不宣称完成六任务实验。

@@ -1,17 +1,17 @@
 # MedWorld-JEPA Table 1 small-model pilot
 
-**September 13 expanded forecast ablations:** [protocol and verification](../../research_notes/0913_table1_expanded_overnight.md).
+**September 13 expanded forecast ablations:** [protocol and verification](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0913_table1_expanded_overnight.md).
 The prepared overnight queue uses 16,000 training pairs, unchanged 230 validation / 297 test pairs,
 and matched Qwen0.8B learned-slots, full-token no-slots, and other-patient shuffled-state conditions.
 The immutable launch manifest is `runs/overnight_20260913/jobs.json`; final scores are available only
 after each job's required artifacts and completion checks pass.
 
 **September 9 linked-data run:** [live Table 1 and training status](runs/linked_20260909_overnight/REPORT.md),
-[protocol and completed old-checkpoint diagnostics](../../research_notes/0909_overnight_linked_training.md).
+[protocol and completed old-checkpoint diagnostics](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0909_overnight_linked_training.md).
 This new run uses original MIMIC-CXR + IV clinical inputs, excludes Qwen-Gate annotations,
 and runs on free physical GPUs 0/1/5/6/7, never GPU 4. The sections below describe the September 8 pilot.
 
-This implements the future-report experiment in `../../research_notes/0907_paper_plan.md`,
+This implements the future-report experiment in `https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0907_paper_plan.md`,
 section 3 (updated September 8). It is an initial experiment, not the complete
 large-model Table 1. Manuscript result cells remain untouched.
 

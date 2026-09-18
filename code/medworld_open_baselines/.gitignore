@@ -1,0 +1,17 @@
+# Installed Python dependencies (third-party source repositories remain tracked)
+/legacy_vendor/
+
+# Downloaded weights and datasets
+/*_weights/
+/third_party/LLaVA-Med/data/
+/third_party/SwinIR/testsets/
+/biovil_vendor/hi-ml-cpath/testSSL/**/test_data/
+/biovil_vendor/hi-ml/testhiml/test_data/
+
+# Keep DINOv2 source; exclude local weights, audits, and trial outputs
+/dinov2_assets/*
+!/dinov2_assets/repo/
+
+# Local recovery reports, queue snapshots, and smoke-test receipts
+/repair_forecast_20260914/
+/repair_forecast_smoke_20260914/

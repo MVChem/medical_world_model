@@ -12,7 +12,7 @@ from pathlib import Path
 def main():
     project=Path(os.environ.get('MEDWORLD_PROJECT', Path(__file__).resolve().parents[2]))
     adjacent=Path(__file__).with_name('executor.py')
-    executor=adjacent if adjacent.exists() else project/'scripts/overnight_queue.py'
+    executor=adjacent if adjacent.exists() else project/'code/medworld_common/overnight_queue.py'
     spec=importlib.util.spec_from_file_location('baseline_executor',executor)
     module=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -21,8 +21,8 @@ def main():
     run=sub.add_parser('run')
     run.add_argument('--run',type=Path,required=True)
     run.add_argument('--plan',type=Path,required=True)
-    run.add_argument('--max-gpus',type=int,choices=range(1,9),default=8)
-    run.add_argument('--gpu-order',default='7,3,0,1,2,4,5,6')
+    run.add_argument('--max-gpus',type=int,choices=range(1,7),default=6)
+    run.add_argument('--gpu-order',default='1,2,3,6,7,0')
     run.add_argument('--soft-deadline',default='2099-01-01T00:00:00+08:00')
     run.add_argument('--hard-deadline',default='2099-01-01T00:15:00+08:00')
     run.add_argument('--init-only',action='store_true')

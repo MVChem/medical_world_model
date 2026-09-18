@@ -41,7 +41,7 @@ PAGE = r'''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <p class="muted">这份清单允许视角不一致、跨住院和更长/更短间隔，并非全部满足当前预测任务。保守分流还有 105,723 对待复核；这里的比例不能当作人工审定的病情变化率。</p></section>
 <section class="card"><h2>如何理解“有用”</h2><p>结构和时间条件合格的数据可以用于继续扩展训练。原始疾病标签未知的样本仍可能提供图像、报告或状态监督；稳定随访可帮助模型学习持续异常和合理的无变化预测。</p>
 <p>若要专门监督疾病变化，完整严格训练池中有 3,043 对原始六疾病可观察变化、2,310 对 Qwen 保守暂定变化。两组有交集、定义不同，不能相加，也都不能直接称为人工真值。</p>
-<p><a href="../../research_notes/0910_dataset_summary.md">完整中文报告与解释</a> · <a href="statistics.json">聚合统计 JSON</a> · <a href="training_data_overview.png">训练子集图 PNG</a> · <a href="training_data_overview.pdf">PDF</a></p></section>
+<p><a href="https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0910_dataset_summary.md">完整中文报告与解释</a> · <a href="statistics.json">聚合统计 JSON</a> · <a href="training_data_overview.png">训练子集图 PNG</a> · <a href="training_data_overview.pdf">PDF</a></p></section>
 <footer>只包含聚合统计。Qwen 标签未用于昨晚的训练抽样、数据平衡或监督。已选样本按 epoch 无放回采样，6,000 个不同 pair 在 Stage 2 共读取 25,352 次（约 4.23 遍）。</footer>
 </main><script>const DATA=__DATA__;
 const fmt=x=>Number(x).toLocaleString('en-US');

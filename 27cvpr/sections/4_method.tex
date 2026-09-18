@@ -5,7 +5,7 @@
 \begin{figure*}[t]
     \centering
     % User-selected Figure 1: exact copy of ppt/ppt/fig1_v7.pdf (2026-09-15).
-    \includegraphics[width=\textwidth]{imgs/fig1.pdf}
+    \includegraphics[width=\textwidth]{ppt/ppt/fig1_v7.pdf}
     \caption{Overview of \method{}. The state $S\in\mathbb R^{8\times d}$ supports task decoding and horizon-conditioned prediction; Figure~\ref{fig:task_supervised_slots} details its construction. Spatial tasks receive the input image and visual slots, using low-resolution evidence for super-resolution. The world model maps $(S_t,h)$ to $\widehat S_{t,h}$, supervised by the stop-gradient follow-up target $S^*_{t^+}$. Stage~1 learns task-supervised states; Stage~2 learns their temporal evolution.}
     \label{fig:medworld_jepa_overview}
 \end{figure*}
@@ -104,7 +104,7 @@ The native supervised baseline omits $A_\gamma(\widehat S_{t,h})$. Its compariso
 % state construction and dynamics text, to separate it from Figure 1.
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\columnwidth]{imgs/fig2_v2.pdf}
+    \includegraphics[width=\columnwidth]{ppt/ppt/fig2_v2.pdf}
     \caption{Construction of the eight state slots. Colored blocks select one early, two intermediate, and the final layer from each source. Lightweight readouts form four vision--language and four visual slots; task losses jointly train the readouts and decoders.}
     \label{fig:task_supervised_slots}
 \end{figure}

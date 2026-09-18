@@ -1,9 +1,0 @@
-﻿task,n_test,metric,joint,frozen_encoder_control,delta_joint_minus_control,status
-Classification,196,macro_auprc,0.991085267530519,0.9126460551533168,0.0784392123772022,completed
-Classification,196,macro_auroc,0.9715252611396619,0.818220306288979,0.15330495485068285,completed
-Report generation,64,chexbert_macro_positive_f1,0.6114157381959241,0.286892608115019,0.3245231300809051,completed
-Report generation,64,radgraph_partial_f1,0.44443368316178333,0.273639297255655,0.17079438590612833,completed
-Segmentation,236,mean_dice,0.5588394812187233,0.5670527925262343,-0.008213311307511018,completed
-Super resolution,283,psnr,38.08833758147803,38.196620396122974,-0.10828281464494438,completed
-Super resolution,283,ssim,0.9730882715555089,0.9735829285468472,-0.000494656991338327,completed
-Disease recognition,,label_set_f1,,,,not_implemented

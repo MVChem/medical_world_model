@@ -63,7 +63,7 @@ MedGemma 使用原生处理器，因此不宣称视觉 token 数和计算量相�
 
 ## 文献对齐的短答复测
 
-[文献、指标与协议说明](../../research_notes/0916_mimic_cxr_vqa_literature.md)。
+[文献、指标与协议说明](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0916_mimic_cxr_vqa_literature.md)。
 四模型已完成并通过独立复算：[复测结果与限制](../../results/mimic_cxr_vqa_literature_20260916/README.md)。
 新运行目录为 `runs/literature_short_1024_gpu0_20260916`；此前同日的
 `runs/literature_1024_gpu0_20260916` 是已停止的原问题长答诊断试跑，不是四模型正式结果。

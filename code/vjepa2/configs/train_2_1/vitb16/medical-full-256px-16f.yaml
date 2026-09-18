@@ -1,0 +1,153 @@
+app: vjepa_2_1
+folder: /home/data2/chk/workspace/2026/08/04/medical_world_model/runs/vjepa2_1_vitb_medical_full_2gpu
+data:
+  dataset_type: MedicalVolumeDataset
+  datasets:
+  - $VJEPA2_FULL_DATA_DIR/manifests/medical.csv
+  # Per-sample source weights are stored in the third manifest column.
+  datasets_weights:
+  - 1.0
+  # With two ranks and img_data.rank_ratio=0.5 this becomes batch 24
+  # on the volume rank.
+  batch_size: 12
+  crop_size: 256
+  patch_size: 16
+  dataset_fpcs:
+  - 16
+  tubelet_size: 2
+  fps: 4
+  num_workers: 12
+  persistent_workers: true
+  pin_mem: true
+data_aug:
+  auto_augment: false
+  motion_shift: false
+  random_resize_aspect_ratio:
+  - 0.75
+  - 1.35
+  random_resize_scale:
+  - 0.3
+  - 1.0
+  reprob: 0.0
+img_data:
+  batch_size: 96
+  crop_size: 256
+  dataset_fpcs:
+  - 1
+  dataset_type: VideoDataset
+  datasets:
+  - $VJEPA2_MIMIC_DATA
+  datasets_weights:
+  - 1.0
+  num_workers: 8
+  rank_ratio: 0.5
+img_mask:
+- aspect_ratio:
+  - 0.75
+  - 1.5
+  full_complement: false
+  max_keep: null
+  max_temporal_keep: 1.0
+  num_blocks: 10
+  spatial_scale:
+  - 0.15
+  - 0.15
+  temporal_scale:
+  - 1.0
+  - 1.0
+loss:
+  # One image rank and one volume rank are averaged by DDP. Scaling their
+  # local losses by 0.5 and 1.5 gives a 25:75 effective gradient mixture.
+  img_rank_weight: 0.5
+  loss_exp: 1.0
+  predict_all: true
+  reg_coeff: 0.0
+  shift_by_n: 0
+  vid_rank_weight: 1.5
+  weight_distance_loss: true
+mask:
+- aspect_ratio:
+  - 0.75
+  - 1.5
+  full_complement: false
+  max_keep: null
+  max_temporal_keep: 1.0
+  num_blocks: 8
+  spatial_scale:
+  - 0.15
+  - 0.15
+  temporal_scale:
+  - 1.0
+  - 1.0
+- aspect_ratio:
+  - 0.75
+  - 1.5
+  full_complement: false
+  max_keep: null
+  max_temporal_keep: 1.0
+  num_blocks: 2
+  spatial_scale:
+  - 0.7
+  - 0.7
+  temporal_scale:
+  - 1.0
+  - 1.0
+meta:
+  checkpoint_freq: 2
+  dtype: bfloat16
+  init_checkpoint: checkpoints/vjepa2_1_vitb_dist_vitG_384.pt
+  init_checkpoint_key: ema_encoder
+  load_checkpoint: true
+  read_checkpoint: null
+  save_checkpoint: true
+  save_every_freq: 10
+  seed: 239
+  use_sdpa: true
+model:
+  has_cls_first: false
+  img_temporal_dim_size: 1
+  interpolate_rope: true
+  is_causal: false
+  lambda_value_img: 0.5
+  lambda_value_vid: 0.5
+  local_window:
+  - -1
+  - -1
+  - -1
+  modality_embedding: true
+  model_name: vit_base
+  n_registers: 0
+  n_registers_predictor: 0
+  normalize_predictor: false
+  pred_depth: 12
+  pred_embed_dim: 384
+  pred_is_causal: false
+  pred_local_window:
+  - -1
+  - -1
+  - -1
+  pred_num_heads: 12
+  uniform_power: true
+  use_activation_checkpointing: true
+  use_mask_tokens: true
+  use_rope: true
+  vit_conv: false
+  zero_init_mask_tokens: true
+optimization:
+  betas:
+  - 0.9
+  - 0.999
+  ema:
+  - 0.99925
+  - 0.99925
+  epochs: 20
+  eps: 1.0e-08
+  final_lr: 0.000003
+  final_weight_decay: 0.04
+  ipe: 1000
+  ipe_scale: 1.0
+  is_anneal: false
+  lr: 0.00003
+  start_lr: 0.000003
+  warmup: 1
+  weight_decay: 0.04

@@ -2,7 +2,7 @@
 
 Qwen3.5-0.8B 与冻结 V-JEPA 2.1 ViT-B。分类和疾病识别使用当前图像／报告；分割另读输入图像，SR 另读 LR 图像，HR 只用于监督。
 
-[当前实验索引](../../experiments/README.md) · [4＋4 计划](../../research_notes/0911_stage1_slot_allocation_plan.md) · [数据与训练记录](../../research_notes/0911_stage1_slot44_run.md) · [无 slots 对照](../../research_notes/0911_qwen08_noslots_baseline.md)
+[当前实验索引](../../experiments/README.md) · [4＋4 计划](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0911_stage1_slot_allocation_plan.md) · [数据与训练记录](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0911_stage1_slot44_run.md) · [无 slots 对照](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0911_qwen08_noslots_baseline.md)
 
 ## 变体与代码
 
@@ -44,7 +44,7 @@ CUDA_VISIBLE_DEVICES=5 /home/data2/chk/workspace/2026/.venv/bin/python \
 ## 查看结果和恢复
 
 ```bash
-python scripts/project_status.py
+# See the status.json and report files in the relevant runs/ folder.
 ```
 
 当前报告：[Ours](runs/slot44_20260911/REPORT.md) · [无 slots](runs/qwen08_noslots_20260911/REPORT.md)。每个运行保留 `config.json`、`source/`、`source_manifest.json`；训练目录保留 `status.json`、`provenance.json`、`metrics.jsonl`、checkpoint 和评估。

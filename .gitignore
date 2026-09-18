@@ -1,56 +1,84 @@
-# Local source repository. Upstream repositories stay independent.
-/code/Clin-JEPA/
-/code/VLA-JEPA/
-/code/VLA-JEPA-reference/
-/code/ChestXRayAnatomySegmentation/
-/code/vjepa2/
+# Shared rules; project-specific paths belong in each project's .gitignore.
+# Keep third-party source, paper assets, literature, and curated results trackable.
 
-# Runtime data, downloaded dependencies, weights and caches stay local.
-# Research exports and paper assets are included in the
-# private pre-unification snapshot (2026-09-15).
-/related_works/
-**/runs/
-**/data
-**/weights
-**/checkpoints
-**/vendor
-**/metric_vendor
-**/*output*/
-**/__pycache__/
-**/*.pyc
-**/.venv
-**/.pytest_cache/
-**/.ruff_cache/
-**/*.egg-info/
-*.pt
-*.pth
-*.ckpt
-*.safetensors
-*.th
-*.npy
-*.npz
-*.log
-*.log.*
-**/logs/
-*.pid
-*.lock
+# PDFs stay local; keep figure sources and images in 27cvpr/ppt/.
+*.[pP][dD][fF]
+
+# Local settings and editor files
 .env
 .env.*
+!.env.example
+!.env.template
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
+*.bak
 *.tmp
+*.pid
 
-# Open comparator assets and immutable local execution artifacts.
-/code/medworld_open_baselines/third_party/
-/code/medworld_open_baselines/*_vendor/
-/code/medworld_open_baselines/*_weights/
-/code/medworld_open_baselines/*_runs/
-/code/medworld_open_baselines/*_assets/
+# Environments, installed metadata, and build artifacts
+.venv
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.dist-info/
+*.egg
+build/
+dist/
 
-# Dependency symlinks in frozen execution copies are machine-local too.
-**/*_vendor
-**/*_weights
-**/third_party
-**/dinov2_assets
-/code/medworld_open_baselines/repair_forecast_20260914/scheduler_recovery/
+# Tool caches and test reports
+.cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
 
-# Generated results and exports stay local.
-/results/
+# Run directories and logs (also match symlinks)
+runs
+*_runs
+logs
+*_logs
+wandb
+tensorboard
+events.out.tfevents.*
+*.log
+*.log.*
+
+# Local data/model stores; do not blanket-ignore source packages named data/datasets
+/data
+/datasets
+/weights
+/checkpoints
+/code/*/checkpoints
+/code/*/weights
+/code/*/outputs
+
+# Model binaries, tensor dumps, and dataset files within code/
+/code/**/*.pt
+/code/**/*.pth
+/code/**/*.ckpt
+/code/**/*.safetensors
+/code/**/*.th
+/code/**/*.onnx
+/code/**/pytorch_model*.bin
+/code/**/optimizer*.bin
+/code/**/training_args.bin
+/code/**/*.npy
+/code/**/*.npz
+/code/**/*.parquet
+/code/**/*.arrow
+/code/**/*.h5
+/code/**/*.hdf5
+/code/**/*.nii
+/code/**/*.nii.gz
+/code/**/*.dcm

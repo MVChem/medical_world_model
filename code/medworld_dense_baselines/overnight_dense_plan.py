@@ -1,4 +1,4 @@
-"""Freeze the dense source and emit jobs for scripts/overnight_queue.py."""
+"""Freeze the dense source and emit jobs for code/medworld_common/overnight_queue.py."""
 from __future__ import annotations
 
 import argparse

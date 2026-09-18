@@ -78,7 +78,7 @@ python code/medworld_native_forecast/verify_codec.py \
   --out /path/to/new_codec_verification.json --gpus 3 4 7
 ```
 
-检查当前／预测状态的自由生成、与 Qwen 原生缓存生成的一致性，以及 tensor 保存重载后的报告一致性；同时记录 BF16 下缓存与完整重算的文本是否相同。它不计算报告临床指标。详见[两表 slots 与文本解码核对](../../research_notes/0915_slots_version_and_text_codec.md)。
+检查当前／预测状态的自由生成、与 Qwen 原生缓存生成的一致性，以及 tensor 保存重载后的报告一致性；同时记录 BF16 下缓存与完整重算的文本是否相同。它不计算报告临床指标。详见[两表 slots 与文本解码核对](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0915_slots_version_and_text_codec.md)。
 
 ```bash
 python -m pytest -q code/medworld_native_forecast/tests
@@ -90,4 +90,4 @@ python code/medworld_native_forecast/verify.py \
 
 冻结 JEPA 特征允许复用；训练中的视觉／语言 LoRA、adapter 和 slots 输出每步重新计算。缓存内容与原图路径在 `provenance.json` 中分别记录。所有运行内容只留在本地，生成文件可能包含研究数据，不能当公共示例发布。
 
-设计与论文同步见 [09-15 协议](../../research_notes/0915_table1_native_forecast_redesign.md)。当前原型不补造 Direction 标签，也不替代尚缺的正式 VQA／grounding 或完整六任务实验。
+设计与论文同步见 [09-15 协议](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0915_table1_native_forecast_redesign.md)。当前原型不补造 Direction 标签，也不替代尚缺的正式 VQA／grounding 或完整六任务实验。
