@@ -71,7 +71,8 @@ full available 447-image test selection and 138-image external human lung set.
 Counts can be lower after the unified holdout filter; each group’s `protocol.json` records the actual counts.
 Original JPG/PNG files are decoded for every batch using the recorded padding
 boxes. Segmentation uses a 256-square input canvas. SR inputs are computed by
-antialiased bicubic downsampling to 128 square, with the original uint8 rounding.
+antialiased bicubic downsampling to 128 square by default (64 square with
+`--sr-scale 8`), with the original uint8 rounding.
 Every SR encoder, teacher, semantic crop and decoder sees only this LR image; HR
 is only the 512-square task target. Reports are absent from encoder inputs.
 Original CXAS supervision is read as fixed task labels; Montgomery masks are
@@ -121,6 +122,27 @@ The retired `medworld_spatial.prepare` command refuses to create disk caches.
 Eight hours are measured from the new launch. Online teacher inference is
 included. Budget-truncated training and partial evaluations are labelled, and
 matched contrasts require equal completed budgets and complete evaluations.
+
+### SR-only comparison
+
+SR uses **128x128 -> 512x512**: 4x along each axis and 16x in pixel count.
+This is also the resolution used by the completed joint seed-42 run. The term
+"16x" in pixel count does not mean a 16x increase along each axis.
+Use `--tasks sr --steps 2000` to train all six matched variants on SR alone.
+The default remains `--tasks segmentation sr --steps 4000` (2,000 updates per
+task). SR-only training preserves the SR batch sequence, initialization, data
+split, and alignment weights; it removes segmentation updates from the shared
+decoder. Compare it with the joint run as a task-mixture ablation, not a change
+in resolution. All teachers and slots continue to see only the LR image.
+Task selection and explicit SR geometry are recorded in the run protocol.
+For the harder 64x pixel-count comparison, add `--sr-scale 8`: **64x64 ->
+512x512**, eightfold along both axes. The target, decoder architecture, sample
+order, and update budget remain fixed. All image branches and teachers receive
+only the 64-square LR input (or resized views of that input). `--sr-scale 4`
+remains the default 16x pixel-count condition. The checkpoint contract rejects
+resuming across different SR scales.
+Pass `--register` to maintain the brief entry in `experiments/registry.json`
+while the coordinator runs and archive its final outcome in `experiments/README.md`.
 
 ```bash
 PYTHONPATH=code /home/data2/chk/workspace/2026/.venv/bin/python \

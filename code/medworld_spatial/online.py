@@ -16,6 +16,13 @@ from . import CONCEPTS
 from .geometry import jitter, patch_grid, view
 from .model import SlotReader
 
+def sr_geometry(scale=4):
+    if scale not in (4, 8):
+        raise ValueError("SR scale must be 4 or 8 per axis")
+    return {"input_hw": [512 // scale, 512 // scale], "target_hw": [512, 512],
+            "scale_per_axis": scale, "pixel_count_ratio": scale ** 2,
+            "downsampling": "antialiased bicubic, clamped and rounded to uint8"}
+
 
 def pil_images(pixels):
     values = (pixels.detach().cpu().clamp(0, 1)[:, 0] * 255).round().byte().numpy()
@@ -98,9 +105,10 @@ def source_canvas(record):
     return torch.from_numpy(canvas)[None].float() / 255
 
 
-def low_resolution(hr):
+def low_resolution(hr, scale=4):
     # Preserve the previous uint8 rounding, including antialiasing and clamping.
-    lr = F.interpolate(hr[None], scale_factor=.25, mode="bicubic", align_corners=False, antialias=True)[0]
+    sr_geometry(scale)
+    lr = F.interpolate(hr[None], scale_factor=1 / scale, mode="bicubic", align_corners=False, antialias=True)[0]
     return (lr.clamp(0, 1) * 255).round().byte().float() / 255
 
 
@@ -116,14 +124,16 @@ def human_target(record):
 
 class SourceData:
     """Metadata only in memory; decode original images for every requested batch."""
-    def __init__(self, cfg, train_n=4096, val_n=128, test_n=447, human_n=138, selection_seed=42):
+    def __init__(self, cfg, train_n=4096, val_n=128, test_n=447, human_n=138, selection_seed=42,
+                 tasks=("segmentation", "sr"), sr_scale=4):
         data = UnifiedData(cfg)
+        self.sr_scale = sr_scale
         self.fingerprint = data.fingerprint
         self.rows, self.permutations = {}, {}
         dense = data.current.dense
         originals = [json.loads(line) for line in (dense / "observations.jsonl").read_text().splitlines()]
         by_id = {row["id"]: row for row in originals}
-        for task in ("segmentation", "sr"):
+        for task in tasks:
             for split, count in (("train", train_n), ("validate", val_n), ("test", test_n), ("human_test", human_n)):
                 if task == "sr" and split == "human_test":
                     continue
@@ -132,9 +142,10 @@ class SourceData:
                 self.rows[task, split] = [by_id[rows[i]["id"]] for i in indices]
         # These are the original fixed supervised labels, never model inputs or
         # newly produced features. Keep the established CXAS supervision intact.
-        self.pseudo = np.load(data.current.old / "seg_probs.npy", mmap_mode="r", allow_pickle=False)
-        if self.pseudo.shape != (data.current._old_count, 3, 256, 256) or self.pseudo.dtype != np.float16:
-            raise ValueError("Original segmentation target shape/dtype changed")
+        if "segmentation" in tasks:
+            self.pseudo = np.load(data.current.old / "seg_probs.npy", mmap_mode="r", allow_pickle=False)
+            if self.pseudo.shape != (data.current._old_count, 3, 256, 256) or self.pseudo.dtype != np.float16:
+                raise ValueError("Original segmentation target shape/dtype changed")
         for rows in self.rows.values():
             for row in rows:
                 for path in (row["image"], *row.get("masks", [])):
@@ -147,7 +158,7 @@ class SourceData:
         for row in rows:
             hr = source_canvas(row)
             if task == "sr":
-                pixel, target, size = low_resolution(hr), hr, 512
+                pixel, target, size = low_resolution(hr, self.sr_scale), hr, 512
             else:
                 pixel = F.interpolate(hr[None], (256, 256), mode="area")[0]
                 target = (human_target(row) if row["kind"] == "montgomery" else
@@ -182,9 +193,11 @@ class OnlineInputs:
     """Only the current batch is retained; repeated images are recomputed."""
     def __init__(self, args, device):
         self.device, self.views, self.selection_seed = device, args.views, args.selection_seed
+        self.tasks = tuple(args.tasks)
         self.model, saved = load_model(args.checkpoint, device)
         self.model.eval().requires_grad_(False)
-        self.data = SourceData(self.model.cfg, args.train_n, args.val_n, args.test_n, args.human_n, args.selection_seed)
+        self.data = SourceData(self.model.cfg, args.train_n, args.val_n, args.test_n, args.human_n,
+                               args.selection_seed, tasks=self.tasks, sr_scale=args.sr_scale)
         if self.data.fingerprint != saved["data_fingerprint"]:
             raise ValueError("Checkpoint and source patient protocols differ")
         self.rows = self.data.rows
@@ -207,9 +220,14 @@ class OnlineInputs:
                 if p.is_file() and (p.suffix in (".json", ".safetensors") or p.name == "merges.txt")},
             "vision_depths_1based": saved["metadata"]["vision_depths_1based"],
             "selection_seed": args.selection_seed, "views": args.views,
+            "tasks": list(self.tasks), "sr_geometry": sr_geometry(args.sr_scale),
             "counts": {f"{task}/{split}": len(rows) for (task, split), rows in self.rows.items()},
-            "inputs": "Original source -> recorded 512 canvas; segmentation area 256; SR uint8 antialiased bicubic 128",
-            "supervision": "Original fixed CXAS targets and original Montgomery PNG masks",
+            "inputs": "Original source -> recorded 512 canvas; " + "; ".join(
+                "segmentation area 256" if task == "segmentation" else f"SR uint8 antialiased bicubic {512 // args.sr_scale}"
+                for task in self.tasks),
+            "supervision": "; ".join(
+                "Original fixed CXAS targets and original Montgomery PNG masks" if task == "segmentation"
+                else "Original 512x512 image canvas as SR target" for task in self.tasks),
             "teacher_inputs": "Prepared pixels only; never reports, task targets or SR HR",
             "intermediate_lifetime": "One batch shared by matched variants, discarded before the next batch"}
         self.verified_reader = False

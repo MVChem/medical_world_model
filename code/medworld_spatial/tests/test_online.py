@@ -1,4 +1,5 @@
 import copy
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -9,11 +10,56 @@ import torch
 
 from medworld.gpu import ALLOWED_GPUS, acquire_gpu
 from medworld_spatial.night import plan
-from medworld_spatial.online import OnlineInputs, SourceData
-from medworld_spatial.train import save_group, restore_group
+from medworld_spatial.online import OnlineInputs, SourceData, low_resolution
+from medworld_spatial.train import save_group, restore_group, training_position
+from medworld_spatial.registration import record
 
 
 class OnlineTests(unittest.TestCase):
+    def test_registration_preserves_other_runs_and_archives_completion_once(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary)
+            run = project / 'runs' / 'sr_20260918'
+            run.mkdir(parents=True)
+            (run / 'plan.json').write_text(json.dumps({'register_experiment': True,
+                'tasks': ['sr'], 'seeds': [42], 'steps': 2000,
+                'sr_geometry': {'input_hw': [64, 64], 'target_hw': [512, 512],
+                                'scale_per_axis': 8, 'pixel_count_ratio': 64}}))
+            index = project / 'experiments'
+            index.mkdir()
+            other = {'id': 'unrelated', 'status': 'running'}
+            (index / 'registry.json').write_text(json.dumps([other]))
+            record(run, 'running', project=project)
+            entries = json.loads((index / 'registry.json').read_text())
+            self.assertEqual(entries[0], other)
+            self.assertEqual(entries[1]['run_dir'], 'runs/sr_20260918')
+            self.assertIn('64x64 to 512x512 (8x per axis, 64x pixels)', entries[1]['summary'])
+            record(run, 'complete', project=project)
+            record(run, 'complete', project=project)
+            self.assertEqual(json.loads((index / 'registry.json').read_text()), [other])
+            self.assertEqual((index / 'README.md').read_text().count('`sr_20260918`'), 1)
+
+    def test_sr_only_stream_matches_sr_updates_of_joint_schedule(self):
+        source = SourceData.__new__(SourceData)
+        source.rows = {('sr', 'train'): [None] * 7}
+        source.permutations = {}
+        single, joint = [], []
+        for step in range(6):
+            task, offset = training_position(step, ['sr'], 4)
+            single.extend(source.training_indices(task, offset, 4, 42))
+            task, offset = training_position(2 * step + 1, ['segmentation', 'sr'], 4)
+            joint.extend(source.training_indices(task, offset, 4, 42))
+        self.assertEqual(single, joint)
+        self.assertEqual(training_position(101, ['sr'], 8), ('sr', 808))
+
+    def test_sr_uses_requested_pixel_ratio_and_uint8_rounding(self):
+        hr = torch.rand(1, 512, 512)
+        for scale in (4, 8):
+            lr = low_resolution(hr, scale)
+            self.assertEqual(lr.shape, (1, 512 // scale, 512 // scale))
+            self.assertEqual(hr.numel() // lr.numel(), scale ** 2)
+            torch.testing.assert_close(lr * 255, (lr * 255).round(), atol=1e-5, rtol=0)
+
     def test_online_teachers_never_read_hr_or_task_targets(self):
         online = OnlineInputs.__new__(OnlineInputs)
         online.device, online.views, online.selection_seed = 'cpu', 2, 42
@@ -87,6 +133,11 @@ class OnlineTests(unittest.TestCase):
         self.assertTrue(all(len(j['variants']) == 6 for j in jobs))
         self.assertNotIn('--cache', str(jobs))
         self.assertNotIn('medworld_spatial.prepare', str(jobs))
+        cfg['tasks'] = ['sr']
+        cfg['sr_scale'] = 8
+        sr_command = plan(Path('/run'), cfg)[0]['command']
+        self.assertEqual(sr_command[sr_command.index('--tasks') + 1], 'sr')
+        self.assertEqual(sr_command[sr_command.index('--sr-scale') + 1], '8')
         self.assertEqual(ALLOWED_GPUS, ('1', '2', '3', '6', '7', '0'))
         with patch('medworld.gpu.subprocess.check_output') as query:
             for forbidden in ('4', '5'):

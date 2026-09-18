@@ -19,6 +19,12 @@ from .model import SparseSpatialModel, reader_from_state
 from .online import OnlineInputs
 
 VARIANTS = ("image_only", "visual_slots", "slots", "featup", "featup_semantic", "image_only_featup")
+TASKS = ("segmentation", "sr")
+
+
+def training_position(step, tasks, batch_size):
+    """Zero-based update -> task and its own deterministic sample offset."""
+    return tasks[step % len(tasks)], (step // len(tasks)) * batch_size
 
 
 def scores(prediction, target, valid, task):
@@ -87,7 +93,7 @@ def update(model, optimizer, batch, task, args, audit=False):
 
 
 def contract(args, inputs):
-    keys = ("variants", "seed", "steps", "batch_size", "learning_rate", "feature_weight", "semantic_weight",
+    keys = ("variants", "tasks", "sr_scale", "seed", "steps", "batch_size", "learning_rate", "feature_weight", "semantic_weight",
             "sr_alignment_scale", "views", "selection_seed", "semantic_batch", "train_n", "val_n", "test_n", "human_n")
     return {"arguments": {key: getattr(args, key) for key in keys}, "input_protocol": inputs.protocol}
 
@@ -117,7 +123,7 @@ def evaluate(models, inputs, directories, split, batch_size, *, export=False, de
         model.eval()
     metrics = {v: {} for v in models}
     complete = True
-    for task in ("segmentation", "sr"):
+    for task in inputs.tasks:
         records = inputs.rows.get((task, split), [])
         if not records:
             continue
@@ -199,14 +205,14 @@ def main(args):
     for step in range(first_step, args.steps):
         if stopping or (args.deadline and time.time() >= args.deadline - args.finish_reserve):
             break
-        task = ("segmentation", "sr")[step % 2]
+        task, offset = training_position(step, args.tasks, args.batch_size)
         tick = time.time()
-        batch = inputs.training_batch(task, (step // 2) * args.batch_size, args.batch_size, args.seed,
+        batch = inputs.training_batch(task, offset, args.batch_size, args.seed,
                                       alignment=need_alignment, semantic=need_semantic)
         teacher_seconds = time.time() - tick
         records = {}
         for variant, model in models.items():
-            row, gradients = update(model, optimizers[variant], batch, task, args, audit=step < 2)
+            row, gradients = update(model, optimizers[variant], batch, task, args, audit=step < len(args.tasks))
             if gradients:
                 audits[variant][task] = gradients
                 atomic_json(directories[variant] / "gradient_audit.json", audits[variant])
@@ -234,28 +240,32 @@ def main(args):
                                           "heartbeat": time.time(), "checkpoint": str(out / "last.pt")})
         print(json.dumps({"event": "interrupted", "step": completed, "signals": stopping}), flush=True)
         return
-    summaries = {v: {"variant": v, "seed": args.seed, "steps": completed, "requested_steps": args.steps,
+    summaries = {v: {"variant": v, "seed": args.seed, "tasks": args.tasks,
+                    "steps": completed, "requested_steps": args.steps,
                     "complete_budget": completed == args.steps, "evaluations": {}, "evaluation_complete": True,
                     "checkpoint": str(out / "last.pt"), "input_mode": "on_demand_no_disk_cache"} for v in models}
     def heartbeat(split, task, done, total):
         atomic_json(out / "status.json", {"state": "evaluating", "step": completed, "split": split,
             "task": task, "evaluated": done, "total": total, "heartbeat": time.time()})
     for split in ("validate", "test", "human_test"):
+        if not any(inputs.rows.get((task, split)) for task in args.tasks):
+            continue
         measured, complete = evaluate(models, inputs, {v: p / split for v, p in directories.items()}, split,
                                       args.batch_size, export=True, deadline=args.deadline, heartbeat=heartbeat)
         for variant in models:
             summaries[variant]["evaluations"][split] = measured[variant]
             summaries[variant]["evaluation_complete"] &= complete
     # Exact reconstruction check uses one already selected validation case.
-    batch = inputs.batch("segmentation", "validate", [0], alignment=False, semantic=False)
+    reload_task = args.tasks[0]
+    batch = inputs.batch(reload_task, "validate", [0], alignment=False, semantic=False)
     with torch.no_grad():
         saved = torch.load(out / "last.pt", weights_only=False, map_location="cpu")
         for variant, model in models.items():
             model.eval()
-            reference = model(batch, "segmentation")["prediction"]
+            reference = model(batch, reload_task)["prediction"]
             restored = SparseSpatialModel(reader_from_state(inputs.reader), inputs.text, variant).to(device).eval()
             restored.load_state_dict(saved["models"][variant])
-            recovered = restored(batch, "segmentation")["prediction"]
+            recovered = restored(batch, reload_task)["prediction"]
             torch.testing.assert_close(reference, recovered, rtol=0, atol=0)
             summaries[variant]["checkpoint_reload_max_error"] = float((reference - recovered).abs().max())
             del restored, reference, recovered
@@ -276,6 +286,8 @@ def parser():
     for name in ("checkpoint", "semantic-teacher", "out", "jobs-root"):
         p.add_argument("--" + name, type=Path, required=True)
     p.add_argument("--variants", nargs="+", choices=VARIANTS, default=list(VARIANTS))
+    p.add_argument("--tasks", nargs="+", choices=TASKS, default=list(TASKS))
+    p.add_argument("--sr-scale", type=int, choices=(4, 8), default=4, help="SR enlargement per axis; pixel-count ratio is its square")
     p.add_argument("--gpu", default="auto")
     for name, value in (("steps", 4000), ("batch-size", 8), ("semantic-batch", 8), ("seed", 42),
                         ("selection-seed", 42), ("views", 2), ("train-n", 4096), ("val-n", 128),
@@ -292,8 +304,8 @@ if __name__ == "__main__":
     p = parser()
     args = p.parse_args()
     if min(args.steps, args.batch_size, args.semantic_batch, args.save_every, args.validate_every,
-           args.views, args.train_n, args.val_n, args.threads) <= 0 or len(set(args.variants)) != len(args.variants):
-        p.error("Counts must be positive and variants distinct")
+           args.views, args.train_n, args.val_n, args.threads) <= 0 or len(set(args.variants)) != len(args.variants) or len(set(args.tasks)) != len(args.tasks):
+        p.error("Counts must be positive; variants and tasks must be distinct")
     try:
         main(args)
     except Exception:

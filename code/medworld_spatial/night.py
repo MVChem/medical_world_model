@@ -15,7 +15,9 @@ from medworld.config import PROJECT
 from medworld.datasets.current import _sha256
 from medworld.gpu import ALLOWED_GPUS
 from medworld.runtime import atomic_json
-from .train import VARIANTS
+from .train import TASKS, VARIANTS
+from .online import sr_geometry
+from .registration import record as record_experiment
 
 
 def idle(gpu):
@@ -42,6 +44,8 @@ def plan(run, cfg):
             "--finish-reserve", str(cfg["finish_reserve"]), "--resume"]
         for key in ("steps", "batch_size", "semantic_batch", "train_n", "val_n", "test_n", "human_n", "save_every"):
             command += ["--" + key.replace("_", "-"), str(cfg[key])]
+        command += ["--tasks", *cfg.get("tasks", TASKS)]
+        command += ["--sr-scale", str(cfg.get("sr_scale", 4))]
         jobs.append({"id": f"seed{seed}", "kind": "matched_training_group", "state": "pending",
                      "variants": list(VARIANTS), "command": command})
     return jobs
@@ -102,11 +106,13 @@ def worker(run):
             state["state"] = "complete" if all(j["state"] == "complete" for j in jobs) else "finished_with_incomplete_jobs"
             atomic_json(run / "status.json", state)
             build(run, render=True)
+            record_experiment(run, state["state"])
             print(json.dumps({"event": "coordinator_finished", "state": state["state"]}), flush=True)
             break
         atomic_json(run / "status.json", state)
         if now - last_report > 60:
             build(run)
+            record_experiment(run, "running")
             last_report = now
         time.sleep(10)
 
@@ -134,9 +140,12 @@ def launch(args):
         "finish_reserve": min(1800, args.hours * 3600 / 8),
         **{key: getattr(args, key) for key in ("train_n", "val_n", "test_n", "human_n", "steps", "batch_size", "semantic_batch", "save_every", "seeds")},
         "variants": list(VARIANTS),
+        "tasks": args.tasks, "sr_scale": args.sr_scale, "sr_geometry": sr_geometry(args.sr_scale),
+        "register_experiment": args.register,
         "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=PROJECT, text=True).strip(),
         "source_of_truth": "source_sha256.json includes current uncommitted implementation"}
     atomic_json(run / "plan.json", cfg)
+    record_experiment(run, "starting")
     unit = "medworld-spatial-" + run.name.replace("_", "-")
     command = [sys.executable, "-u", "-m", "medworld_spatial.night", "--worker", "--out", str(run)]
     service = ["systemd-run", "--user", "--unit", unit, "--property=Restart=no",
@@ -147,7 +156,11 @@ def launch(args):
                        "OMP_NUM_THREADS": "4", "MKL_NUM_THREADS": "4", "TOKENIZERS_PARALLELISM": "false",
                        "PYTHONDONTWRITEBYTECODE": "1", "CUDA_VISIBLE_DEVICES": ""}.items():
         service.append("--setenv=" + key + "=" + value)
-    subprocess.run([*service, *command], check=True)
+    try:
+        subprocess.run([*service, *command], check=True)
+    except Exception:
+        record_experiment(run, "failed")
+        raise
     pid = int(subprocess.check_output(["systemctl", "--user", "show", unit, "--property=MainPID", "--value"], text=True).strip())
     record = {"run": str(run), "pid": pid, "service": unit + ".service", "command": command,
               "deadline_local": cfg["deadline_local"], "supervisor": "systemd user service"}
@@ -167,18 +180,22 @@ if __name__ == "__main__":
                         ("steps", 4000), ("batch-size", 8), ("semantic-batch", 8), ("save-every", 100)):
         p.add_argument("--" + name, type=int, default=value)
     p.add_argument("--seeds", type=int, nargs="+", default=[42])
+    p.add_argument("--tasks", nargs="+", choices=TASKS, default=list(TASKS))
+    p.add_argument("--sr-scale", type=int, choices=(4, 8), default=4, help="SR enlargement per axis; 4 means 16x pixels, 8 means 64x pixels")
+    p.add_argument("--register", action="store_true", help="Maintain the brief experiment registry and completion history")
     args = p.parse_args()
     if args.worker:
         try:
             worker(args.out)
         except BaseException:
             atomic_json(args.out / "coordinator_failure.json", {"traceback": traceback.format_exc(), "time": time.time()})
+            record_experiment(args.out, "failed")
             raise
     else:
         if not args.checkpoint or not args.semantic_teacher:
             p.error("checkpoint and semantic-teacher are required")
         if not 0 < args.hours <= 8:
             p.error("Budget must be positive and at most eight hours")
-        if min(args.train_n, args.val_n, args.steps, args.batch_size, args.semantic_batch, args.save_every) <= 0 or len(set(args.seeds)) != len(args.seeds):
-            p.error("Counts must be positive and seeds must be distinct")
+        if min(args.train_n, args.val_n, args.steps, args.batch_size, args.semantic_batch, args.save_every) <= 0 or len(set(args.seeds)) != len(args.seeds) or len(set(args.tasks)) != len(args.tasks):
+            p.error("Counts must be positive; seeds and tasks must be distinct")
         launch(args)

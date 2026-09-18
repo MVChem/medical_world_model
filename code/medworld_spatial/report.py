@@ -119,18 +119,33 @@ def build(run, render=False):
         row["path"] = str(path.parent.resolve())
         results.append(row)
     atomic_json(run / "aggregate.json", results)
+    plan_path = run / "plan.json"
+    plan = json.loads(plan_path.read_text()) if plan_path.exists() else {}
+    tasks = plan.get("tasks", ["segmentation", "sr"])
+    columns = []
+    if "segmentation" in tasks:
+        columns += [("Test Dice", "test", "segmentation", "dice"),
+                    ("Human Dice", "human_test", "segmentation", "dice")]
+    if "sr" in tasks:
+        columns += [("Test PSNR", "test", "sr", "psnr"), ("Test SSIM", "test", "sr", "ssim")]
     lines = ["# Sparse spatial alignment pilot", "", "Fixed protocol; all scores below are raw units (Dice/SSIM 0–1, PSNR dB).",
              "Incomplete budgets are marked; compare the same seed and completed update count.", "",
-             "| Variant | Seed | Updates | Budget complete | Test Dice | Human Dice | Test PSNR | Test SSIM |",
-             "|---|---:|---:|---|---:|---:|---:|---:|"]
+             "Tasks: " + ", ".join(tasks) + "."]
+    if "sr" in tasks:
+        geometry = plan.get("sr_geometry", {"input_hw": [128, 128], "target_hw": [512, 512],
+                                            "scale_per_axis": 4, "pixel_count_ratio": 16})
+        source_size = "x".join(map(str, geometry["input_hw"]))
+        target_size = "x".join(map(str, geometry["target_hw"]))
+        lines += [f"SR: {source_size} input -> {target_size} target; {geometry['scale_per_axis']}x per axis, {geometry['pixel_count_ratio']}x pixel count."]
+    lines += ["", "| Variant | Seed | Updates | Budget complete | " + " | ".join(c[0] for c in columns) + " |",
+              "|---|---:|---:|---|" + "---:|" * len(columns)]
     def value(row, split, task, metric):
         result = row["evaluations"].get(split, {}).get(task, {}).get(metric)
         complete = row["evaluations"].get(split, {}).get(task, {}).get("complete", True)
         return ("" if complete else "partial ") + f"{result:.5f}" if result is not None else "pending"
     for row in results:
         lines.append(f"| {row['variant']} | {row['seed']} | {row['steps']} | {row['complete_budget']} | " +
-            " | ".join((value(row, "test", "segmentation", "dice"), value(row, "human_test", "segmentation", "dice"),
-                       value(row, "test", "sr", "psnr"), value(row, "test", "sr", "ssim"))) + " |")
+            " | ".join(value(row, split, task, metric) for _, split, task, metric in columns) + " |")
     if not results:
         lines += ["", "No completed training/evaluation results are available."]
     state_path = run / "status.json"

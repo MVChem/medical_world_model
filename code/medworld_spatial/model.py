@@ -143,7 +143,8 @@ class SparseSpatialModel(nn.Module):
         field, semantic_attention = self.semantic(field, valid)
         prediction = self.heads[task](field)
         if task == "sr":
-            prediction = F.interpolate(image, scale_factor=4, mode="bicubic", align_corners=False) + .1 * prediction
+            # The head defines the 512 canvas; neither HR pixels nor targets are read.
+            prediction = F.interpolate(image, size=prediction.shape[-2:], mode="bicubic", align_corners=False) + .1 * prediction
         return {"prediction": prediction, "feature": self.feature(field), "slots": slots,
                 "encoder_attention": encoder_attention, "decoder_attention32": attention32,
                 "decoder_attention64": attention64, "semantic_attention": semantic_attention,

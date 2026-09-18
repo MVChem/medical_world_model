@@ -94,6 +94,20 @@ class ModelTests(unittest.TestCase):
             batch["targets"] = torch.zeros_like(batch["targets"])
             torch.testing.assert_close(before, model(batch, "sr")["prediction"], rtol=0, atol=0)
 
+    def test_sr_eightfold_shape_gradients_and_no_hr_input(self):
+        model, batch = fixture("visual_slots")
+        batch["pixels"] = torch.rand(2, 1, 64, 64)
+        batch["targets"] = torch.rand(2, 1, 512, 512)
+        batch["valid"] = torch.ones_like(batch["targets"])
+        result = model(batch, "sr")
+        self.assertEqual(result["prediction"].shape, batch["targets"].shape)
+        spatial_loss("sr", result["prediction"], batch["targets"], batch["valid"]).backward()
+        self.assertGreater(float(model.reader.queries.grad.norm()), 0)
+        with torch.no_grad():
+            reference = model(batch, "sr")["prediction"]
+            batch["targets"] = torch.zeros_like(batch["targets"])
+            torch.testing.assert_close(reference, model(batch, "sr")["prediction"], rtol=0, atol=0)
+
 
 if __name__ == "__main__":
     unittest.main()
