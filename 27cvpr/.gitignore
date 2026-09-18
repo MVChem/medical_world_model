@@ -9,8 +9,9 @@
 *.out
 *.synctex.gz
 
-# Paper PDFs, previews and generated figures are included in the private
-# pre-unification snapshot; build logs and numerical caches remain ignored.
+# Compiled documents (figure PDFs in imgs/ and ppt/ are source assets).
+/main.pdf
+/supplementary.pdf
 
 # Editor and OS metadata
 .DS_Store

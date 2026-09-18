@@ -27,7 +27,7 @@
 原始指标仍保留在 `code/medworld_table1/runs/overnight_20260913/{no_slots,slots,shuffled}/evaluation_test/metrics.json`，GREEN 位于同运行根的 `green/{condition}/test/green_metrics.json`。原始文件与[此前回填记录](0914_table_results_filled.md)均未改写。当前共享源码、全精度聚合与自动回填映射分别见：
 
 - [Table 1 TeX](../27cvpr/tables/table1_future.tex)
-- [数值和来源 SHA256](../27cvpr/tables/results_20260914.json)
+- 数值来源见表格各行的 TeX 注释；聚合 JSON 已在目录整理时移除。
 - [回填生成器](../27cvpr/plans/populate_results.py)
 
 ## 正式补跑已启动

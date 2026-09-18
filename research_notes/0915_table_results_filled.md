@@ -4,7 +4,7 @@
 
 - [两页表格预览](../27cvpr/plans/table1_table2_plan.pdf)
 - [Table 1 共享源码](../27cvpr/tables/table1_future.tex) · [Table 2 共享源码](../27cvpr/tables/table2_downstream.tex)
-- [全精度数值与来源 SHA256](../27cvpr/tables/results_20260914.json)：保留原文件名以兼容已有引用，内部 `snapshot_date` 更新为 `2026-09-15`。
+- 数值来源见表格各行的 TeX 注释；聚合 JSON 已在目录整理时移除。
 - [重建脚本](../27cvpr/plans/populate_results.py)
 
 ## Table 1：新增四行结果

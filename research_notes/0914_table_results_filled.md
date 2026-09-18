@@ -5,7 +5,7 @@
 - [Table 1 源码](../27cvpr/tables/table1_future.tex)
 - [Table 2 源码](../27cvpr/tables/table2_downstream.tex)
 - [两页结果预览](../27cvpr/plans/table1_table2_plan.pdf)
-- [聚合数值与来源 SHA256](../27cvpr/tables/results_20260914.json)
+- 数值来源见表格各行的 TeX 注释；聚合 JSON 已在目录整理时移除。
 - [从原始结果重建表格的脚本](../27cvpr/plans/populate_results.py)
 
 论文正文和独立预览共享两份 TeX 源码。每行的原始指标文件写在 TeX 注释中；JSON 记录全精度值、列名、实验协议及原文件哈希，不包含患者记录或生成报告。
