@@ -542,6 +542,15 @@ h2 {
   grid-template-columns: minmax(0, 1fr) 244px;
   border-top: 1px solid var(--line);
 }
+.comparison-summary {
+  margin: 0;
+  padding: 12px 20px;
+  background: #f3f5ef;
+  border-top: 1px solid var(--line);
+  color: #505e49;
+  font-size: 12px;
+  line-height: 1.7;
+}
 .scan-area {
   min-width: 0;
   border-right: 1px solid var(--line);
@@ -560,6 +569,8 @@ h2 {
 }
 .scan-title {
   display: flex;
+  flex-wrap: wrap;
+  row-gap: 4px;
   justify-content: space-between;
   align-items: center;
   padding: 14px 15px 4px;

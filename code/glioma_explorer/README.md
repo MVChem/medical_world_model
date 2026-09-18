@@ -3,8 +3,8 @@
 UCSF-ALPTDG 和 MU-Glioma-Post 的本地 HTML 可视化项目。代码位于项目已有的 `code/` 目录。
 
 - **完整页面**：[http://127.0.0.1:8766](http://127.0.0.1:8766)。服务运行在数据所在机器；远程访问可转发 8766 端口。
-- **完整 HTML**：[runs/glioma_atlas.html](runs/glioma_atlas.html)，入口约 1.17 MB，覆盖全部 501 位患者；按需读取旁边的 `full_data/`，无需 Python 服务，也可直接在聊天文件预览中运行。下载到其他机器时需一起保留整个目录。
-- **预览**：[UCSF 桌面页面](runs/desktop.png)、[MU 页面](runs/mu-overview.png)、[手机布局](runs/mobile.png)。
+- **完整 HTML**：[code/data/glioma_explorer/runs/glioma_atlas.html](../data/glioma_explorer/runs/glioma_atlas.html)，入口约 1.17 MB，覆盖全部 501 位患者；按需读取旁边的 `full_data/`，无需 Python 服务，也可直接在聊天文件预览中运行。下载到其他机器时需一起保留整个目录。
+- **预览**：[UCSF 桌面页面](../data/glioma_explorer/runs/desktop.png)、[MU 页面](../data/glioma_explorer/runs/full-mu.png)、[手机布局](../data/glioma_explorer/runs/full-mobile.png)。
 
 ## 实际可浏览的内容
 
@@ -19,7 +19,7 @@ UCSF-ALPTDG 和 MU-Glioma-Post 的本地 HTML 可视化项目。代码位于项�
 
 “全部临床字段”展示所选患者的原始记录。“全部影像文件”可查看该患者的每个 NIfTI，包括 UCSF T1 CE−T1、纵向差分和差分分割。“原始表格”提供四个原始工作簿的全部 **12 个工作表**，保留标题行、字段编码、所有行列，支持搜索、分页和 CSV 导出。
 
-HTML 本体不内嵌全体影像，`full_data/` 按患者／文件保存完整体积显示缓存，共约 **10.95 GB**。打开页面只加载当前所需的几个体积，浏览器最多缓存八个体积，避免一次加载全部数据。所有缓存实体仍在 `/home/data2/chk/data/glioma_explorer/runs/`，项目通过既有 `runs` 符号链接访问。
+HTML 本体不内嵌全体影像，`full_data/` 按患者／文件保存完整体积显示资源，共约 **10.95 GB**，是完整离线 HTML 的配套交付文件。打开页面只加载当前所需的几个体积，浏览器最多缓存八个体积，避免一次加载全部数据。实体仍在 `/home/data2/chk/data/glioma_explorer/runs/`，统一从 `code/data/glioma_explorer/runs/` 的符号链接入口访问。
 
 
 ## 启动
@@ -67,11 +67,13 @@ data/
       full_browser_checks.json    # 全部患者浏览器加载检查
 ```
 
-项目中的 `code/glioma_explorer/runs` 是指向 `/home/data2/chk/data/glioma_explorer/runs` 的符号链接，因此上述 HTML／预览入口保持可用，仓库不保存这些文件的实体副本。导出与浏览器检查脚本也默认直接写入数据目录。在新工作区可建立同样的链接：
+项目统一在 `code/data/` 下建立目录符号链接，分别指向上述两个数据集及 `glioma_explorer`。HTML 的推荐入口为 `code/data/glioma_explorer/runs/glioma_atlas.html`；HTML 与旁边的 `full_data/` 一起通过目录链接访问，保证相对资源路径有效。原有 `code/glioma_explorer/runs` 入口也保留可用。仓库不保存数据实体或这些机器本地链接，导出和浏览器检查仍直接写入数据目录。在新工作区建立入口：
 
 ```bash
-mkdir -p /home/data2/chk/data/glioma_explorer/runs
-ln -s /home/data2/chk/data/glioma_explorer/runs code/glioma_explorer/runs
+mkdir -p code/data
+ln -s /home/data2/chk/data/UCSF-ALPTDG code/data/UCSF-ALPTDG
+ln -s /home/data2/chk/data/MU-Glioma-Post code/data/MU-Glioma-Post
+ln -s /home/data2/chk/data/glioma_explorer code/data/glioma_explorer
 ```
 
 UCSF 直接从解压目录读取 NIfTI，运行时不依赖 ZIP。有界内存缓存服务近期病例，串行限制 MRI 解码的内存峰值。09-18 按用户要求解压外层 ZIP，保留标准 `.nii.gz` 影像格式；每个文件独立重读，核对原 ZIP 的大小、CRC32，并记录 SHA-256 到 `extraction_manifest.json`。确认浏览器正常后删除原始 ZIP，下载来源与原 ZIP 校验记录保留在数据目录中。若更新本地数据，重启服务以重建表格缓存。MU 通过原始 PatientID／Timepoint 文件名映射到临床表；`t1c/t1n/t2f/t2w` 分别显示为 T1 CE／T1／FLAIR／T2。时间点编号不重排，也不强制从 T1 开始；缺少 mask 时仅显示 MRI，体积为缺失值。

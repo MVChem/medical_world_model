@@ -1,0 +1,10 @@
+# Keep source, configuration and documentation; exclude local data and outputs.
+/runs
+/data
+/weights
+/checkpoints
+/outputs
+/.venv
+__pycache__/
+*.py[cod]
+*.log

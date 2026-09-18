@@ -23,7 +23,8 @@ import html
 import json
 import os
 from collections import Counter, defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import TextIO
@@ -94,12 +95,14 @@ def load_subject_rows(path: Path, subject_ids: set[str]) -> list[dict[str, str]]
 
     rows: list[dict[str, str]] = []
     with _open_csv(path) as handle:
-        reader = csv.DictReader(handle)
-        if not reader.fieldnames or "subject_id" not in reader.fieldnames:
+        reader = csv.reader(handle)
+        fields = next(reader, [])
+        if "subject_id" not in fields:
             raise ValueError(f"Table has no subject_id column: {path}")
+        subject_column = fields.index("subject_id")
         for row in reader:
-            if row.get("subject_id") in subject_ids:
-                rows.append(dict(row))
+            if len(row) > subject_column and row[subject_column] in subject_ids:
+                rows.append(dict(zip(fields, row)))
     return rows
 
 
@@ -398,35 +401,61 @@ def _event_counts(rows: Iterable[Mapping[str, object]]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
-def link_packets(
-    packets: Sequence[dict[str, object]],
+@dataclass
+class IVTables:
+    """Selected raw rows and dictionaries, held only in process memory."""
+
+    by_subject: dict
+    diagnosis_dictionary: dict
+    procedure_dictionary: dict
+    item_dictionary: dict
+    include_icu_inputs: bool
+
+
+def load_iv_tables(
     mimic_iv_root: Path,
+    subject_ids: set[str],
     *,
     include_icu_inputs: bool,
-) -> list[dict[str, object]]:
-    subject_ids = {_subject_id(packet) for packet in packets}
+    progress: Callable[[str], None] | None = None,
+    index=None,
+) -> IVTables:
+    def read(path: Path) -> list[dict[str, str]]:
+        if progress:
+            progress(f"MIMIC-IV · {path.name}")
+        if index is not None:
+            name = path.parent.name + "." + path.name.split(".csv")[0]
+            return [
+                row
+                for subject in subject_ids
+                for row in index.read_subject(name, subject)
+            ]
+        return load_subject_rows(path, subject_ids)
+
+    def dictionary(path, fields):
+        if index is None:
+            return load_dictionary(path, fields)
+        name = path.parent.name + "." + path.name.split(".csv")[0]
+        return {tuple(row[f] for f in fields): row for row in index.iter_table(name)}
+
     hosp = mimic_iv_root / "hosp"
     icu = mimic_iv_root / "icu"
 
-    admissions = load_subject_rows(hosp / "admissions.csv.gz", subject_ids)
-    transfers = load_subject_rows(hosp / "transfers.csv.gz", subject_ids)
-    diagnoses = load_subject_rows(hosp / "diagnoses_icd.csv.gz", subject_ids)
-    procedures_icd = load_subject_rows(hosp / "procedures_icd.csv.gz", subject_ids)
-    stays = load_subject_rows(icu / "icustays.csv.gz", subject_ids)
-    procedureevents = load_subject_rows(icu / "procedureevents.csv.gz", subject_ids)
-    inputevents = (
-        load_subject_rows(icu / "inputevents.csv.gz", subject_ids)
-        if include_icu_inputs
-        else []
-    )
+    admissions = read(hosp / "admissions.csv.gz")
+    transfers = read(hosp / "transfers.csv.gz")
+    diagnoses = read(hosp / "diagnoses_icd.csv.gz")
+    procedures_icd = read(hosp / "procedures_icd.csv.gz")
+    stays = read(icu / "icustays.csv.gz")
+    procedureevents = read(icu / "procedureevents.csv.gz")
+    inputevents = read(icu / "inputevents.csv.gz") if include_icu_inputs else []
 
-    diagnosis_dictionary = load_dictionary(
+    diagnosis_dictionary = dictionary(
         hosp / "d_icd_diagnoses.csv.gz", ("icd_code", "icd_version")
     )
-    procedure_dictionary = load_dictionary(
+    procedure_dictionary = dictionary(
         hosp / "d_icd_procedures.csv.gz", ("icd_code", "icd_version")
     )
-    item_dictionary = load_dictionary(icu / "d_items.csv.gz", ("itemid",))
+    item_dictionary = dictionary(icu / "d_items.csv.gz", ("itemid",))
 
     by_subject: dict[str, dict[str, list[dict[str, str]]]] = defaultdict(
         lambda: defaultdict(list)
@@ -443,6 +472,35 @@ def link_packets(
         for row in rows:
             by_subject[row["subject_id"]][name].append(row)
 
+    return IVTables(
+        by_subject,
+        diagnosis_dictionary,
+        procedure_dictionary,
+        item_dictionary,
+        include_icu_inputs,
+    )
+
+
+def link_packets(
+    packets: Sequence[dict[str, object]],
+    mimic_iv_root: Path,
+    *,
+    include_icu_inputs: bool,
+    tables: IVTables | None = None,
+) -> list[dict[str, object]]:
+    """Link packets using either fresh table scans or caller-owned memory."""
+    if tables is None:
+        tables = load_iv_tables(
+            mimic_iv_root,
+            {_subject_id(p) for p in packets},
+            include_icu_inputs=include_icu_inputs,
+        )
+    if include_icu_inputs != tables.include_icu_inputs:
+        raise ValueError("ICU input selection differs from the loaded tables")
+    by_subject = tables.by_subject
+    diagnosis_dictionary = tables.diagnosis_dictionary
+    procedure_dictionary = tables.procedure_dictionary
+    item_dictionary = tables.item_dictionary
     linked: list[dict[str, object]] = []
     for packet in packets:
         subject_id = _subject_id(packet)
@@ -876,7 +934,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--mimic-root",
         type=Path,
-        default=Path("/home/data2/chk/data/MIMIC"),
+        default=Path(__file__).resolve().parent.parent / "data/MIMIC",
         help="MIMIC parent directory or mimic-iv-3.1 directory",
     )
     parser.add_argument(

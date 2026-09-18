@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>MIMIC Atlas · 纵向影像与临床数据</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='9' fill='%23122530'/%3E%3Ctext x='7' y='29' font-size='29' font-family='sans-serif' fill='%2377c9b5'%3Em%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/explorer.css">
+  <script src="/static/cohort.js" defer></script>
+  <script src="/static/clinical.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="#" id="home-brand"><span class="brand-icon">m<span>+</span></span><span>MIMIC Atlas<small>DATA WORKSPACE</small></span></a>
+  <div class="nav-label">浏览数据</div>
+  <nav class="workspace-nav" aria-label="主导航">
+    <button id="nav-patients" class="active"><span>▦</span> 全量患者 <small id="nav-patient-count">—</small></button>
+    <button id="nav-pairs"><span>⇄</span> 影像配对 <small id="nav-pair-count">—</small></button>
+    <button id="nav-featured"><span>☆</span> 精选示例 <small>7</small></button>
+  </nav>
+  <div class="sidebar-card"><span class="eyebrow">远程浏览</span><label for="image-quality">影像清晰度</label><select id="image-quality"><option value="512">省流 · 512 px</option><option value="960">标准 · 960 px</option><option value="1400">清晰 · 1400 px</option></select><p>仅加载选中的影像。点击放大后读取大图。</p></div>
+  <div class="sidebar-foot"><div><span class="live-dot"></span><span id="connection-label">本地数据连接</span></div><p>MIMIC-CXR-JPG 2.0.0<br>MIMIC-IV 3.1</p><small>脱敏日期 · 仅比较患者内时间间隔</small></div>
+</aside>
+<main>
+  <header class="topbar"><div><span class="breadcrumb">Medical world model</span><span class="slash">/</span>Data explorer</div><span class="local-badge" id="mode-badge"><i></i> LOCAL WORKSPACE</span></header>
+  <div id="cohort-content" hidden>
+  <section class="page-heading"><div><div class="eyebrow">DATA EXPLORER</div><h1>数据总览</h1><p>从全量数据出发，查看患者、影像配对与临床记录。</p></div><span class="subtle-badge">按需加载 · 低流量预览</span></section>
+  <section class="metrics" aria-label="全库数据规模"><div><span>全部患者</span><strong id="metric-patients">—</strong><small id="metric-patients-note">CXR ∪ IV</small></div><div><span>CXR × IV 患者</span><strong id="metric-matched">—</strong><small>subject_id 一致</small></div><div><span>影像检查</span><strong id="metric-studies">—</strong><small id="metric-images">— 张胸片</small></div><div><span>同住院影像配对</span><strong id="metric-pairs">—</strong><small id="metric-pairs-note">唯一共同住院</small></div></section>
+  <div id="cohort-progress" class="index-progress" role="status"></div>
+  <section class="cohort-summary"><div class="summary-card"><div class="panel-heading"><h3>数据覆盖</h3><span class="muted">点击筛选患者</span></div><div id="coverage-bars"></div></div><div class="summary-card"><div class="panel-heading"><h3>候选配对与数据划分</h3><span class="muted">按官方 CXR split</span></div><div id="split-summary"></div></div></section>
+  <details class="dataset-audit"><summary>配对规则与数据分布 <span>标签 · 投照体位 · 间隔 · 排除原因</span></summary><div id="dataset-audit-body"></div></details>
+  <section class="cohort-table-panel">
+    <div class="cohort-table-heading"><div><h2 id="list-title">全量患者</h2><span id="list-count" class="count-badge">—</span></div><a id="cohort-export" class="button" href="#" download>导出筛选清单 ↓</a></div>
+    <div class="cohort-filters"><label class="cohort-search"><span aria-hidden="true">⌕</span><input id="patient-search" type="search" placeholder="搜索 subject_id" aria-label="搜索患者"></label><select id="coverage-filter" aria-label="数据覆盖"><option value="all">全部数据</option><option value="matched">CXR × IV</option><option value="cxr">全部 CXR</option><option value="cxr_only">仅 CXR</option><option value="iv_only">仅 IV</option></select><select id="split-filter" aria-label="数据划分"><option value="all">全部 split</option><option value="train">Train</option><option value="validate">Validate</option><option value="test">Test</option><option value="none">无 CXR split</option></select><select id="paired-filter" aria-label="配对条件"><option value="all">全部配对状态</option><option value="pairs">有可用影像配对</option><option value="linked">有同住院配对</option></select><select id="linkage-filter" aria-label="住院匹配" hidden><option value="all">全部住院匹配</option><option value="unique">唯一共同住院</option><option value="unmatched">未匹配</option><option value="ambiguous">有歧义</option></select><select id="sort-filter" aria-label="排序"><option value="subject">患者 ID ↑</option><option value="studies">检查数量 ↓</option><option value="pairs">配对数量 ↓</option><option value="linked_pairs">同住院配对 ↓</option></select><button id="reset-filters" title="清空筛选">重置</button></div>
+    <div class="list-context"><label class="check-line"><input id="longitudinal-filter" type="checkbox"> 仅多次检查</label><span id="cohort-list-note">列表仅包含摘要；点击患者查看详情。</span></div>
+    <div class="table-wrap cohort-table-wrap" id="patient-list" aria-live="polite"></div>
+    <div class="pagination" id="pagination"><span id="range-info"></span><div><label>每页 <select id="page-size" aria-label="每页条数"><option>25</option><option>50</option><option>100</option></select></label><button id="page-prev" aria-label="上一页">←</button><span id="page-info"></span><button id="page-next" aria-label="下一页">→</button></div></div>
+  </section><p class="page-foot">影像配对为全库可用候选，未应用训练抽样和具体任务约束；不等于最终训练清单。临床记录在选择后按需读取。</p>
+  </div>
+  <div id="startup" class="startup" role="status"><span class="spinner"></span><h2>连接本地 MIMIC 数据</h2><p id="startup-stage">正在读取 CXR 元数据…</p></div>
+  <div id="notice" class="notice" role="status" hidden></div>
+  <article id="patient-content" hidden>
+    <button id="back-cohort" class="back-link">← 返回全量列表</button><section class="patient-header"><div><div class="eyebrow">PATIENT WORKSPACE</div><h2>Subject <span id="subject-id"></span><span id="split-badge" class="badge"></span></h2><p id="patient-meta"></p></div><div class="export-actions"><button id="export-json" class="button">JSON ↓</button><button id="export-html" class="button primary">导出当前片段 HTML ↗</button></div></section>
+    <div id="iv-only-note" class="notice" hidden>此患者仅有 MIMIC-IV 记录，没有 CXR 检查。可在下方选择临床数据表。</div><section class="panel study-panel"><div class="panel-heading"><h3><span class="section-num">01</span> 影像时间线</h3><span id="study-count" class="muted"></span></div><div id="study-timeline" class="study-timeline" aria-label="检查时间线"></div><div class="timeline-footer"><span><i class="dot current"></i> 当前 <i class="dot future"></i> 随访</span><span>点击任一检查查看单次影像；配对仅使用相邻、同投照的 AP / PA。</span></div></section>
+    <section class="viewer-section">
+      <div class="viewer-toolbar"><div class="pair-control"><button id="pair-prev" aria-label="上一个片段">←</button><select id="pair-select" aria-label="选择相邻片段"></select><button id="pair-next" aria-label="下一个片段">→</button></div><div id="interval-badge" class="interval-badge"></div></div>
+      <div id="image-grid" class="image-grid"></div>
+      <div class="image-tools"><span class="tool-label">同步显示</span><label>缩放 <input id="zoom" type="range" min="1" max="3" step="0.1" value="1"><output id="zoom-value">1.0×</output></label><label>亮度 <input id="brightness" type="range" min="0.5" max="1.8" step="0.05" value="1"></label><label>对比度 <input id="contrast" type="range" min="0.5" max="2" step="0.05" value="1"></label><button id="invert" aria-pressed="false">反相</button><button id="reset-image">重置</button><span class="viewer-help">放大后可拖动 · 点击 ⛶ 查看大图</span></div>
+    </section>
+    <section class="panel details-panel"><div class="tabs" role="tablist" aria-label="病例详情"><button role="tab" id="tab-reports" aria-selected="true" aria-controls="reports-panel" data-tab="reports">影像报告</button><button role="tab" id="tab-labels" aria-selected="false" aria-controls="labels-panel" data-tab="labels">标签变化 <span id="change-count"></span></button><button role="tab" id="tab-clinical" aria-selected="false" aria-controls="clinical-panel" data-tab="clinical">MIMIC-IV 临床背景 <i id="clinical-dot" class="status-dot"></i></button><button role="tab" id="tab-observations" aria-selected="false" aria-controls="observations-panel" data-tab="observations">检验 · 生命体征 · 更多</button><button role="tab" id="tab-provenance" aria-selected="false" aria-controls="provenance-panel" data-tab="provenance">数据来源</button></div>
+      <div id="reports-panel" class="tab-panel" role="tabpanel" aria-labelledby="tab-reports"></div>
+      <div id="labels-panel" class="tab-panel" role="tabpanel" aria-labelledby="tab-labels" hidden></div>
+      <div id="clinical-panel" class="tab-panel" role="tabpanel" aria-labelledby="tab-clinical" hidden></div>
+      <div id="observations-panel" class="tab-panel" role="tabpanel" aria-labelledby="tab-observations" hidden></div>
+      <div id="provenance-panel" class="tab-panel" role="tabpanel" aria-labelledby="tab-provenance" hidden></div>
+    </section>
+    <p class="page-foot">研究数据浏览 · CheXpert 为报告衍生标签；随访和 IV 回顾性记录不作为当前状态预测输入。</p>
+  </article>
+</main>
+<dialog id="image-dialog"><div class="dialog-toolbar"><span id="dialog-caption"></span><button id="close-dialog" aria-label="关闭大图">关闭 ×</button></div><img id="dialog-image" alt="放大的胸部影像"></dialog>
+</body>
+</html>

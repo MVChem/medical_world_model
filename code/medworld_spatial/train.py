@@ -1,77 +1,24 @@
-"""Matched two-task spatial pilots, with fixed steps, deadline and real exports."""
+"""Matched variants trained on the same on-demand batch; no feature cache."""
 import argparse
-from concurrent.futures import ThreadPoolExecutor
-import hashlib
 import json
 import os
 from pathlib import Path
+import signal
 import time
+import traceback
 
 import numpy as np
 import torch
 from skimage.metrics import structural_similarity
 
-from medworld.datasets.current import _sha256
 from medworld.decoders import spatial_loss
 from medworld.gpu import acquire_gpu
 from medworld.runtime import atomic_json, seed_all
 from .geometry import feature_loss, semantic_loss
 from .model import SparseSpatialModel, reader_from_state
+from .online import OnlineInputs
 
-
-class Cache:
-    def __init__(self, root, workers=4):
-        self.root = Path(root)
-        self.rows, self.protocols = {}, {}
-        self.pool = ThreadPoolExecutor(max_workers=workers)
-        for task in ("segmentation", "sr"):
-            directory = self.root / task
-            completed = json.loads((directory / "complete.json").read_text())
-            for name, expected in completed["sha256"].items():
-                if _sha256(directory / name) != expected:
-                    raise ValueError(f"Cache metadata changed: {task}/{name}")
-            records = json.loads((directory / "records.json").read_text())
-            self.protocols[task] = json.loads((directory / "protocol.json").read_text())
-            for split in {r["split"] for r in records}:
-                self.rows[task, split] = [r for r in records if r["split"] == split]
-        if self.protocols["segmentation"]["data_fingerprint"] != self.protocols["sr"]["data_fingerprint"]:
-            raise ValueError("Task caches do not share the patient protocol")
-        for name in ("reader_init.pt", "text_embeddings.pt"):
-            # Save format ZIP metadata can differ; compare the actual tensors below.
-            left = torch.load(self.root / "segmentation" / name, weights_only=True)
-            right = torch.load(self.root / "sr" / name, weights_only=True)
-            if name == "text_embeddings.pt":
-                torch.testing.assert_close(left, right, rtol=0, atol=0)
-            else:
-                for key in left["state_dict"]:
-                    torch.testing.assert_close(left["state_dict"][key], right["state_dict"][key], rtol=0, atol=0)
-        self.reader = torch.load(self.root / "segmentation/reader_init.pt", weights_only=True)
-        self.text = torch.load(self.root / "segmentation/text_embeddings.pt", weights_only=True)
-        self.permutations = {}
-
-    def batch(self, task, split, indices, device):
-        records = [self.rows[task, split][i] for i in indices]
-        samples = list(self.pool.map(lambda r: torch.load(self.root / task / r["path"], weights_only=True), records))
-        grid = tuple(samples[0]["grid"])
-        if any(tuple(row["grid"]) != grid for row in samples):
-            raise ValueError("Cannot mix native feature grids")
-        result = {key: torch.stack([row[key] for row in samples]).to(device)
-                  for key, value in samples[0].items() if torch.is_tensor(value)}
-        result.update(grid=grid, ids=[r["id"] for r in records], patients=[r["patient"] for r in records])
-        return result
-
-    def training_batch(self, task, offset, batch_size, seed, device):
-        size = len(self.rows[task, "train"])
-        indices = []
-        for position in range(offset, offset + batch_size):
-            epoch, within = divmod(position, size)
-            key = (task, epoch, seed)
-            if key not in self.permutations:
-                entropy = int.from_bytes(hashlib.sha256(f"{seed}:{task}:{epoch}".encode()).digest()[:8], "little")
-                self.permutations[key] = np.random.default_rng(entropy).permutation(size)
-                self.permutations = {k: v for k, v in self.permutations.items() if k[0] != task or k == key}
-            indices.append(int(self.permutations[key][within]))
-        return self.batch(task, "train", indices, device)
+VARIANTS = ("image_only", "visual_slots", "slots", "featup", "featup_semantic", "image_only_featup")
 
 
 def scores(prediction, target, valid, task):
@@ -93,7 +40,7 @@ def scores(prediction, target, valid, task):
 
 
 def save_export(path, result, batch, task, ablated=None):
-    tensors = {key: value.detach().float().cpu().numpy() for key, value in result.items() if torch.is_tensor(value)}
+    tensors = {key: value.detach().float().cpu().numpy() for key, value in result.items() if torch.is_tensor(value) and key != "feature"}
     tensors.update(input=batch["pixels"].cpu().numpy(), reference=batch["targets"].cpu().numpy(),
                    valid=batch["valid"].cpu().numpy(), teacher_semantic=batch["semantic_probabilities"].cpu().numpy())
     if ablated is not None:
@@ -107,158 +54,249 @@ def save_export(path, result, batch, task, ablated=None):
         "replacement": "same trained model, all state slots set to zero; sensitivity diagnostic, not matched retraining"})
 
 
+def update(model, optimizer, batch, task, args, audit=False):
+    model.train()
+    optimizer.zero_grad(set_to_none=True)
+    with torch.autocast(device_type=batch["raw"].device.type, dtype=torch.bfloat16,
+                        enabled=batch["raw"].is_cuda):
+        result = model(batch, task)
+        task_loss = spatial_loss(task, result["prediction"], batch["targets"], batch["valid"])
+        consistency = (feature_loss(result["feature"], batch["teacher_features"], batch["thetas"], batch["valid"])
+                       if model.variant in ("featup", "featup_semantic", "image_only_featup") else task_loss * 0)
+        semantic, eligible = (semantic_loss(result["semantic_attention"], batch["semantic_probabilities"], batch["valid"])
+                              if model.variant in ("featup_semantic", "image_only_featup") else (task_loss * 0, task_loss.detach() * 0))
+        scale = args.sr_alignment_scale if task == "sr" else 1.0
+        loss = task_loss + scale * (args.feature_weight * consistency + args.semantic_weight * semantic)
+    if not torch.isfinite(loss):
+        raise FloatingPointError(f"Nonfinite {model.variant}/{task} loss")
+    if audit:
+        task_query_grad = torch.autograd.grad(task_loss, model.reader.queries, retain_graph=True)[0]
+    loss.backward()
+    gradients = {}
+    if audit:
+        gradients = {name: float(p.grad.float().norm()) for name, p in model.named_parameters()
+                     if p.grad is not None and ("queries" in name or "gate" in name or "semantic.query" in name)}
+        gradients["task_loss_only.reader.queries"] = float(task_query_grad.norm())
+    norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0, error_if_nonfinite=True)
+    optimizer.step()
+    optimizer.zero_grad(set_to_none=True)
+    return {"task": task, "loss": float(loss.detach()), "task_loss": float(task_loss.detach()),
+            "feature_loss": float(consistency.detach()), "semantic_loss": float(semantic.detach()),
+            "semantic_eligible_fraction": float(eligible.detach()), "alignment_scale": scale,
+            "gradient_norm": float(norm)}, gradients
+
+
+def contract(args, inputs):
+    keys = ("variants", "seed", "steps", "batch_size", "learning_rate", "feature_weight", "semantic_weight",
+            "sr_alignment_scale", "views", "selection_seed", "semantic_batch", "train_n", "val_n", "test_n", "human_n")
+    return {"arguments": {key: getattr(args, key) for key in keys}, "input_protocol": inputs.protocol}
+
+
+def save_group(path, models, optimizers, step, protocol):
+    temporary = path.with_suffix(".tmp")
+    torch.save({"models": {v: model.state_dict() for v, model in models.items()},
+                "optimizers": {v: optimizer.state_dict() for v, optimizer in optimizers.items()},
+                "step": step, "contract": protocol}, temporary)
+    os.replace(temporary, path)
+
+
+def restore_group(path, models, optimizers, protocol, device):
+    saved = torch.load(path, weights_only=False, map_location=device)
+    if saved["contract"] != protocol:
+        raise ValueError("Resume requires identical inputs, teachers and experiment parameters")
+    for variant, model in models.items():
+        model.load_state_dict(saved["models"][variant], strict=True)
+        optimizers[variant].load_state_dict(saved["optimizers"][variant])
+    return saved["step"]
+
+
 @torch.no_grad()
-def evaluate(model, cache, out, device, split, batch_size, export=False):
-    model.eval()
-    metrics = {}
-    out.mkdir(parents=True, exist_ok=True)
+def evaluate(models, inputs, directories, split, batch_size, *, export=False, deadline=0, heartbeat=None):
+    """One transient input batch shared across all models, also during evaluation."""
+    for model in models.values():
+        model.eval()
+    metrics = {v: {} for v in models}
+    complete = True
     for task in ("segmentation", "sr"):
-        records = cache.rows.get((task, split), [])
+        records = inputs.rows.get((task, split), [])
         if not records:
             continue
-        values, losses = [], []
+        values, losses = {v: [] for v in models}, {v: [] for v in models}
         for start in range(0, len(records), batch_size):
-            batch = cache.batch(task, split, range(start, min(start + batch_size, len(records))), device)
-            with torch.autocast(device_type=device, dtype=torch.bfloat16, enabled=device == "cuda"):
-                result = model(batch, task)
-            loss = float(spatial_loss(task, result["prediction"], batch["targets"], batch["valid"]))
-            losses += [loss] * len(batch["ids"])
-            measurements = scores(result["prediction"], batch["targets"], batch["valid"], task)
-            for identity, patient, measured in zip(batch["ids"], batch["patients"], measurements):
-                values.append({"id": identity, "patient": patient, **measured})
-            if export and start == 0:
-                with torch.autocast(device_type=device, dtype=torch.bfloat16, enabled=device == "cuda"):
-                    ablated = model(batch, task, replacement=torch.zeros_like(result["slots"]))
-                save_export(out / f"{task}_attention.npz", result, batch, task, ablated)
-        scalar = [key for key, value in values[0].items() if isinstance(value, (float, int))]
-        metrics[task] = {"n": len(values), "loss": float(np.mean(losses)),
-                         **{key: float(np.mean([r[key] for r in values])) for key in scalar}}
-        with (out / f"{task}.jsonl").open("w") as handle:
-            for row in values:
-                handle.write(json.dumps(row) + "\n")
-    atomic_json(out / "summary.json", metrics)
-    return metrics
-
-
-def checkpoint(path, model, optimizer, step, args):
-    temporary = path.with_suffix(".tmp")
-    torch.save({"model": model.state_dict(), "optimizer": optimizer.state_dict(), "step": step,
-                "arguments": vars(args), "variant": args.variant, "seed": args.seed}, temporary)
-    os.replace(temporary, path)
+            if deadline and time.time() >= deadline:
+                complete = False
+                break
+            batch = inputs.batch(task, split, range(start, min(start + batch_size, len(records))),
+                                 alignment=False, semantic=export and start == 0)
+            for variant, model in models.items():
+                directory = directories[variant]
+                directory.mkdir(parents=True, exist_ok=True)
+                with torch.autocast(device_type=inputs.device, dtype=torch.bfloat16, enabled=inputs.device == "cuda"):
+                    result = model(batch, task)
+                loss = float(spatial_loss(task, result["prediction"], batch["targets"], batch["valid"]))
+                losses[variant] += [loss] * len(batch["ids"])
+                measured = scores(result["prediction"], batch["targets"], batch["valid"], task)
+                values[variant].extend({"id": identity, "patient": patient, **row}
+                    for identity, patient, row in zip(batch["ids"], batch["patients"], measured))
+                if export and start == 0:
+                    with torch.autocast(device_type=inputs.device, dtype=torch.bfloat16, enabled=inputs.device == "cuda"):
+                        ablated = model(batch, task, replacement=torch.zeros_like(result["slots"]))
+                    save_export(directory / f"{task}_attention.npz", result, batch, task, ablated)
+                    del ablated
+                del result
+            del batch
+            if heartbeat:
+                heartbeat(split, task, min(start + batch_size, len(records)), len(records))
+        for variant in models:
+            rows = values[variant]
+            directory = directories[variant]
+            directory.mkdir(parents=True, exist_ok=True)
+            metrics[variant][task] = {"n": len(rows), "expected_n": len(records), "complete": len(rows) == len(records)}
+            if rows:
+                scalar = [key for key, value in rows[0].items() if isinstance(value, (float, int))]
+                metrics[variant][task].update(loss=float(np.mean(losses[variant])),
+                    **{key: float(np.mean([row[key] for row in rows])) for key in scalar})
+            with (directory / f"{task}.jsonl").open("w") as handle:
+                for row in rows:
+                    handle.write(json.dumps(row) + "\n")
+    for variant, directory in directories.items():
+        directory.mkdir(parents=True, exist_ok=True)
+        atomic_json(directory / "summary.json", metrics[variant])
+    return metrics, complete
 
 
 def main(args):
     os.umask(0o077)
-    lock, device = acquire_gpu(args.gpu)
-    torch.set_num_threads(args.threads)
-    seed_all(args.seed)
-    cache = Cache(args.cache, args.threads)
-    model = SparseSpatialModel(reader_from_state(cache.reader), cache.text, args.variant).to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=.01)
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     if (out / "summary.json").exists():
-        raise ValueError("Refusing to overwrite completed training")
-    atomic_json(out / "protocol.json", {**{k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
-        "cache_protocols": cache.protocols, "trainable_parameters": sum(p.numel() for p in model.parameters()),
-        "targets": "original dense task targets; extra alignment uses frozen teacher features/crop scores only",
-        "evaluation": "fixed final update, no test-set checkpoint or ROI selection"})
-    start, first_step = time.time(), 0
-    if args.resume and (out / "last.pt").exists():
-        saved = torch.load(out / "last.pt", weights_only=False, map_location=device)
-        for name in ("variant", "seed", "steps", "batch_size", "learning_rate", "feature_weight", "semantic_weight", "sr_alignment_scale"):
-            if saved["arguments"][name] != getattr(args, name):
-                raise ValueError(f"Resume configuration changed: {name}")
-        model.load_state_dict(saved["model"], strict=True)
-        optimizer.load_state_dict(saved["optimizer"])
-        first_step = saved["step"]
-    gradient_audit = {}
-    completed = first_step
-    with (out / "metrics.jsonl").open("a", buffering=1) as log:
-        for step in range(first_step, args.steps):
-            if args.deadline and time.time() >= args.deadline - args.finish_reserve:
-                break
-            task = ("segmentation", "sr")[step % 2]
-            offset = (step // 2) * args.batch_size
-            batch = cache.training_batch(task, offset, args.batch_size, args.seed, device)
-            model.train()
-            optimizer.zero_grad(set_to_none=True)
-            with torch.autocast(device_type=device, dtype=torch.bfloat16, enabled=device == "cuda"):
-                result = model(batch, task)
-                task_loss = spatial_loss(task, result["prediction"], batch["targets"], batch["valid"])
-                consistency = feature_loss(result["feature"], batch["teacher_features"], batch["thetas"], batch["valid"]) if args.variant in ("featup", "featup_semantic", "image_only_featup") else task_loss * 0
-                semantic, eligible = semantic_loss(result["semantic_attention"], batch["semantic_probabilities"], batch["valid"]) if args.variant in ("featup_semantic", "image_only_featup") else (task_loss * 0, task_loss.detach() * 0)
-                alignment_scale = args.sr_alignment_scale if task == "sr" else 1.0
-                loss = task_loss + alignment_scale * (args.feature_weight * consistency + args.semantic_weight * semantic)
-            if not torch.isfinite(loss):
-                raise FloatingPointError(f"Nonfinite loss at {step}")
-            if step < 2:
-                task_query_grad = torch.autograd.grad(task_loss, model.reader.queries, retain_graph=True)[0]
-            loss.backward()
-            if step < 2:
-                gradient_audit[task] = {name: float(parameter.grad.float().norm()) for name, parameter in model.named_parameters()
-                    if parameter.grad is not None and ("queries" in name or "gate" in name or "semantic.query" in name)}
-                gradient_audit[task]["task_loss_only.reader.queries"] = float(task_query_grad.norm())
-                atomic_json(out / "gradient_audit.json", gradient_audit)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0, error_if_nonfinite=True)
-            optimizer.step()
-            completed = step + 1
-            row = {"step": completed, "task": task, "loss": float(loss.detach()), "task_loss": float(task_loss.detach()),
-                   "feature_loss": float(consistency.detach()), "semantic_loss": float(semantic.detach()),
-                   "semantic_eligible_fraction": float(eligible.detach()), "alignment_scale": alignment_scale,
-                   "elapsed_seconds": time.time() - start}
-            log.write(json.dumps(row) + "\n")
-            if completed % 50 == 0 or completed == 1:
-                atomic_json(out / "status.json", {"state": "training", **row, "heartbeat": time.time()})
-                print(args.variant, args.seed, row, flush=True)
-            if completed % args.save_every == 0:
-                checkpoint(out / "last.pt", model, optimizer, completed, args)
-            if completed % args.validate_every == 0:
-                evaluate(model, cache, out / f"validate_{completed:06d}", device, "validate", args.batch_size)
-    checkpoint(out / "last.pt", model, optimizer, completed, args)
-    summary = {"variant": args.variant, "seed": args.seed, "steps": completed,
-               "requested_steps": args.steps, "complete_budget": completed == args.steps, "evaluations": {}}
-    atomic_json(out / "status.json", {"state": "evaluating", "step": completed, "heartbeat": time.time()})
+        raise ValueError("Refusing to overwrite a finished seed group")
+    stopping = []
+    for number in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(number, lambda signum, frame: stopping.append(signum))
+    atomic_json(out / "status.json", {"state": "loading", "pid": os.getpid(), "heartbeat": time.time()})
+    lock, device = acquire_gpu(args.gpu)
+    torch.set_num_threads(args.threads)
+    inputs = OnlineInputs(args, device)
+    protocol = contract(args, inputs)
+    atomic_json(out / "protocol.json", protocol)
+    models, optimizers, directories, audits = {}, {}, {}, {}
+    for variant in args.variants:
+        seed_all(args.seed)
+        models[variant] = SparseSpatialModel(reader_from_state(inputs.reader), inputs.text, variant).to(device)
+        optimizers[variant] = torch.optim.AdamW(models[variant].parameters(), lr=args.learning_rate, weight_decay=.01)
+        directories[variant] = args.jobs_root / f"{variant}_seed{args.seed}"
+        directories[variant].mkdir(parents=True, exist_ok=True)
+        atomic_json(directories[variant] / "protocol.json", {**protocol, "variant": variant,
+                    "checkpoint": str(out / "last.pt"), "source_protocol": inputs.protocol})
+        audits[variant] = {}
+    first_step = restore_group(out / "last.pt", models, optimizers, protocol, device) if args.resume and (out / "last.pt").exists() else 0
+    completed, start = first_step, time.time()
+    need_alignment = any(v in ("featup", "featup_semantic", "image_only_featup") for v in models)
+    need_semantic = any(v in ("featup_semantic", "image_only_featup") for v in models)
+    print(json.dumps({"event": "training_started", "seed": args.seed, "step": completed,
+                      "input_mode": "on_demand_no_disk_cache", "counts": inputs.protocol["counts"]}), flush=True)
+    for step in range(first_step, args.steps):
+        if stopping or (args.deadline and time.time() >= args.deadline - args.finish_reserve):
+            break
+        task = ("segmentation", "sr")[step % 2]
+        tick = time.time()
+        batch = inputs.training_batch(task, (step // 2) * args.batch_size, args.batch_size, args.seed,
+                                      alignment=need_alignment, semantic=need_semantic)
+        teacher_seconds = time.time() - tick
+        records = {}
+        for variant, model in models.items():
+            row, gradients = update(model, optimizers[variant], batch, task, args, audit=step < 2)
+            if gradients:
+                audits[variant][task] = gradients
+                atomic_json(directories[variant] / "gradient_audit.json", audits[variant])
+            row.update(step=step + 1, teacher_seconds=teacher_seconds, elapsed_seconds=time.time() - start)
+            records[variant] = row
+            with (directories[variant] / "metrics.jsonl").open("a") as log:
+                log.write(json.dumps(row) + "\n")
+            atomic_json(directories[variant] / "status.json", {"state": "training", **row, "heartbeat": time.time()})
+        del batch
+        completed = step + 1
+        state = {"state": "training", "step": completed, "requested_steps": args.steps, "seed": args.seed,
+                 "teacher_seconds": teacher_seconds, "batch_seconds": time.time() - tick,
+                 "heartbeat": time.time(), "variants": list(models), "pid": os.getpid()}
+        atomic_json(out / "status.json", state)
+        if completed <= 2 or completed % 10 == 0:
+            print(json.dumps(state), flush=True)
+        if completed % args.save_every == 0 or completed == 2:
+            save_group(out / "last.pt", models, optimizers, completed, protocol)
+        if completed % args.validate_every == 0 and not stopping:
+            evaluate(models, inputs, {v: p / f"validate_{completed:06d}" for v, p in directories.items()},
+                     "validate", args.batch_size, deadline=args.deadline - args.finish_reserve if args.deadline else 0)
+    save_group(out / "last.pt", models, optimizers, completed, protocol)
+    if stopping:
+        atomic_json(out / "status.json", {"state": "interrupted", "step": completed, "signals": stopping,
+                                          "heartbeat": time.time(), "checkpoint": str(out / "last.pt")})
+        print(json.dumps({"event": "interrupted", "step": completed, "signals": stopping}), flush=True)
+        return
+    summaries = {v: {"variant": v, "seed": args.seed, "steps": completed, "requested_steps": args.steps,
+                    "complete_budget": completed == args.steps, "evaluations": {}, "evaluation_complete": True,
+                    "checkpoint": str(out / "last.pt"), "input_mode": "on_demand_no_disk_cache"} for v in models}
+    def heartbeat(split, task, done, total):
+        atomic_json(out / "status.json", {"state": "evaluating", "step": completed, "split": split,
+            "task": task, "evaluated": done, "total": total, "heartbeat": time.time()})
     for split in ("validate", "test", "human_test"):
-        summary["evaluations"][split] = evaluate(model, cache, out / split, device, split, args.batch_size, export=True)
-    # Export-mode parity and checkpoint reconstruction are tested on real data.
-    batch = cache.batch("segmentation", "validate", [0], device)
-    model.eval()
+        measured, complete = evaluate(models, inputs, {v: p / split for v, p in directories.items()}, split,
+                                      args.batch_size, export=True, deadline=args.deadline, heartbeat=heartbeat)
+        for variant in models:
+            summaries[variant]["evaluations"][split] = measured[variant]
+            summaries[variant]["evaluation_complete"] &= complete
+    # Exact reconstruction check uses one already selected validation case.
+    batch = inputs.batch("segmentation", "validate", [0], alignment=False, semantic=False)
     with torch.no_grad():
-        reference = model(batch, "segmentation")["prediction"]
-        restored = SparseSpatialModel(reader_from_state(cache.reader), cache.text, args.variant).to(device).eval()
-        restored.load_state_dict(torch.load(out / "last.pt", weights_only=False, map_location=device)["model"])
-        recovered = restored(batch, "segmentation")["prediction"]
-        torch.testing.assert_close(reference, recovered, rtol=0, atol=0)
-    summary.update(elapsed_seconds=time.time() - start, checkpoint_reload_max_error=float((reference - recovered).abs().max()),
-                   completed_unix=time.time())
-    atomic_json(out / "summary.json", summary)
-    atomic_json(out / "status.json", {"state": "complete", "step": completed, "heartbeat": time.time()})
+        saved = torch.load(out / "last.pt", weights_only=False, map_location="cpu")
+        for variant, model in models.items():
+            model.eval()
+            reference = model(batch, "segmentation")["prediction"]
+            restored = SparseSpatialModel(reader_from_state(inputs.reader), inputs.text, variant).to(device).eval()
+            restored.load_state_dict(saved["models"][variant])
+            recovered = restored(batch, "segmentation")["prediction"]
+            torch.testing.assert_close(reference, recovered, rtol=0, atol=0)
+            summaries[variant]["checkpoint_reload_max_error"] = float((reference - recovered).abs().max())
+            del restored, reference, recovered
+    for variant, summary in summaries.items():
+        summary.update(elapsed_seconds=time.time() - start, completed_unix=time.time())
+        atomic_json(directories[variant] / "summary.json", summary)
+        atomic_json(directories[variant] / "status.json", {"state": "complete" if summary["complete_budget"] and summary["evaluation_complete"] else "budget_exhausted",
+                    "step": completed, "heartbeat": time.time()})
+    final_state = "complete" if all(s["complete_budget"] and s["evaluation_complete"] for s in summaries.values()) else "budget_exhausted"
+    atomic_json(out / "summary.json", {"state": final_state, "step": completed, "seed": args.seed, "variants": list(models)})
+    atomic_json(out / "status.json", {"state": final_state, "step": completed, "heartbeat": time.time()})
     if lock:
         lock.close()
 
 
-if __name__ == "__main__":
+def parser():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--cache", type=Path, required=True)
-    p.add_argument("--out", type=Path, required=True)
-    p.add_argument("--variant", choices=("image_only", "visual_slots", "slots", "featup", "featup_semantic", "image_only_featup"), required=True)
-    p.add_argument("--gpu", default="0")
-    p.add_argument("--steps", type=int, default=12000)
-    p.add_argument("--batch-size", type=int, default=8)
-    p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--learning-rate", type=float, default=1e-4)
-    p.add_argument("--feature-weight", type=float, default=.1)
-    p.add_argument("--semantic-weight", type=float, default=.05)
-    p.add_argument("--sr-alignment-scale", type=float, default=.001,
-                   help="Scale extra losses to SR MSE units; do not let feature loss swamp pixel MSE")
-    p.add_argument("--save-every", type=int, default=500)
-    p.add_argument("--validate-every", type=int, default=2000)
-    p.add_argument("--threads", type=int, default=4)
-    p.add_argument("--deadline", type=float, default=0)
-    p.add_argument("--finish-reserve", type=float, default=900)
+    for name in ("checkpoint", "semantic-teacher", "out", "jobs-root"):
+        p.add_argument("--" + name, type=Path, required=True)
+    p.add_argument("--variants", nargs="+", choices=VARIANTS, default=list(VARIANTS))
+    p.add_argument("--gpu", default="auto")
+    for name, value in (("steps", 4000), ("batch-size", 8), ("semantic-batch", 8), ("seed", 42),
+                        ("selection-seed", 42), ("views", 2), ("train-n", 4096), ("val-n", 128),
+                        ("test-n", 447), ("human-n", 138), ("save-every", 100), ("validate-every", 2000), ("threads", 4)):
+        p.add_argument("--" + name, type=int, default=value)
+    for name, value in (("learning-rate", 1e-4), ("feature-weight", .1), ("semantic-weight", .05),
+                        ("sr-alignment-scale", .001), ("deadline", 0), ("finish-reserve", 1200)):
+        p.add_argument("--" + name, type=float, default=value)
     p.add_argument("--resume", action="store_true")
+    return p
+
+
+if __name__ == "__main__":
+    p = parser()
     args = p.parse_args()
-    if min(args.steps, args.batch_size, args.save_every, args.validate_every, args.threads) <= 0:
-        p.error("Counts must be positive")
-    main(args)
+    if min(args.steps, args.batch_size, args.semantic_batch, args.save_every, args.validate_every,
+           args.views, args.train_n, args.val_n, args.threads) <= 0 or len(set(args.variants)) != len(args.variants):
+        p.error("Counts must be positive and variants distinct")
+    try:
+        main(args)
+    except Exception:
+        args.out.mkdir(parents=True, exist_ok=True)
+        atomic_json(args.out / "failure.json", {"traceback": traceback.format_exc(), "time": time.time(), "pid": os.getpid()})
+        raise

@@ -1,0 +1,1144 @@
+/* Light workspace. Reference: Figma shadcn/ui design system (see README). */
+:root {
+  --bg: #fff;
+  --surface: #fff;
+  --ink: #202124;
+  --muted: #71717a;
+  --line: #e7e7eb;
+  --teal: #3f526f;
+  --teal-soft: #f1f4f8;
+  --navy: #fff;
+  --radius: 8px;
+  --future: #92714c;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Noto Sans CJK SC",
+    "Microsoft YaHei",
+    sans-serif;
+}
+body {
+  font-size: 13px;
+  color: var(--ink);
+  background: #fff;
+}
+button:hover {
+  background: #f5f5f6;
+  border-color: #d4d4d8;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid #737f95;
+  outline-offset: 2px;
+}
+.teal {
+  color: #71717a;
+}
+.eyebrow {
+  letter-spacing: 1.2px;
+  font-size: 10px;
+  color: #71717a;
+}
+.sidebar {
+  width: 220px;
+  background: #fcfcfd;
+  border-right: 1px solid var(--line);
+  padding: 26px 18px 20px;
+  color: #303036;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.brand {
+  color: #232329;
+  gap: 10px;
+  font-size: 18px;
+  align-items: center;
+  padding: 0 5px;
+  text-decoration: none;
+}
+.brand small {
+  color: #93939b;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+}
+.brand-icon {
+  background: #fff;
+  border: 1px solid #dedee4;
+  color: #303036;
+  width: 35px;
+  height: 35px;
+  border-radius: 8px;
+  font-size: 27px;
+}
+.brand-icon span {
+  color: #8c94a3;
+}
+.nav-label {
+  font-size: 11px;
+  color: #96969d;
+  margin: 40px 10px 10px;
+}
+.workspace-nav {
+  display: grid;
+  gap: 4px;
+}
+.workspace-nav button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  border: 0;
+  color: #72727b;
+  font-weight: 500;
+  background: transparent;
+  padding: 10px;
+  border-radius: 6px;
+}
+.workspace-nav button > span {
+  width: 16px;
+  font-size: 18px;
+  line-height: 1;
+}
+.workspace-nav button.active {
+  background: #eeeef1;
+  color: #25252b;
+}
+.workspace-nav small {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+  color: #93939b;
+}
+.sidebar-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+  margin-top: 36px;
+}
+.sidebar-card label {
+  display: block;
+  margin: 10px 0 7px;
+  font-size: 12px;
+}
+.sidebar-card select {
+  width: 100%;
+  font-size: 11px;
+}
+.sidebar-card p {
+  font-size: 10px;
+  line-height: 1.8;
+  color: #85858f;
+  margin-top: 10px;
+}
+.sidebar-foot {
+  margin-top: auto;
+  border-color: var(--line);
+  color: #666670;
+}
+.sidebar-foot p,
+.sidebar-foot small {
+  color: #92929b;
+}
+.live-dot {
+  background: #7b9d88;
+}
+.sidebar .eyebrow {
+  color: #92929b;
+}
+main {
+  margin-left: 220px;
+  padding: 0 36px 30px;
+  max-width: 1880px;
+}
+.topbar {
+  height: 62px;
+  font-size: 11px;
+  color: #5d5d65;
+}
+.local-badge {
+  font-size: 8px;
+  color: #8b8b94;
+}
+.page-heading {
+  padding: 30px 0 25px;
+}
+h1 {
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  margin: 6px 0 7px;
+}
+.page-heading p {
+  font-size: 12px;
+  color: #85858f;
+}
+.subtle-badge {
+  font-size: 11px;
+  color: #73737c;
+  background: #fafafa;
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+  border-radius: 5px;
+}
+.metrics {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.metrics > div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 19px 21px;
+  gap: 8px;
+  min-width: 0;
+}
+.metrics > div:last-child {
+  border: 1px solid var(--line);
+}
+.metrics span {
+  font-size: 11px;
+  color: #686871;
+}
+.metrics strong {
+  font-size: 27px;
+  color: #27272d;
+  font-weight: 550;
+  line-height: 1.25;
+  letter-spacing: -0.7px;
+}
+.metrics small {
+  font-size: 10px;
+  color: #95959e;
+}
+.index-progress {
+  background: #f7f8fa;
+  border: 1px solid var(--line);
+  padding: 10px 14px;
+  color: #727781;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+.cohort-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+.summary-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 19px 21px;
+  min-width: 0;
+}
+.summary-card .panel-heading {
+  padding: 0 0 13px;
+  border: 0;
+}
+.panel-heading .muted {
+  font-size: 10px;
+}
+.coverage-row {
+  display: flex;
+  width: 100%;
+  border: 0;
+  padding: 9px 0;
+  gap: 15px;
+  background: transparent;
+  align-items: center;
+  font-size: 12px;
+}
+.coverage-row > span:first-child {
+  width: 70px;
+  text-align: left;
+  white-space: nowrap;
+}
+.coverage-row b {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  width: 65px;
+  font-weight: 500;
+  text-align: right;
+}
+.coverage-track {
+  flex: 1;
+  background: #f1f1f4;
+  border-radius: 3px;
+  height: 5px;
+  overflow: hidden;
+}
+.coverage-track i {
+  display: block;
+  height: 100%;
+  background: #a5b2c7;
+  border-radius: 3px;
+}
+.coverage-row:nth-child(2) i {
+  background: #c4c4cc;
+}
+.coverage-row:nth-child(3) i {
+  background: #b7c5bd;
+}
+.coverage-row:hover {
+  background: transparent;
+  color: #000;
+}
+.coverage-row:hover i {
+  background: #7387a5;
+}
+.split-mini {
+  width: 100%;
+  font-size: 11px;
+  border-collapse: collapse;
+}
+.split-mini th {
+  font-size: 10px;
+  color: #95959e;
+  font-weight: 400;
+  text-align: right;
+  padding: 0 0 5px;
+  background: #fff;
+}
+.split-mini th:first-child {
+  text-align: left;
+}
+.split-mini td {
+  padding: 5px 0;
+  text-align: right;
+  border: 0;
+  font-variant-numeric: tabular-nums;
+}
+.split-mini td:first-child {
+  text-align: left;
+}
+.split-mini button {
+  border: 0;
+  background: #f7f7f9;
+  font-size: 10px;
+  padding: 1px 6px;
+  line-height: 1.7;
+  border-radius: 4px;
+  color: #646470;
+}
+.dataset-audit {
+  font-size: 11px;
+  color: #86868f;
+  margin: 0 0 25px;
+}
+.dataset-audit summary {
+  cursor: pointer;
+  display: list-item;
+  padding: 8px 0;
+}
+.dataset-audit summary span {
+  font-size: 10px;
+  color: #a2a2aa;
+  margin-left: 8px;
+}
+.audit-rules {
+  padding: 12px 16px;
+  background: #fafafa;
+  line-height: 1.9;
+  border-radius: 6px;
+}
+.audit-distributions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 25px;
+  padding: 20px 4px;
+  max-height: 650px;
+  overflow: auto;
+}
+.audit-distributions h4 {
+  font-size: 12px;
+  color: #4b4b55;
+  margin: 0 0 10px;
+}
+.distribution-row {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 10px;
+}
+.distribution-row span {
+  overflow-wrap: anywhere;
+}
+.distribution-row b {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.cohort-table-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.cohort-table-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 21px 15px;
+  gap: 15px;
+}
+.cohort-table-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cohort-table-heading h2 {
+  font-size: 15px;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.count-badge {
+  font-size: 10px;
+  background: #f4f4f6;
+  padding: 2px 7px;
+  border-radius: 5px;
+  color: #74747e;
+  font-variant-numeric: tabular-nums;
+}
+.button {
+  font-size: 11px;
+  border-radius: 5px;
+  text-decoration: none;
+  background: #fff;
+  border: 1px solid var(--line);
+  color: #52525e;
+  box-shadow: 0 1px 2px #00000004;
+  padding: 7px 11px;
+  white-space: nowrap;
+}
+.button.primary {
+  background: #363943;
+  color: #fff;
+  border-color: #363943;
+}
+.button[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: default;
+}
+.cohort-filters {
+  display: flex;
+  gap: 7px;
+  padding: 0 21px 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cohort-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 160px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 6px 10px;
+  color: #9999a2;
+}
+.cohort-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 11px;
+  color: #484850;
+}
+.cohort-search:focus-within {
+  box-shadow: 0 0 0 2px #e3e6ed;
+}
+.cohort-filters select,
+.cohort-filters button {
+  font-size: 10px;
+  padding: 7px 8px;
+  color: #676772;
+  max-width: 170px;
+  height: 31px;
+  border-radius: 5px;
+}
+.list-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 21px 13px;
+  gap: 12px;
+  color: #93939d;
+  font-size: 10px;
+}
+.list-context .check-line {
+  font-size: 10px;
+  white-space: nowrap;
+  margin: 0;
+  color: #797982;
+}
+.check-line input {
+  accent-color: #68758c;
+}
+.cohort-table-wrap {
+  border-top: 1px solid var(--line);
+  overflow: auto;
+}
+.cohort-table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.cohort-table th {
+  background: #fafafb;
+  color: #84848e;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.cohort-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f3;
+  color: #555561;
+  font-variant-numeric: tabular-nums;
+}
+.cohort-table th:first-child,
+.cohort-table td:first-child {
+  padding-left: 21px;
+}
+.cohort-table tbody tr:last-child td {
+  border: 0;
+}
+.cohort-table tbody tr:hover {
+  background: #fafafb;
+}
+.cohort-table small {
+  display: block;
+  color: #9999a2;
+  font-size: 9px;
+  margin-top: 2px;
+}
+.data-badge {
+  display: inline-block;
+  border: 1px solid #e8e8ed;
+  background: #fafafa;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  line-height: 1.8;
+  color: #7b7b87;
+}
+.data-badge.matched {
+  border-color: #dce5e0;
+  background: #f6faf7;
+  color: #658170;
+}
+.mono {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+.patient-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #3b3b47;
+}
+.patient-link:hover {
+  color: #000;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+}
+.row-open {
+  padding: 3px 5px;
+  border: 0;
+  background: transparent;
+  font-size: 10px;
+  color: #7a7a87;
+}
+.featured-star {
+  margin-left: 8px;
+  color: #aaa08c;
+}
+.cohort-table .empty-state {
+  padding: 35px;
+  text-align: center;
+}
+.pair-studies {
+  font-size: 10px;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #8a8a95;
+  padding: 13px 20px;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+}
+.pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pagination button {
+  border-color: var(--line);
+  color: #656570;
+  background: #fff;
+  font-size: 12px;
+  padding: 2px 8px;
+}
+.pagination select {
+  font-size: 10px;
+  padding: 2px 4px;
+  margin-left: 3px;
+}
+.pagination label {
+  color: #8a8a95;
+}
+.page-foot {
+  font-size: 10px;
+  color: #92929a;
+  padding-top: 16px;
+  margin-top: 0;
+}
+.back-link {
+  margin-top: 22px;
+  border: 0;
+  color: #888893;
+  padding: 0;
+  background: transparent;
+  font-size: 11px;
+}
+.patient-header {
+  padding: 22px 0;
+}
+.patient-header h2 {
+  font-size: 23px;
+}
+.patient-header .eyebrow {
+  font-size: 9px;
+}
+.patient-header p {
+  color: #93939c;
+  font-size: 11px;
+}
+.badge {
+  border-color: #e6e6ec;
+  background: #f6f6f8;
+  color: #7d7d89;
+}
+.panel {
+  border-radius: 8px;
+  background: #fff;
+}
+.panel-heading {
+  padding: 16px 20px;
+}
+.section-num {
+  color: #a0a0aa;
+}
+.study-node {
+  border-color: #e9e9ee;
+  background: #fff;
+}
+.study-node.is-current {
+  background: #f6f7fa;
+  border-color: #9ba7bb;
+  color: #495c77;
+}
+.study-node.is-future {
+  background: #faf9f7;
+  border-color: #b9ada1;
+}
+.timeline-footer {
+  color: #9b9ba4;
+}
+.viewer-toolbar {
+  background: #fff;
+  border-color: var(--line);
+}
+.viewer-section {
+  border-radius: 8px;
+}
+.image-card {
+  border-radius: 7px;
+  background: #f7f7f8;
+  border: 1px solid #e1e1e5;
+}
+.image-caption {
+  background: #fbfbfc;
+  border-bottom: 1px solid #e4e4e8;
+  color: #6e6e7b;
+}
+.image-caption .role {
+  color: #718399;
+}
+.image-caption time {
+  color: #8b8b96;
+}
+.image-card.future .role {
+  color: #9a8a78;
+}
+.image-bottom {
+  background: #fbfbfc;
+  border-top: 1px solid #e4e4e8;
+  color: #92929c;
+}
+.image-stage {
+  background: #151619;
+  height: 390px;
+}
+.image-tools {
+  border: 1px solid var(--line);
+  background: #fafafb;
+  color: #80808b;
+  border-radius: 0 0 7px 7px;
+}
+.image-tools input {
+  accent-color: #77849a;
+}
+.pair-control {
+  background: #fff;
+}
+.pair-control select {
+  color: #656572;
+}
+.interval-badge {
+  color: #8b8b97;
+}
+.interval-badge b {
+  color: #596272;
+}
+.tabs {
+  background: #fff;
+  border-bottom-color: var(--line);
+}
+.tabs button {
+  font-size: 11px;
+  color: #8c8c97;
+}
+.tabs button[aria-selected="true"] {
+  color: #303b4d;
+  border-color: #5f6c82;
+  background: #fff;
+}
+.tab-panel {
+  padding: 22px;
+}
+.table-wrap table th,
+.observation-records th {
+  background: #fafafb;
+}
+.observation-status,
+.observation-metrics {
+  background: #fafafb;
+  border-color: var(--line);
+}
+.observation-heading h3 {
+  font-size: 16px;
+}
+.observation-heading .eyebrow {
+  font-size: 9px;
+}
+.observation-chart-wrap {
+  background: #fcfcfd;
+  border-color: var(--line);
+}
+.observation-controls select,
+.observation-filters select {
+  font-size: 11px;
+}
+.observation-heading p,
+.table-note,
+.chart-caption {
+  color: #92929d;
+}
+.notice {
+  background: #f7f8fa;
+  border-color: #e3e5eb;
+  color: #727987;
+}
+.status-badge.unique_common_admission {
+  background: #f4f7f4;
+  color: #708673;
+}
+input[type="search"] {
+  background: #fff;
+}
+@media (min-width: 1600px) {
+  main {
+    padding-left: 46px;
+    padding-right: 46px;
+    margin-left: 220px;
+  }
+  .sidebar {
+    width: 220px;
+  }
+}
+@media (max-width: 1200px) {
+  .sidebar {
+    width: 190px;
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+  main {
+    margin-left: 190px;
+    padding: 0 24px 25px;
+  }
+  .cohort-filters {
+    gap: 6px;
+  }
+  .metrics > div {
+    padding: 17px;
+  }
+  .metrics strong {
+    font-size: 23px;
+  }
+  .cohort-summary {
+    gap: 14px;
+  }
+  .summary-card {
+    padding: 15px;
+  }
+  .cohort-table td,
+  .cohort-table th {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+@media (max-width: 850px) {
+  .sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    padding: 14px 20px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .brand {
+    padding: 0;
+    margin: 0;
+    font-size: 16px;
+  }
+  .brand small {
+    display: none;
+  }
+  .brand-icon {
+    width: 29px;
+    height: 29px;
+    font-size: 23px;
+  }
+  .nav-label,
+  .sidebar-card,
+  .sidebar-foot {
+    display: none;
+  }
+  .workspace-nav {
+    display: flex;
+    margin-left: auto;
+    gap: 4px;
+  }
+  .workspace-nav button {
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+  .workspace-nav button > span {
+    display: none;
+  }
+  .workspace-nav small {
+    font-size: 9px;
+  }
+  .sidebar .brand > span:last-child {
+    display: block;
+  }
+  main {
+    margin: 0;
+    padding: 0 20px 24px;
+  }
+  .topbar {
+    height: 45px;
+  }
+  .page-heading {
+    padding: 23px 0 19px;
+  }
+  .metrics {
+    gap: 10px;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .metrics > div {
+    padding: 14px 12px;
+  }
+  .metrics strong {
+    font-size: 21px;
+  }
+  .metrics small {
+    font-size: 9px;
+  }
+  .cohort-summary {
+    gap: 12px;
+  }
+  .coverage-row {
+    gap: 8px;
+  }
+  .coverage-track {
+    min-width: 12px;
+  }
+  .list-context {
+    font-size: 9px;
+  }
+  .audit-distributions {
+    grid-template-columns: 1fr 1fr;
+  }
+  .image-stage {
+    height: 330px;
+  }
+}
+@media (max-width: 600px) {
+  .sidebar {
+    padding: 12px 16px;
+    gap: 13px;
+  }
+  .workspace-nav {
+    width: 100%;
+    justify-content: flex-start;
+    margin: 0;
+  }
+  .workspace-nav button {
+    flex: 1;
+    justify-content: center;
+    padding: 7px 5px;
+  }
+  .workspace-nav small {
+    margin-left: 3px;
+  }
+  .topbar {
+    font-size: 9px;
+  }
+  .local-badge {
+    font-size: 7px;
+    letter-spacing: 0.5px;
+  }
+  main {
+    padding: 0 14px 20px;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  .page-heading .subtle-badge {
+    display: none;
+  }
+  .page-heading p {
+    font-size: 11px;
+  }
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+  .metrics > div {
+    padding: 14px;
+    gap: 6px;
+    border: 1px solid var(--line);
+  }
+  .metrics strong {
+    font-size: 24px;
+  }
+  .metrics > div:nth-child(2) {
+    border-right: 1px solid var(--line);
+  }
+  .cohort-summary {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .summary-card {
+    padding: 15px 17px;
+  }
+  .dataset-audit {
+    margin-bottom: 16px;
+  }
+  .dataset-audit summary span {
+    font-size: 8px;
+    margin-left: 3px;
+  }
+  .cohort-table-heading {
+    padding: 16px 14px;
+  }
+  .cohort-table-heading h2 {
+    font-size: 14px;
+  }
+  .cohort-table-heading .button {
+    font-size: 10px;
+    padding: 5px 7px;
+  }
+  .cohort-filters {
+    padding: 0 14px 12px;
+    gap: 6px;
+  }
+  .cohort-search {
+    flex-basis: 100%;
+  }
+  .cohort-filters select {
+    max-width: calc(50% - 5px);
+    flex: 1 0 42%;
+    font-size: 10px;
+  }
+  .cohort-filters button {
+    font-size: 10px;
+  }
+  .list-context {
+    padding: 0 14px 12px;
+    display: block;
+  }
+  .list-context > span {
+    display: block;
+    margin-top: 7px;
+  }
+  .cohort-table {
+    min-width: 800px;
+  }
+  .pagination {
+    padding: 12px;
+    gap: 8px;
+    font-size: 9px;
+    flex-wrap: wrap;
+  }
+  .pagination > div {
+    gap: 8px;
+  }
+  .pagination label {
+    font-size: 9px;
+  }
+  .audit-distributions {
+    grid-template-columns: 1fr;
+  }
+  .patient-header {
+    padding: 18px 0;
+    gap: 12px;
+  }
+  .patient-header h2 {
+    font-size: 21px;
+  }
+  .patient-header p {
+    font-size: 10px;
+  }
+  .back-link {
+    margin-top: 17px;
+  }
+  .export-actions {
+    gap: 7px;
+  }
+  .export-actions .button {
+    font-size: 10px;
+  }
+  .image-stage {
+    height: 340px;
+  }
+  .tabs {
+    overflow-x: auto;
+  }
+  .tabs button {
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+  .tab-panel {
+    padding: 14px;
+  }
+  .observation-controls {
+    gap: 10px;
+  }
+  .observation-heading {
+    gap: 10px;
+  }
+  .observation-heading h3 {
+    font-size: 15px;
+  }
+  .observation-heading .button {
+    white-space: normal;
+    font-size: 10px;
+  }
+  .observation-records {
+    overflow: auto;
+    max-width: 100%;
+  }
+  .page-foot {
+    line-height: 1.8;
+    font-size: 9px;
+  }
+}
+.raw-context {
+  margin-top: 22px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+}
+.raw-context > summary {
+  cursor: pointer;
+  color: #626975;
+}
+.raw-context-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.raw-context-controls select,
+.raw-context-controls input {
+  font-size: 11px;
+  border: 1px solid var(--line);
+  padding: 6px 9px;
+  border-radius: 5px;
+  max-width: 100%;
+}
+.raw-context-controls input {
+  flex: 1;
+  min-width: 120px;
+}
+.raw-context-row {
+  padding: 10px 5px;
+  border-bottom: 1px solid var(--line);
+  color: #7b8390;
+  overflow: hidden;
+}
+.raw-context-row summary {
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.raw-context-row summary span {
+  display: inline-block;
+  min-width: 30px;
+  color: #a4a8b0;
+}
+.raw-context-row pre {
+  font-size: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #fafafa;
+  padding: 10px;
+}
+.selection-loading {
+  grid-column: 1/-1;
+  min-height: 390px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafb;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: #90909b;
+  font-size: 12px;
+}

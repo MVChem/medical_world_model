@@ -105,6 +105,7 @@ class Study:
     images_by_view: dict[str, ImageInfo] = field(default_factory=dict)
     split: str | None = None
     labels: tuple[int, ...] | None = None
+    images: list[ImageInfo] = field(default_factory=list)
 
     @property
     def acquisition_span_seconds(self) -> float:
@@ -388,7 +389,7 @@ def _allowed_views(requested_view: str) -> set[str]:
 
 
 def load_studies(
-    root: Path, requested_view: str, audit: Audit
+    root: Path, requested_view: str, audit: Audit, *, all_views: bool = False
 ) -> dict[tuple[str, str], Study]:
     metadata_path = _find_table(root, "mimic-cxr-2.0.0-metadata")
     allowed_views = _allowed_views(requested_view)
@@ -442,7 +443,7 @@ def load_studies(
             # Every study remains in the patient timeline. Only requested
             # projections are eligible as the paired primary image.
             view = (row.get("ViewPosition") or "").strip().upper()
-            if view not in allowed_views:
+            if view not in allowed_views and not all_views:
                 audit.increment("metadata_rows_not_requested_view")
                 continue
             image = ImageInfo(
@@ -460,6 +461,7 @@ def load_studies(
                 ).strip()
                 or None,
             )
+            study.images.append(image)
             previous = study.images_by_view.get(view)
             if previous is None or _image_rank(image) < _image_rank(previous):
                 study.images_by_view[view] = image
@@ -483,7 +485,11 @@ def load_studies(
 
 
 def attach_splits(
-    root: Path, studies: Mapping[tuple[str, str], Study], audit: Audit
+    root: Path,
+    studies: Mapping[tuple[str, str], Study],
+    audit: Audit,
+    *,
+    strict: bool = True,
 ) -> None:
     split_path = _find_table(root, "mimic-cxr-2.0.0-split")
     with _open_csv(split_path) as handle:
@@ -510,25 +516,29 @@ def attach_splits(
             study.split = split
 
     missing = [key for key, study in studies.items() if study.split is None]
-    if missing:
+    if missing and strict:
         raise ValueError(
             f"Split table did not cover {len(missing)} metadata studies; first missing key: {missing[0]}"
         )
     patient_splits: dict[str, set[str]] = defaultdict(set)
     for study in studies.values():
-        assert study.split is not None
-        patient_splits[study.subject_id].add(study.split)
+        if study.split is not None:
+            patient_splits[study.subject_id].add(study.split)
     conflicts = {
         subject_id: splits
         for subject_id, splits in patient_splits.items()
         if len(splits) != 1
     }
-    if conflicts:
+    if conflicts and strict:
         subject_id, splits = next(iter(conflicts.items()))
         raise ValueError(
             f"Patient-level split violation for subject {subject_id}: {sorted(splits)}"
         )
-    audit.increment("patients_with_validated_single_split", len(patient_splits))
+    audit.increment("studies_without_split", len(missing))
+    audit.increment("patients_with_multiple_splits", len(conflicts))
+    audit.increment(
+        "patients_with_validated_single_split", len(patient_splits) - len(conflicts)
+    )
 
 
 def attach_labels(
@@ -864,15 +874,26 @@ def _image_record(image: ImageInfo) -> dict[str, object]:
 
 
 def make_packet(
-    candidate: Candidate, max_report_chars: int
+    candidate: Candidate, max_report_chars: int, *, report_loader=None
 ) -> tuple[dict[str, object], dict[str, object], dict[str, object], dict[str, object]]:
     source = candidate.source
     target = candidate.target
     assert source.labels is not None and target.labels is not None
-    source_report = read_report(source.report_path, max_report_chars)
-    target_report = read_optional_evaluation_report(
-        target.report_path, max_report_chars
-    )
+    if report_loader is None:
+        source_report = read_report(source.report_path, max_report_chars)
+        target_report = read_optional_evaluation_report(
+            target.report_path, max_report_chars
+        )
+    else:
+        source_report = report_loader(source, max_report_chars)
+        try:
+            target_report = report_loader(target, max_report_chars)
+        except OSError:
+            target_report = {
+                "findings": None,
+                "impression": None,
+                "unsectioned_report": None,
+            }
     elapsed_hours = round(candidate.elapsed_hours, 6)
     horizon_bin = horizon_bin_from_elapsed_hours(elapsed_hours)
     prompt = build_coarse_horizon_prompt(source_report, horizon_bin)
@@ -1380,14 +1401,18 @@ def validate_config(config: BuildConfig) -> None:
         raise ValueError("--asset-mode must be symlink, copy, or none")
 
 
-def build_dataset(config: BuildConfig) -> BuildResult:
+def prepare_dataset(
+    config: BuildConfig, *, studies: Mapping[tuple[str, str], Study] | None = None
+) -> BuildResult:
+    """Compute a cohort in memory; writing an export is a separate operation."""
     validate_config(config)
     root = resolve_mimic_cxr_root(config.mimic_cxr_root)
     output_dir = config.output_dir.expanduser().resolve()
     audit = Audit()
-    studies = load_studies(root, config.view, audit)
-    attach_splits(root, studies, audit)
-    attach_labels(root, studies, audit)
+    if studies is None:
+        studies = load_studies(root, config.view, audit)
+        attach_splits(root, studies, audit)
+        attach_labels(root, studies, audit)
     candidates = find_candidates(studies.values(), config, audit)
     curated_by_key: dict[tuple[str, str, str], dict[str, str]] = {}
     if config.curated_pairs:
@@ -1539,6 +1564,19 @@ def build_dataset(config: BuildConfig) -> BuildResult:
             "Generated artifacts remain subject to the MIMIC data-use agreement; do not publish them as unrestricted data.",
         ],
     }
+    return BuildResult(packets, forecast_rows, input_rows, target_rows, summary, {})
+
+
+def build_dataset(config: BuildConfig) -> BuildResult:
+    """Explicitly export a prepared cohort using the existing atomic writer."""
+    result = prepare_dataset(config)
+    packets, forecast_rows = result.packets, result.forecast_rows
+    input_rows, target_rows, summary = (
+        result.input_rows,
+        result.target_rows,
+        result.summary,
+    )
+    output_dir = config.output_dir.expanduser().resolve()
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     staging_dir = Path(
         tempfile.mkdtemp(prefix=f".{output_dir.name}.staging-", dir=output_dir.parent)
@@ -1607,7 +1645,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--mimic-cxr-root",
         type=Path,
-        default=Path("/home/data1/data/MIMIC/MIMIC_CXR"),
+        default=Path(__file__).resolve().parent.parent / "data/MIMIC_CXR",
         help="MIMIC_CXR directory, or its parent MIMIC directory",
     )
     parser.add_argument(

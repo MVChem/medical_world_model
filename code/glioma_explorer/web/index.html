@@ -178,15 +178,16 @@
               </div>
               <span id="visit-note" class="toolbar-note"></span>
             </div>
+            <p id="comparison-summary" class="comparison-summary" aria-live="polite" hidden></p>
             <div id="ucsf-viewer" class="viewer-body">
               <div class="scan-area">
                 <div class="scan-pair" id="scan-pair">
                   <article class="scan-panel">
                     <div class="scan-title">
                       <span
-                        ><i class="scan-dot"></i>参考检查
-                        <b id="scan-time-1">T₁</b></span
-                      ><span class="scan-day" id="reference-day">DAY 0</span>
+                        ><i class="scan-dot"></i>参考
+                        <b id="scan-time-1">第 1 次检查</b></span
+                      ><span class="scan-day" id="reference-day">首次检查 · 第 0 天</span>
                     </div>
                     <div class="scan-frame">
                       <img id="scan-1" alt="首次扫描 MRI 与分割叠加" /><span
@@ -207,8 +208,8 @@
                   <article class="scan-panel" id="followup-panel">
                     <div class="scan-title">
                       <span
-                        ><i class="scan-dot followup"></i>对比检查
-                        <b id="scan-time-2">T₂</b></span
+                        ><i class="scan-dot followup"></i>对比
+                        <b id="scan-time-2">第 2 次检查</b></span
                       ><span class="scan-day" id="followup-day"></span>
                     </div>
                     <div class="scan-frame">
@@ -281,7 +282,7 @@
                 <div id="detail-facts" class="detail-facts"></div>
                 <div class="volume-header">
                   <h4>分区体积</h4>
-                  <span id="volume-unit">mL · T₁ → T₂</span>
+                  <span id="volume-unit">mL · 第 1 次 → 第 2 次</span>
                 </div>
                 <div id="volume-chart"></div>
                 <p class="detail-footnote" id="mask-note">

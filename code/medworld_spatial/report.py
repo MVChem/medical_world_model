@@ -43,7 +43,8 @@ def attention_panel(image, maps, labels, title, path, spatial_normalization, val
 def render_run(out, split="validate"):
     directory = out / split
     protocol = json.loads((out / "protocol.json").read_text())
-    depths = protocol["cache_protocols"]["segmentation"].get("vision_depths_1based")
+    source_protocol = protocol.get("source_protocol", protocol.get("cache_protocols", {}).get("segmentation", {}))
+    depths = source_protocol.get("vision_depths_1based")
     labels = [f"S{i} / layer {j}" for i, j in zip(range(5, 9), depths)] if depths else [f"S{i}" for i in range(5, 9)]
     for path in directory.glob("*_attention.npz"):
         arrays = np.load(path)
@@ -124,7 +125,8 @@ def build(run, render=False):
              "|---|---:|---:|---|---:|---:|---:|---:|"]
     def value(row, split, task, metric):
         result = row["evaluations"].get(split, {}).get(task, {}).get(metric)
-        return f"{result:.5f}" if result is not None else "pending"
+        complete = row["evaluations"].get(split, {}).get(task, {}).get("complete", True)
+        return ("" if complete else "partial ") + f"{result:.5f}" if result is not None else "pending"
     for row in results:
         lines.append(f"| {row['variant']} | {row['seed']} | {row['steps']} | {row['complete_budget']} | " +
             " | ".join((value(row, "test", "segmentation", "dice"), value(row, "human_test", "segmentation", "dice"),
@@ -134,9 +136,11 @@ def build(run, render=False):
     state_path = run / "status.json"
     if state_path.exists():
         state = json.loads(state_path.read_text())
-        lines += ["", f"Queue state: `{state['state']}`. GPU indices: 0, 1, 2, 6, 7.", "",
-                  "| Job | State | GPU | Return code |", "|---|---|---|---|"]
-        lines += [f"| {j['id']} | {j['state']} | {j.get('gpu', '')} | {j.get('returncode', '')} |" for j in state["jobs"]]
+        gpus = ", ".join(state.get("allowed_gpus", []))
+        lines += ["", f"Queue state: `{state['state']}`. Allowed GPU preference: {gpus}.", "",
+                  f"Input mode: `{state.get('input_mode', 'historical')}`.", "",
+                  "| Job | State | GPU | Steps per variant | Return code |", "|---|---|---|---:|---|"]
+        lines += [f"| {j['id']} | {j['state']} | {j.get('gpu', '')} | {j.get('progress', {}).get('step', 0)} | {j.get('returncode', '')} |" for j in state["jobs"]]
         if state.get("reason"):
             lines += ["", state["reason"]]
     # Paired seed / update-count contrasts; no significance claim from a pilot.
@@ -146,10 +150,10 @@ def build(run, render=False):
         for task, metric in (("segmentation", "dice"), ("sr", "psnr")):
             deltas = []
             for a in results:
-                if a["variant"] != first or not a["complete_budget"]:
+                if a["variant"] != first or not a["complete_budget"] or not a.get("evaluation_complete", True):
                     continue
                 matches = [b for b in results if b["variant"] == second and b["seed"] == a["seed"]
-                           and b["complete_budget"] and b["steps"] == a["steps"]]
+                           and b["complete_budget"] and b.get("evaluation_complete", True) and b["steps"] == a["steps"]]
                 if matches:
                     av = a["evaluations"].get("test", {}).get(task, {}).get(metric)
                     bv = matches[0]["evaluations"].get("test", {}).get(task, {}).get(metric)
@@ -165,7 +169,8 @@ def build(run, render=False):
         "Test/human-test data never provide optimizer updates or checkpoint selection. Attention maps are not lesion ground truth.",
         "", "## Artifacts", "",
         "- `aggregate.json`: full numerical results and run paths.",
-        "- `cache/{segmentation,sr}/semantic_diagnostics.json`: raw weak-teacher probabilities and coverage.",
+        "- `groups/seed*/last.pt`: atomic matched-group model/optimizer checkpoints; no feature or semantic cache.",
+        "- `jobs/*/metrics.jsonl`: task/alignment losses and weak-teacher eligibility; teacher outputs computed per batch.",
         "- `jobs/*/{validate,test,human_test}/*_attention.npz`: raw predictions, encoder/decoder/semantic attention, targets and zero-slot sensitivity.",
         "- `jobs/*/gradient_audit.json`: task gradients reaching slot queries and attention modules.",
         "- `*_comparison.png` / `.pdf`: fixed validation case comparisons with shared error scale.", ""]

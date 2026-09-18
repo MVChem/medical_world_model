@@ -75,7 +75,7 @@ async def main():
         assert await page.locator('#followup-panel').is_hidden()
         await page.evaluate('async()=>{await setPatient("PatientID_0003",2,5);}')
         await ready(page)
-        assert await page.locator('#scan-time-2').inner_text() == 'T5'
+        assert await page.locator('#scan-time-2').inner_text() == '第 5 次检查'
         await page.locator('[data-plane="sagittal"]').click()
         await ready(page)
         assert int(await page.locator('#slice-slider').get_attribute('max')) == 239

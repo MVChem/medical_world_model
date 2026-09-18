@@ -105,7 +105,7 @@ function renderMetrics() {
       u ? "纵向时间对" : "候选相邻时间对",
       fmt(d.pairs),
       "对",
-      u ? "每人一对 · T₁ → T₂" : "按天数排序、去重后计算",
+      u ? "每人一对 · 第 1 次 → 第 2 次检查" : "按天数排序、去重后计算",
       "grid",
     ) +
     metric(
@@ -543,6 +543,7 @@ async function setPatient(pid, first = null, second = null) {
     $("#ucsf-viewer").hidden = !p.image;
     $("#sequence-controls").hidden = !p.image;
     $("#sequence-note").hidden = !p.image;
+    $("#comparison-summary").hidden = !p.image;
     $("#visit-controls").hidden = u || !p.image;
     $(".mu-placeholder").hidden = Boolean(p.image);
     $(".mu-content").style.gridTemplateColumns = p.image ? "1fr" : "";
@@ -579,15 +580,42 @@ async function setPatient(pid, first = null, second = null) {
             ? 0
             : p.gap_days
           : p.image_visits.find((v) => v.timepoint === t)?.day;
-      $("#scan-time-1").textContent = "T" + ts[0];
-      $("#scan-time-2").textContent = ts.length > 1 ? "T" + ts[1] : "";
-      $("#reference-day").textContent = "DAY " + fmt(visitDay(ts[0]));
+      const visitLabel = (t) => `第 ${t} 次检查`;
+      const dayLabel = (t) => {
+        const day = visitDay(t);
+        if (day == null) return "检查日期缺失";
+        return u
+          ? t === 1
+            ? "首次检查 · 第 0 天"
+            : `首次检查后 ${fmt(day, 1)} 天`
+          : `距诊断 ${fmt(day, 1)} 天`;
+      };
+      $("#scan-time-1").textContent = visitLabel(ts[0]);
+      $("#scan-time-2").textContent = ts.length > 1 ? visitLabel(ts[1]) : "";
+      $("#reference-day").textContent = dayLabel(ts[0]);
       $("#followup-day").textContent =
-        ts.length > 1 ? "DAY " + fmt(visitDay(ts[1])) : "";
+        ts.length > 1 ? dayLabel(ts[1]) : "";
+      const totalVisits = u ? 2 : p.image_visits.length;
+      const firstDay = visitDay(ts[0]),
+        secondDay = ts.length > 1 ? visitDay(ts[1]) : null;
+      let comparison = `当前显示${visitLabel(ts[0])}。`;
+      if (ts.length > 1) {
+        const gap = firstDay == null || secondDay == null ? null : secondDay - firstDay;
+        comparison = `左侧${visitLabel(ts[0])}，右侧${visitLabel(ts[1])}；` +
+          (gap == null ? "日期缺失，间隔未知。" : gap < 0
+            ? `右侧比左侧早 ${fmt(-gap, 1)} 天。`
+            : gap === 0 ? "两次检查记录为同一天。"
+            : `右侧为 ${fmt(gap, 1)} 天后的随访。`);
+      }
+      $("#comparison-summary").textContent =
+        `本病例共 ${totalVisits} 个影像时间点。${comparison}` +
+        (u ? "已显示全部两次检查。" : totalVisits === 1
+          ? "本数据集仅提供这一次影像。"
+          : "可用上方检查下拉框切换；保留原始编号，日期以诊断为起点。");
       $("#followup-panel").hidden = ts.length < 2;
       $("#scan-pair").style.gridTemplateColumns = ts.length < 2 ? "1fr" : "";
       $("#volume-unit").textContent =
-        "mL · " + ts.map((t) => "T" + t).join(" → ");
+        "mL · " + ts.map((t) => `第 ${t} 次`).join(" → ");
       $("#mask-note").textContent = p.image.mask_available.every(Boolean)
         ? "由原始分割掩膜计算。体积变化不直接等同于临床进展。"
         : "部分检查缺少分割标注，显示为 —；不能视为零体积。";
@@ -595,7 +623,7 @@ async function setPatient(pid, first = null, second = null) {
         const options = p.image_visits
           .map(
             (v) =>
-              `<option value="${v.timepoint}">T${v.timepoint} · ${v.day == null ? "日期缺失" : "诊断后 " + fmt(v.day) + " 天"}${v.mask_available ? "" : " · 无标注"}</option>`,
+              `<option value="${v.timepoint}">${visitLabel(v.timepoint)} · ${v.day == null ? "日期缺失" : "距诊断 " + fmt(v.day, 1) + " 天"}${v.mask_available ? "" : " · 无标注"}</option>`,
           )
           .join("");
         for (const [id, selected] of [
@@ -666,7 +694,7 @@ function renderMUPatient(p) {
   let svg = `<div class="timeline"><svg viewBox="0 0 ${w} 116" role="img" aria-label="患者随访时间线"><path d="M20 48H420" stroke="#dfe7d3" stroke-width="2"/><text x="20" y="100" font-size="9" fill="#a7b694">诊断后天数</text>`;
   ts.forEach((t, i) => {
     const x = 20 + ((t.day - lo) / (hi - lo)) * 400;
-    svg += `<circle cx="${x}" cy="48" r="${i ? 5 : 7}" fill="${i ? "#a3b38b" : "#68845c"}" stroke="#fff" stroke-width="2"><title>Timepoint_${t.timepoint}: ${t.day} 天</title></circle><text x="${x}" y="${i % 2 ? 79 : 23}" text-anchor="middle" font-size="9" fill="#91a279">T${t.timepoint}</text>`;
+    svg += `<circle cx="${x}" cy="48" r="${i ? 5 : 7}" fill="${i ? "#a3b38b" : "#68845c"}" stroke="#fff" stroke-width="2"><title>第 ${t.timepoint} 次检查：距诊断 ${t.day} 天</title></circle><text x="${x}" y="${i % 2 ? 79 : 23}" text-anchor="middle" font-size="9" fill="#91a279">第 ${t.timepoint} 次</text>`;
   });
   $("#mu-timeline").innerHTML =
     svg +
@@ -674,7 +702,7 @@ function renderMUPatient(p) {
     ts
       .map(
         (t) =>
-          `<span class="timeline-entry">T${t.timepoint} · ${fmt(t.day)} 天 · ${t.image_available ? "MRI ✓" : "本地无 MRI"}</span>`,
+          `<span class="timeline-entry">第 ${t.timepoint} 次检查 · 距诊断 ${fmt(t.day, 1)} 天 · ${t.image_available ? "MRI ✓" : "本地无 MRI"}</span>`,
       )
       .join("") +
     "</div>";

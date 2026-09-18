@@ -1,0 +1,3 @@
+# Machine-local links and large data are not repository content.
+*
+!.gitignore

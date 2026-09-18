@@ -16,11 +16,11 @@ The baseline unified implementation remains in `medworld/`, snapshotted at
   available to the decoder. The state is still eight 1,024-dimensional vectors.
 - Following [FeatUp §3](https://arxiv.org/html/2403.10516v2), transform a predicted
   feature field with the same recorded crop/zoom as the image, downsample, and
-  match frozen encoder features of the transformed image. Each cached example
-  has identity plus two deterministic views. Teacher projection is a fixed
+  match frozen encoder features of the transformed image. Each requested batch
+  computes identity plus two deterministic views on demand. Teacher projection is a fixed
   orthonormal 64-D map; the teacher cannot collapse with the student. The pilot
   uses fixed area downsampling and a different upsampler, so it is **not a FeatUp
-  reproduction**. The finite cached view set is an explicit speed/coverage tradeoff.
+  reproduction**. The fixed deterministic view set is an explicit speed/coverage tradeoff.
 - Frozen native Qwen3.5-0.8B answers No/Yes for four fixed concepts on 2×2 image
   crops. Conditional No/Yes likelihoods are soft targets, not calibrated medical
   probabilities, anatomical masks, or native model attention. A concept is used
@@ -68,44 +68,63 @@ Use `UnifiedData`'s existing global patient holdouts. Select training/validation
 subsets by a predeclared hash of image ID, never by performance. The overnight
 plan requests up to 4,096 training images per task, 128 validation images, the
 full available 447-image test selection and 138-image external human lung set.
-Counts can be lower after the unified holdout filter; `records.json` is definitive.
-Segmentation uses a 256-square prepared input canvas. Every SR encoder, teacher,
-semantic crop and decoder sees only the prepared 128-square LR image; HR is only
-the existing 512-square task target. Reports are absent from encoder inputs.
+Counts can be lower after the unified holdout filter; each group’s `protocol.json` records the actual counts.
+Original JPG/PNG files are decoded for every batch using the recorded padding
+boxes. Segmentation uses a 256-square input canvas. SR inputs are computed by
+antialiased bicubic downsampling to 128 square, with the original uint8 rounding.
+Every SR encoder, teacher, semantic crop and decoder sees only this LR image; HR
+is only the 512-square task target. Reports are absent from encoder inputs.
+Original CXAS supervision is read as fixed task labels; Montgomery masks are
+decoded from the original PNGs. No regenerated image arrays are written.
+`verify_sources` streams all 5,830 reconstructed inputs and 138 human masks into
+the original array hashes without saving the arrays.
 
-Tasks alternate at batch 8 for 12,000 optimizer updates (6,000 per task), with
-seeds 42, 43 and 44. All conditions use AdamW, learning rate 1e-4, weight decay
+Tasks alternate at batch 8. The online run defaults to seed 42 and 4,000
+updates (2,000 per task); `plan.json` is authoritative for each run’s step budget. All conditions use AdamW, learning rate 1e-4, weight decay
 .01, gradient clipping 1, and BF16 autocast. Checkpoints are evaluated at fixed
-updates; no test-based selection. The queue reserves the last 20 minutes for
+updates; no test-based selection. The queue reserves up to the last 30 minutes for
 evaluation and records truncated budgets explicitly. Seed deltas appear only
 for conditions completing the same budget. A small gain without repeatability
 is not interpreted as evidence of improved spatial representation.
 
-## Run
+## On-demand execution
+
+There is no preparation phase and no feature, slot, transformed-view, or semantic
+score cache on disk. One worker per seed loads the frozen teachers and six
+independent matched models. It computes the current batch once, updates all six
+models with that same batch, then discards the intermediate tensors. Only model
+weights, fixed projection/text-query initialization and row metadata persist in
+memory. Repeated examples are decoded and recomputed.
 
 ```bash
-PYTHONPATH=code /home/data2/chk/workspace/2026/.venv/bin/python \
-  -m medworld_spatial.night \
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=code \
+  /home/data2/chk/workspace/2026/.venv/bin/python -m medworld_spatial.night \
   --checkpoint code/medworld/runs/qwen35_08b_2gpu_day_gpu67_20260916_161228/stage1.pt \
   --semantic-teacher code/medworld_table1/weights/Qwen3.5-0.8B \
-  --out code/medworld_spatial/runs/featup_8h_20260917 --hours 8
+  --out code/medworld_spatial/runs/featup_online_20260918 --hours 8 --seeds 42 --steps 4000
 ```
 
-The detached launcher freezes both packages and their hashes under `source/`.
-It uses idle, unlocked GPU indices **0, 1, 2, 6, 7** only; indices **3, 4, 5** are
-excluded to respect either ordinal or index interpretation of the requested
-fourth/fifth-card exclusion. It never sends process-termination signals.
-The deadline is eight hours from launch or 07:55 the next morning in Shanghai,
-whichever is earlier. Feature preparation, training, evaluation and rendering
-share this budget; jobs may finish early after their fixed update budgets.
+The launcher saves the actual source snapshot and hashes, including uncommitted
+changes, then starts an independent **systemd user service**. `launch.json`
+records its unit, PID and deadline. The service records worker start/exit events,
+return codes and failures. It survives the launching shell/session. GPU preference
+is **1, 2, 3, 6, 7, 0**, only when idle and unlocked; **4 and 5 are forbidden**.
+Other processes are never terminated.
 
-`runs/active.json` points to the run. Open `REPORT.md`, `aggregate.json`, and
-`status.json` there. The report includes incomplete/failed jobs rather than
-silently dropping them. Rebuild figures using:
+`runs/active.json` points to the current run. Each `groups/seed*/last.pt` atomically
+saves all six models and optimizers at the same completed update. Resume checks
+the input/teacher fingerprints and experiment parameters. `jobs/*/` holds each
+variant’s losses, gradient audit, final metrics and attention exports. These final
+outputs and checkpoints are retained; they are not input caches for another run.
+The retired `medworld_spatial.prepare` command refuses to create disk caches.
+
+Eight hours are measured from the new launch. Online teacher inference is
+included. Budget-truncated training and partial evaluations are labelled, and
+matched contrasts require equal completed budgets and complete evaluations.
 
 ```bash
 PYTHONPATH=code /home/data2/chk/workspace/2026/.venv/bin/python \
-  -m medworld_spatial.report --run code/medworld_spatial/runs/featup_8h_20260917 --render
+  -m medworld_spatial.report --run code/medworld_spatial/runs/featup_online_20260918 --render
 ```
 
 ## Attention exports
@@ -131,10 +150,11 @@ attention; maps are neither lesion annotations nor proof of clinical causality.
 ```bash
 PYTHONPATH=code CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 \
   /home/data2/chk/workspace/2026/.venv/bin/python \
-  -m pytest code/medworld/tests code/medworld_spatial/tests -q
+  -m pytest code/medworld/tests code/medworld_spatial/tests -q -p no:cacheprovider
 ```
 
 Tests cover patch order, view alignment, fixed teacher gradients, weak-target
 filtering, attention normalization/padding, task gradients, the image-only
 control, and SR's forward independence from HR targets. Real-data smoke runs
-also check cached slots against the original model and exact checkpoint reload.
+also check on-demand slots against the original model and exact checkpoint reload.
+Tests cover matched-group optimizer resume, stateless batch order and forbidden GPUs.
