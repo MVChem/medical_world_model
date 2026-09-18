@@ -50,7 +50,7 @@ Do not upload feature caches, checkpoints, prompts, or MIMIC-derived logs.
 Run both suites from `medical_world_model`:
 
 ```bash
-python -m unittest discover -s code/MIMIC_example/tests -v
+python -m unittest discover -s code/mimic_atlas/tests -v
 python -m unittest discover -s code/mimic_vla_jepa/tests -v
 ```
 
@@ -60,7 +60,7 @@ Single GPU:
 
 ```bash
 python -m mimic_vla_jepa.extract_features \
-  --manifest code/MIMIC_example/example_output/forecast_manifest.jsonl \
+  --manifest code/mimic_atlas/runs/exports/legacy_20260918/example_output/forecast_manifest.jsonl \
   --output-dir runs/features_smoke \
   --qwen-model checkpoints/base/Qwen3.5-4B \
   --vjepa-model checkpoints/base/vjepa2-vitl-fpc64-256 \
@@ -73,7 +73,7 @@ Four independent GPU ranks (one pair per rank):
 CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.run \
   --standalone --nproc-per-node=4 \
   -m mimic_vla_jepa.extract_features \
-  --manifest code/MIMIC_example/example_output/forecast_manifest.jsonl \
+  --manifest code/mimic_atlas/runs/exports/legacy_20260918/example_output/forecast_manifest.jsonl \
   --output-dir runs/features_smoke \
   --qwen-model checkpoints/base/Qwen3.5-4B \
   --vjepa-model checkpoints/base/vjepa2-vitl-fpc64-256 \
@@ -94,7 +94,7 @@ four-case cached features predate this contract and must not be mixed with a
 new serious cohort.
 
 Build leakage-safe train/validation manifests with the commands in
-[`../MIMIC_example/README.md`](../MIMIC_example/README.md), then extract each
+[`../mimic_atlas/README.md`](../mimic_atlas/README.md), then extract each
 split to a separate restricted feature directory. Do not take the first N rows
 from a `change_enriched` manifest; deterministic sampling must happen in the
 builder before extraction.

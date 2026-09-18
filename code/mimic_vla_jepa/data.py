@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from MIMIC_example.forecast_contract import (
+from mimic_atlas.forecast_contract import (
     build_coarse_horizon_prompt,
     horizon_bin_from_elapsed_hours,
     validate_horizon_bin,

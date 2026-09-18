@@ -103,7 +103,7 @@ def main(args):
         dump_jsonl(contracts/(split+'_inputs_image_ehr.jsonl'),image_only)
         dump_jsonl(contracts/(split+'_inputs_report_assumed.jsonl'),current)
         dump_jsonl(contracts/(split+'_targets.jsonl'),targets)
-    anchors=json.loads((ROOT.parent/'MIMIC_example/representative_pairs_10.json').read_text())['pairs']
+    anchors=json.loads((ROOT.parent/'mimic_atlas/representative_pairs_10.json').read_text())['pairs']
     lookup={(r['subject_id'],r['source_study'],r['target_study']):r for r in pairs}
     regression=[]
     for a in anchors:
@@ -163,7 +163,7 @@ def main(args):
         f'原始 CXR：{inventory["population"]["cxr_studies"]:,} studies / {inventory["population"]["cxr_images"]:,} images；{inventory["population"]["cxr_patients_in_iv"]:,} 位患者连接到 IV。',
         f'IV 全部 {summary["clinical_tables"]["total_tables"]} 张本地表已扫描；包括临床表的患者筛选与完整字典表。',
         f'像素完全相同分组 {len(duplicate_rows)}；跨患者重复图像 {len(cross_patient)}；跨 split 重复图像 {len(cross_split)}。',
-        '', '查看 `review.html` 的原始病例；`example_regression.json` 对照既有 MIMIC_example；`cohorts/` 保存各子集。',
+        '', '查看 `review.html` 的原始病例；`example_regression.json` 对照既有 mimic_atlas；`cohorts/` 保存各子集。',
         '`iv/` 是回顾性关联数据库，不能整体拼成当前输入；`forecast_views/` 将当前输入和未来目标分文件保存。',
         '当前报告的可用时间仍未知：`inputs_report_assumed` 使用回顾性报告可用假设；`inputs_image_ehr` 不放入当前报告。','',
         '未按疾病是否变化筛选，稳定病例保留。未用 Qwen 改写报告或伪造临床标签。']

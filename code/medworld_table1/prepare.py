@@ -17,7 +17,7 @@ import numpy as np
 from common import atomic_json, read_config, write_rows
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from MIMIC_example.build_mimic_transitions import (
+from mimic_atlas.build_mimic_transitions import (
     Audit, BuildConfig, LABEL_COLUMNS, attach_labels, attach_splits,
     find_candidates, load_studies, read_report,
 )

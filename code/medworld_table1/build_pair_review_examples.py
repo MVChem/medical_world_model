@@ -31,7 +31,7 @@ def from_existing(row, case, title, note, source_summary, target_summary):
             image=s['image'], report=s.get('text') or s.get('text_for_evaluation_only'),
             labels={k: (s.get('structured_findings') or s.get('structured_findings_for_evaluation_only'))[k] for k in FINDINGS}))
     return dict(case=case, title=title, review_note=note, source_summary=source_summary, target_summary=target_summary,
-        origin='既有 appendix / MIMIC_example 人工挑选的展示样本；不是随机样本',
+        origin='既有 appendix / mimic_atlas 人工挑选的展示样本；不是随机样本',
         selection='Existing representative_linked_output_10 example selected for an explicit discussion category.',
         source_databases=['MIMIC-CXR-JPG 2.0.0', 'MIMIC-IV 3.1'], subject_id=row['subject_id'],
         transition_id=row['transition_id'], split=packet['split'],
@@ -42,7 +42,7 @@ def from_existing(row, case, title, note, source_summary, target_summary):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    existing_path = ROOT.parent / 'MIMIC_example/representative_linked_output_10/linked_transitions.jsonl'
+    existing_path = ROOT.parent / 'mimic_atlas/runs/exports/legacy_20260918/representative_linked_output_10/linked_transitions.jsonl'
     existing = rows(existing_path)
     cases = [
         from_existing(existing[0], 'A', '同次住院，报告描述明显变化',

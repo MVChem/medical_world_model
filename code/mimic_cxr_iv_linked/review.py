@@ -122,7 +122,7 @@ def render(args):
     page='''<!doctype html><html lang="zh"><meta charset="utf-8"><title>MIMIC-CXR + IV 全量连接审阅</title><style>
 body{font:16px/1.55 system-ui,sans-serif;max-width:1260px;margin:30px auto;padding:0 20px;color:#183244;background:#f4f7fa}section{background:white;border:1px solid #d9e2eb;border-radius:12px;padding:20px;margin:25px 0}h2{font-size:20px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:24px}img{width:100%;height:390px;object-fit:contain;background:#111}.report{white-space:pre-wrap}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}summary{cursor:pointer;font-weight:600;padding:8px}details{border-top:1px solid #ddd;margin-top:10px}@media(max-width:700px){.pair{grid-template-columns:1fr}}
 table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1px solid #ddd;padding:8px}
-</style><h1>MIMIC-CXR + MIMIC-IV 连接样本审阅</h1><p>包含既有 appendix/MIMIC_example 参照及按结构条件确定性抽取的新例子。用于审阅，不用于估计随机噪声率。图像为原始 JPG 文件；报告只作规则分节和空白规范化，没有模型改写。</p><p>临床事件按当前时点前已记录、区间回顾性、延迟记录分别展示。报告可用时间未知；ICD 出院编码等未进入当前事件列表。</p>'''+counts+''.join(cards)+'</html>'
+</style><h1>MIMIC-CXR + MIMIC-IV 连接样本审阅</h1><p>包含既有 appendix/mimic_atlas 参照及按结构条件确定性抽取的新例子。用于审阅，不用于估计随机噪声率。图像为原始 JPG 文件；报告只作规则分节和空白规范化，没有模型改写。</p><p>临床事件按当前时点前已记录、区间回顾性、延迟记录分别展示。报告可用时间未知；ICD 出院编码等未进入当前事件列表。</p>'''+counts+''.join(cards)+'</html>'
     (args.out/'review.html').write_text(page)
     print(f'[review] {len(cases)} cases: {args.out/"review.html"}',flush=True)
 

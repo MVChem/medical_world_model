@@ -86,7 +86,7 @@ MIMIC-IV 有给药、处方、输液和 ICU 操作记录，项目也已有 CXR �
 
 Trajectory 可以增加一行“观察到的治疗事件”，标注为 **retrospective clinical context, not model input**。预测前治疗史与预测区间内实际发生的治疗分别记录。若以后将治疗作为模型条件，需要另建输入协议并重新训练、评测；本轮不扩展为治疗效果或反事实方案比较。
 
-来源：[MIMIC-CXR 相对时间说明](https://physionet.org/content/mimic-cxr/2.1.0/)、[MIMIC-IV 数据表说明](https://physionet.org/content/mimiciv/3.1/)、[本地病例关联说明](../code/MIMIC_example/README.md)。
+来源：[MIMIC-CXR 相对时间说明](https://physionet.org/content/mimic-cxr/2.1.0/)、[MIMIC-IV 数据表说明](https://physionet.org/content/mimiciv/3.1/)、[本地病例关联说明](../code/mimic_atlas/README.md)。
 
 ## 图二：真实 slot attention 单栏小图
 

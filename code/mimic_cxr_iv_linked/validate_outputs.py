@@ -79,7 +79,7 @@ def validate(args):
     import PIL,polars,pyarrow
     dump_json(out/'provenance.json',dict(version=VERSION,python=platform.python_version(),
         software=dict(pillow=PIL.__version__,polars=polars.__version__,pyarrow=pyarrow.__version__),code_sha256=hashes,
-        upstream_metadata_parser_sha256=file_sha256(ROOT.parent/'MIMIC_example/build_mimic_transitions.py'),
+        upstream_metadata_parser_sha256=file_sha256(ROOT.parent/'mimic_atlas/build_mimic_transitions.py'),
         original_inputs='inventory_summary.signature and per-table iv/*.json source path/size/mtime; image SHA256 in image_qc',
         derived_manifests_sha256={name:file_sha256(out/name) for name in ['images.jsonl','studies.jsonl','pairs.jsonl','linked_pairs.jsonl','clinical_availability.jsonl','image_qc.jsonl']},
         clinical_model_used=False))

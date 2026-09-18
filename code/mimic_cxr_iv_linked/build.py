@@ -14,7 +14,7 @@ import time
 from common import *
 
 sys.path.insert(0, str(ROOT.parent))
-from MIMIC_example.build_mimic_transitions import (
+from mimic_atlas.build_mimic_transitions import (
     Audit, LABEL_COLUMNS, attach_labels, attach_splits, load_studies, parse_study_datetime,
 )
 

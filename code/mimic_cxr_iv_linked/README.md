@@ -1,6 +1,6 @@
 # 全量 MIMIC-CXR + MIMIC-IV 连接与清洗
 
-独立于 `medworld_table1` 的版本化数据构建程序。参考 `MIMIC_example` 与 appendix 的同患者、同住院时间线连接，处理本地全部 CXR，而不是抽取 pilot 的 12,000 对。
+独立于 `medworld_table1` 的版本化数据构建程序。参考 `mimic_atlas` 与 appendix 的同患者、同住院时间线连接，处理本地全部 CXR，而不是抽取 pilot 的 12,000 对。
 
 一次完整运行会生成全部图像/检查的关联清单、全部 31 张 IV 表的患者相关 Parquet、纵向配对、自动图像质控、检查前临床记录覆盖、分患者互斥的候选子集，以及原始病例审阅页。
 
@@ -36,7 +36,7 @@ code/medworld_table1/.venv/bin/python code/mimic_cxr_iv_linked/run_all.py \
 | 文件 | 用途 |
 |---|---|
 | `summary.md` / `summary.json` | 完整统计、split 数量、限制和来源 |
-| `review.html` | 既有 appendix/MIMIC_example 及新样本的两张原片、完整分节报告和按时间分开的临床记录 |
+| `review.html` | 既有 appendix/mimic_atlas 及新样本的两张原片、完整分节报告和按时间分开的临床记录 |
 | `images.jsonl` / `studies.jsonl` | 全部图像、图文和临床 episode 连接索引 |
 | `patients.jsonl` / `admissions.jsonl` / `icustays.jsonl` | CXR 患者的关联原始表记录；仅用于连接/审计 |
 | `iv/hosp/*.parquet` / `iv/icu/*.parquet` | 全部本地 IV 表的筛选或字典副本；原始 CSV 不修改 |
@@ -49,7 +49,7 @@ code/medworld_table1/.venv/bin/python code/mimic_cxr_iv_linked/run_all.py \
 | `forecast_views/*_inputs_image_ehr.jsonl` | 当前图像、horizon、历史记录计数和查询键；不含当前报告 |
 | `forecast_views/*_inputs_report_assumed.jsonl` | 增加当前完整报告，明确采用回顾性报告可用假设 |
 | `forecast_views/*_targets.jsonl` | 未来图像、报告、弱标签及真实间隔，按 opaque pair_id 连接 |
-| `example_regression.json` | 逐项核对现有 10 个 MIMIC_example；超出 30 天的示例会明确不纳入 |
+| `example_regression.json` | 逐项核对现有 10 个 mimic_atlas；超出 30 天的示例会明确不纳入 |
 | `native_key_audit.json` | 全表 patient/hadm/stay 原生键关联一致性检查 |
 | `validation.json` / `provenance.json` / `source/` | 最终输出合同检查、环境/哈希与构建源码快照 |
 

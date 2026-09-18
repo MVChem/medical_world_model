@@ -14,7 +14,7 @@ from time import monotonic
 from audit_pair_quality import table, time, match_ids
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from MIMIC_example.build_mimic_transitions import (
+from mimic_atlas.build_mimic_transitions import (
     Audit, BuildConfig, attach_labels, attach_splits, find_candidates,
     load_studies, read_report,
 )
