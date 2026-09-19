@@ -19,40 +19,39 @@ It generates one unique report across all 297 pairs, compared with 224 for
 slots and 287 for full-token. These adaptations are separate from the proposed
 multi-depth $4+4$ design; archived 0.8B scores do not populate their rows.
 
-\paragraph{Revised native forecast protocol (pending).}
-The new Qwen conditions preserve the native vision encoder and language decoder
-with the same 512-pixel, aspect-preserving current image, truncated current
-report, source-available EHR, and requested horizon. The state branch constructs
-four JEPA--language fusion slots and four native-vision slots, each of width
-1024; a horizon-conditioned predictor outputs eight future slots. Their
-projection is inserted at the end of the native user message, before the
-assistant prompt. The native supervised baseline omits these state tokens;
-the augmented and shuffled conditions retain them. Only the shuffled state
-branch reads another patient's source observation from the same split, while
-the decoder's true current image, report, EHR, and horizon remain unchanged.
-The true follow-up enters the frozen Stage~1 target encoder and report/finding
-losses only; target adapters and readouts remain fixed throughout Stage~2.
+\paragraph{Unified joint-training protocol (evaluation pending).}
+The maintained Qwen3.5-0.8B implementation constructs four JEPA--language
+fusion slots and four native-vision slots, each of width 1024. The temporal
+branch reads source images and reports, with signed elapsed time supplied only
+to the predictor; it does not read EHR variables. The report decoder receives
+projected predicted slots and a fixed prompt, and the finding head reads the
+predicted state. The true follow-up supplies detached EMA state targets and
+report/finding supervision only. Encoder and report-decoder LoRA parameters
+are independent, while immutable pretrained language weights share storage.
 
-All revised conditions use the same native decoder and supervised finding-head
-initialization, source cohort, report/finding losses, and update budgets.
-The finding head reads a source-prompt hidden state that cannot attend to the
-teacher-forced target report. Encoder and decoder LoRA parameters are
-independent; immutable base parameters share storage. A newly trained Stage~1
-uses classification and current-report state supervision plus native
-current-report decoder training, with the report withheld from its image-based
-inputs. Its planned budget is 1,694 updates at effective batch eight; Stage~2
-uses 2,400 updates at effective batch 32 on the 16,000/230/297-pair split.
-Physical batch and accumulation are to be fixed after 0.8B execution checks
-followed by 9B memory checks. The legacy final-layer-slot warm start is
-incompatible with this state design and is not reused. This Stage~1 subset
-does not establish full six-task adaptation. Revised training and evaluation
-remain pending; no legacy scores are reassigned to the new conditions.
+A single optimizer jointly trains the online encoder, predictor, and active
+task heads from the first update. Each update combines one temporal batch with
+one current-task batch, cycling through classification, report generation,
+segmentation, and SR. The current-task loss has weight 1; future latent,
+report, and finding losses have weights 1, 1, and 0.5. Current-task inputs
+withhold the same-exam report, and both SR input branches use only LR imagery.
+The optional visual consistency objective has weight 0.1 on spatial tasks.
+The target encoder copies the online encoder at initialization and follows
+EMA with momentum 0.99 after every optimizer update.
 
-The native-baseline comparison measures the entire added state branch,
-including its extra JEPA encoder. Planned current-slot and full-token controls
-with the same encoders and native decoder will distinguish the contribution
-of dynamics and state compression. The shuffled condition alone does not
-separate these effects.
+The maintained configuration specifies an eight-hour continuous budget on
+four GPUs, with per-rank batches of 16 current observations and 32 directed
+temporal pairs and accumulation 1. This gives global batch sizes of 64 and
+128; capacity and full-run execution remain to be verified. Training starts
+from the original pretrained backbones. Historical staged checkpoints do not
+initialize this run, and no historical scores are reassigned to the joint
+model. Four current tasks are implemented; full six-task evaluation remains
+pending.
+
+Matched native supervised, current-slot, full-token, and shuffled-state
+comparisons remain to be completed. Controls sharing the encoders and decoder
+are needed to separate the effects of temporal prediction and state compression
+from the additional JEPA feature pathway.
 
 BioViL-T and CheXWorld freeze their official visual encoders and train shared
 evidence fusion, forecast modules, and readouts with the same forecast budget.
@@ -116,7 +115,7 @@ annotations. These analyses do not add columns to the fixed eight-metric table.
 
 \subsection{Downstream supervision}
 
-The revised Stage~1 design uses eight $1024$-dimensional slots: four from vision--language fusion layers and four from the VLM's native vision encoder. Each source contributes an early layer, two intermediate layers, and its final layer through learned aggregation and projection. Classification and disease recognition read all eight slots; segmentation and SR read only $S_{5:8}$ together with the task image, which is LR for SR. Task gradients jointly train the slot readouts and decoders. This construction differs from the initial last-layer-slot prototype and requires new training. The expanded six-task evaluation adds standard VQA, report generation, and phrase grounding with the same-exam report withheld.
+The joint model uses eight $1024$-dimensional slots: four from vision--language fusion layers and four from the VLM's native vision encoder. Each source contributes an early layer, two intermediate layers, and its final layer through learned aggregation and projection. Classification and report generation read all eight slots; segmentation and SR read only $S_{5:8}$ together with the task image, which is LR for SR. Task gradients jointly train the slot readouts and decoders. This construction differs from the initial last-layer-slot prototype and requires new training. The expanded six-task evaluation adds standard VQA and phrase grounding; all image-based current tasks withhold the same-exam report.
 
 Classification uses 13 report-derived finding/device labels, excluding No Finding,
 and masks uncertain or missing labels. The test set has 353 images; macro ranking
@@ -131,7 +130,7 @@ region breakdowns. MS-CXR phrase grounding requires fixed heatmap-to-box
 conversion, multi-box matching, and invalid-output treatment. Derived
 disease-list QA and Chest ImaGenome anatomical-region localization are not
 substitutes for those benchmarks. Benchmark test patients must be excluded from
-all task and stage training sources; available public-checkpoint pretraining
+all current-task and temporal training sources; available public-checkpoint pretraining
 overlap remains to be documented.
 
 Segmentation uses quality-filtered CXAS pseudo-labels for the two lungs and heart,

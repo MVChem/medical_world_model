@@ -12,11 +12,14 @@ from a shared 9B Stage~1 initialization. Dense tasks use 4,096/249/447 images an
 images. The tables distinguish zero-shot checkpoints, frozen-feature task heads,
 and trained forecast adaptations. The completed 9B slot adaptation uses final-layer
 language queries; it does not implement the proposed four fusion-layer plus four
-native-vision slots. New native supervised and predicted-state-augmented Qwen
-forecasters retain the same 512-pixel current-image and report/history context;
-their training and results are pending. Their planned protocol uses a new
-1,694-update Stage~1 at effective batch eight, followed by 2,400 forecast updates
-at effective batch 32, subject to 0.8B and 9B execution and memory checks.
-Full six-task adaptation of that design, standard
+native-vision slots. The maintained unified implementation uses Qwen3.5-0.8B and one continuous
+joint-training budget, with current-task and temporal losses active from the
+first update. Its configured budget is eight hours on four GPUs, with per-rank
+batches of 16 current observations and 32 directed temporal pairs and no gradient
+accumulation. The resulting global batch sizes are 64 and 128, respectively;
+these settings require capacity checks before a full run. Forecasting uses
+source images and reports with signed elapsed time, without EHR inputs.
+Evaluation of this implementation and matched native supervised comparisons
+remain pending. Full six-task adaptation of that design, standard
 MIMIC-CXR-VQA, and MS-CXR phrase grounding remain pending. All reported numbers
 are point estimates; matched data and update counts do not imply matched GPU hours.
