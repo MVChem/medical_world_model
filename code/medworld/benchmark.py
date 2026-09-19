@@ -11,6 +11,8 @@ from .gpu import acquire_gpu
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--gpu", default="3")
+    parser.add_argument("--config", help="Probe the actual training architecture/configuration")
+    parser.add_argument("--replay-tasks", default="", help="Temporal replay tasks, one per repeat cyclically")
     parser.add_argument("--out", required=True)
     parser.add_argument("--batches", default="4,8,16,32")
     parser.add_argument("--tasks", default="classification,report,segmentation,sr,temporal")
@@ -27,7 +29,7 @@ def main():
     from .datasets import UnifiedData
     from .model import MedWorld
     from .runtime import optimizer_for, seed_all
-    cfg = load_config(overrides={"amp": True, "ce_chunk_tokens": 128, "image_workers": args.image_workers})
+    cfg = load_config(args.config, overrides={"amp": True, "ce_chunk_tokens": 128, "image_workers": args.image_workers})
     seed_all(cfg["seed"])
     torch.set_float32_matmul_precision("high")
     torch.backends.cudnn.benchmark = True
@@ -37,6 +39,8 @@ def main():
     model.pos_weight.copy_(data.current.pos_weight.to(device))
     optimizer = optimizer_for(model, cfg)
     out.parent.mkdir(parents=True, exist_ok=True)
+    (out.parent / (out.stem + "_config.json")).write_text(json.dumps(cfg, indent=2) + "\n")
+    replay_tasks = [t for t in args.replay_tasks.split(",") if t]
     for task in args.tasks.split(","):
         for size in map(int, args.batches.split(",")):
             last_peak = 0
@@ -47,9 +51,13 @@ def main():
                 torch.cuda.reset_peak_memory_stats()
                 start = time.monotonic()
                 batch = data.training_batch(task, repetition * size, size, cfg["seed"])
+                replay_task = replay_tasks[repetition % len(replay_tasks)] if task == "temporal" and replay_tasks else None
+                replay_batch = (data.training_batch(replay_task, repetition * size,
+                                cfg.get("replay_batch_sizes", {}).get(replay_task, cfg.get("task_batch_sizes", {}).get(replay_task, size)), cfg["seed"])
+                                if replay_task else None)
                 loaded = time.monotonic()
                 try:
-                    loss, parts = model(task, batch)
+                    loss, parts = model(task, batch, replay_task, replay_batch)
                     if not torch.isfinite(loss):
                         raise FloatingPointError("Nonfinite benchmark loss")
                     loss.backward()
@@ -61,12 +69,12 @@ def main():
                     torch.cuda.synchronize()
                     seconds = time.monotonic() - start
                     last_peak = torch.cuda.max_memory_allocated() / 1024**3
-                    record = {"task": task, "batch_size": size, "repetition": repetition,
+                    record = {"task": task, "batch_size": size, "repetition": repetition, "replay_task": replay_task,
                               "seconds": seconds, "data_seconds": loaded - start,
                               "samples_per_second": size / seconds, "loss": float(loss.detach()),
                               "peak_allocated_gib": last_peak,
                               "peak_reserved_gib": torch.cuda.max_memory_reserved() / 1024**3}
-                    del loss, parts, norm, batch
+                    del loss, parts, norm, batch, replay_batch
                 except torch.cuda.OutOfMemoryError:
                     record = {"task": task, "batch_size": size, "repetition": repetition, "oom": True}
                     last_peak = float("inf")
@@ -76,6 +84,8 @@ def main():
                 with out.open("a") as handle:
                     handle.write(json.dumps(record) + "\n")
                 print(json.dumps(record), flush=True)
+                if record.get("oom"):
+                    return
                 if last_peak > args.max_memory_gib:
                     break
             if last_peak > args.max_memory_gib:

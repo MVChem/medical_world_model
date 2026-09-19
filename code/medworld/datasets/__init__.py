@@ -1,11 +1,13 @@
 """Global patient holdouts for the joint Table 1 / Table 2 training protocol."""
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 
 import numpy as np
 import torch
 
-from .current import MultiTaskData, TASKS
+from ..downstream_tasks.data import MultiTaskData
+from ..downstream_tasks.registry import TASKS
 from .temporal import TemporalData
 
 PRIORITY = {"train": 0, "validate": 1, "test": 2, "human_test": 3}
@@ -76,6 +78,8 @@ class UnifiedData:
         }
         self.fingerprint = hashlib.sha256(json.dumps(self.metadata, sort_keys=True).encode()).hexdigest()
         self._permutations = {}
+        self._image_workers = cfg.get("image_workers", 1)
+        self._current_image_pool = None
         self._directed = {split: self.temporal.directed(split) for split in self.temporal.pairs}
 
     def rows(self, task, split):
@@ -88,7 +92,13 @@ class UnifiedData:
             rows = self.rows(task, split)
             return self.temporal.batch([rows[i] for i in indices], source_only=source_only)
         dataset = self.current.dataset(task, split)
-        return self.current.collate(task, [dataset[i] for i in indices])
+        if self._image_workers > 1:
+            if self._current_image_pool is None:
+                self._current_image_pool = ThreadPoolExecutor(max_workers=self._image_workers, thread_name_prefix="current-image")
+            examples = list(self._current_image_pool.map(dataset.__getitem__, indices))
+        else:
+            examples = [dataset[i] for i in indices]
+        return self.current.collate(task, examples)
 
     def training_batch(self, task, offset, batch_size, seed):
         """Stateless permutation stream; offset/seed determine exact resume order."""

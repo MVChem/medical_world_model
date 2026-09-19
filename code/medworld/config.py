@@ -20,8 +20,10 @@ DEFAULTS = {
     "latent_weight": 1.0, "report_weight": 1.0, "finding_weight": 0.5,
     "replay_every": 4, "replay_weight": 1.0,
     "save_every": 100, "validate_every": 200, "validation_samples": 8,
-    "ce_chunk_tokens": 32, "amp": False, "task_batch_sizes": {}, "prefetch_batches": 2, "image_workers": 1,
+    "ce_chunk_tokens": 32, "amp": False, "task_batch_sizes": {}, "replay_batch_sizes": {}, "prefetch_batches": 2, "image_workers": 1,
     "total_hours": 0.0, "stage1_hours": 0.0,
+    "spatial_decoder": "baseline", "featup_views": 2,
+    "featup_feature_weight": 0.1, "featup_sr_scale": 0.001,
 }
 
 
@@ -37,7 +39,7 @@ def load_config(path=None, overrides=None, root=None):
     integers = ("lora_rank", "lora_alpha", "vision_pixels", "report_tokens", "context_tokens",
                 "generation_tokens", "predictor_width", "predictor_depth", "batch_size",
                 "stage1_accumulation", "stage2_accumulation", "stage1_steps", "stage2_steps",
-                "save_every", "validate_every", "validation_samples", "ce_chunk_tokens", "prefetch_batches", "image_workers")
+                "save_every", "validate_every", "validation_samples", "ce_chunk_tokens", "prefetch_batches", "image_workers", "featup_views")
     for key in integers:
         if type(cfg[key]) is not int or cfg[key] <= 0:
             raise ValueError(f"{key} must be a positive integer")
@@ -51,12 +53,18 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError("bidirectional must be boolean")
     if type(cfg["amp"]) is not bool:
         raise ValueError("amp must be boolean")
-    sizes = cfg["task_batch_sizes"]
-    if (not isinstance(sizes, dict) or set(sizes) - {"classification", "report", "segmentation", "sr", "temporal"}
-            or any(type(value) is not int or value <= 0 for value in sizes.values())):
-        raise ValueError("task_batch_sizes must map known tasks to positive per-rank batch sizes")
+    if cfg["spatial_decoder"] not in ("baseline", "featup"):
+        raise ValueError("spatial_decoder must be baseline or featup")
+    for setting in ("task_batch_sizes", "replay_batch_sizes"):
+        sizes = cfg[setting]
+        allowed_tasks = {"classification", "report", "segmentation", "sr"}
+        if setting == "task_batch_sizes":
+            allowed_tasks.add("temporal")
+        if (not isinstance(sizes, dict) or set(sizes) - allowed_tasks
+                or any(type(value) is not int or value <= 0 for value in sizes.values())):
+            raise ValueError(f"{setting} must map known tasks to positive per-rank batch sizes")
     for key in ("ema_momentum", "learning_rate", "lora_learning_rate", "max_grad_norm",
-                "latent_weight", "report_weight", "finding_weight", "replay_weight", "total_hours", "stage1_hours"):
+                "latent_weight", "report_weight", "finding_weight", "replay_weight", "total_hours", "stage1_hours", "featup_feature_weight", "featup_sr_scale"):
         value = cfg[key]
         if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value):
             raise ValueError(f"{key} must be finite")

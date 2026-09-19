@@ -15,14 +15,19 @@ Table 1 位于 `../medworld_native_forecast/`，Table 2 位于 `../medworld_mult
 | 观察编码与 4＋4 slots | [encoder.py](encoder.py)、[adaptation.py](adaptation.py) |
 | EMA 初始化、更新与恢复 | [ema.py](ema.py) |
 | 带正负时间条件的 World Model | [predictor.py](predictor.py) |
-| slots → 报告、分类、分割、×4 SR | [decoders.py](decoders.py) |
-| 当前任务数据、双向配对、跨表患者隔离 | [datasets/](datasets/) |
+| 下游任务：分类、报告、分割、×4 SR；数据、损失、指标 | [downstream_tasks/](downstream_tasks/README.md) |
+| 当前任务数据 | [downstream_tasks/data.py](downstream_tasks/data.py) |
+| 双向配对、跨表患者隔离 | [datasets/](datasets/) |
 | 两阶段训练、replay、断点恢复 | [train.py](train.py)、[runtime.py](runtime.py) |
 | 两卡 DDP、计时训练、数据预取 | [distributed_train.py](distributed_train.py) |
 | GPU 预留、代码快照、后台监控 | [launch_distributed.py](launch_distributed.py) |
-| 同一 checkpoint 的两类评测 | [evaluate.py](evaluate.py) |
+| 同一 checkpoint 的两类评测 | [downstream_tasks/evaluate.py](downstream_tasks/evaluate.py) |
 | 图文输入预测／保存状态／独立解码 | [infer.py](infer.py) |
 | 可修改的原型配置 | [configs/qwen35_08b.json](configs/qwen35_08b.json) |
+
+下游任务统一放在 [downstream_tasks/](downstream_tasks/README.md)，按任务查看模型、损失和指标。
+VQA 暂保留为待接入任务。本次目录整理不改变训练、数据协议或 checkpoint 参数键；
+上层旧导入路径及 `medworld.evaluate` 命令保留兼容入口。
 
 ### 一个观察编码器，八个状态槽
 
@@ -55,6 +60,49 @@ target ← m × target + (1 − m) × online
 
 Stage 2 默认每四次更新加入一次当前任务 replay，四项任务轮流参与。
 EMA、当前任务 heads 和 decoder 全部保存在同一 Stage 2 checkpoint 中。
+
+### FeatUp 式空间解码与一致性监督
+
+`configs/qwen35_08b_featup.json` 在本目录启用 `spatial_decoder: "featup"`。
+实现位于 [downstream_tasks/featup.py](downstream_tasks/featup.py)，运行时不依赖 `medworld_spatial/`。
+这是从空间消融提取的 FeatUp-inspired 模块，不是官方 FeatUp/JBU 的完整复现。
+
+- 分割、SR 各自保留独立任务头；图像特征在 32²、64² 两层读取同一编码器的四个视觉
+  slots，中间使用图像引导的 3×3 邻域上采样。分类和报告仍读取八槽。
+- 保持 Stage 1 四任务轮换和 Stage 2 四任务 replay。任务损失和一致性损失均可更新
+  原 online 视觉 LoRA、视觉查询、读出模块及空间解码器，不冻结整个 online encoder。
+- 固定教师为**未适配的预训练 Qwen 视觉塔**，与 online 分支只共享冻结基座参数；
+  它不随 online LoRA 或 Stage 2 EMA 更新。最后层特征经固定随机正交投影作为监督。
+  这与旧空间实验使用冻结 Stage 1 视觉特征不同，应作为新协议评估。
+- 每张输入在线计算原视图及两个确定性缩放裁剪视图。相同几何变换作用于预测特征与
+  valid mask，再下采样、归一化并匹配教师特征；padding 不参与损失，不落盘缓存。
+  SR 教师只接触 128² LR 及其变换，HR 仅用于原始像素重建监督。
+- `featup_feature_weight=0.1`；SR 再乘 `featup_sr_scale=0.001`，有效权重为 `1e-4`。
+  设置 feature weight 为零可保留新解码器、关闭一致性损失；未加入弱语义 KL。
+- 评测预测仍使用现有 `medworld.evaluate`，无需运行特征教师。训练及 replay 日志
+  分别记录 supervised、feature 与 feature_weighted loss。
+
+默认配置仍使用原 `baseline`，旧 checkpoint 的模型参数可按保存的配置加载（数据协议校验另行执行）。
+两个 decoder 的参数结构不同，不能把旧 baseline checkpoint 当作 FeatUp 断点直接恢复；
+这份配置从预训练基座开始完整四任务训练。已有运行目录不做迁移。
+
+```bash
+# 真实模型短测：4 个 Stage 1 更新 + 16 个 Stage 2 更新，覆盖全部四种 replay；
+# 最后检查空间梯度、教师冻结、EMA 及 checkpoint 重载。
+PYTHONPATH=code /home/data2/chk/workspace/2026/.venv/bin/python -m medworld.train \
+  --config code/medworld/configs/qwen35_08b_featup.json --smoke --gpu auto \
+  --out code/medworld/runs/featup_smoke_NEW_DATE
+
+# 完整原型预算：去掉 --smoke，并使用新的 runs/ 目录。
+```
+
+2026-09-18 GPU 1 接入短测已通过：
+四任务更新、全部四种 Stage 2 replay、视觉 LoRA/slots/上采样梯度与教师冻结验证成功，
+checkpoint 重载预测误差为零；21 项 CPU 测试通过。
+该次运行产物已于 2026-09-18 按用户要求随 `runs/` 内容一并清理。
+
+接入与短测不代表 PSNR/SSIM 或四任务能力已经提高；效果需要匹配预算的 baseline /
+FeatUp 四任务实验及同协议 Stage 1 / Stage 2 评测。
 
 ### World Model 输出直接解码文本
 
@@ -100,8 +148,11 @@ loss = latent_weight × MSE(LN(predicted_state), LN(target_state))
 | test | 297 | 297 |
 
 默认启用双向，各池的有方向样本数是保留对数的两倍。当前四任务的样本数均保留。
-这是新的训练协议，旧版分数不能直接作为融合版结果。当前数组按只读方式加载，
-检查 shape/dtype；大数组的声明哈希来自已有 manifest，未逐次重新计算。
+这是新的训练协议，旧版分数不能直接作为融合版结果。当前输入从原图按记录的 box 在线重建 512² canvas，SR 的 128² LR 也按需生成；
+人工掩码从原始标注文件读取。即使旧 images.npy、lr_images.npy、human_masks.npy 存在也
+不会读取。仅原始 CXAS 监督标签 seg_probs.npy 保持只读。历史数组哈希仅作来源记录。
+输入协议已更新为 source-only，新训练使用新的 data fingerprint；旧运行的同协议恢复／
+评测检查仍严格执行，不会静默把旧数据协议改成新协议。
 
 ## 运行
 
@@ -132,7 +183,7 @@ PYTHONPATH=code "$MEDWORLD_PYTHON" -m medworld.train --stage stage2 \
   --out code/medworld/runs/stage2_01 --gpu auto
 
 # 同一个 checkpoint 评测当前四任务和正／负时间预测；加 --limit 2 可检查入口
-PYTHONPATH=code "$MEDWORLD_PYTHON" -m medworld.evaluate \
+PYTHONPATH=code "$MEDWORLD_PYTHON" -m medworld.downstream_tasks.evaluate \
   --checkpoint code/medworld/runs/joint_01/stage2.pt \
   --task all --split test --out code/medworld/runs/joint_01/evaluation_test --gpu auto
 
@@ -218,3 +269,25 @@ PYTHONPATH=code "$MEDWORLD_PYTHON" -m medworld.launch_distributed \
 同日已启动 [两卡一天训练](https://github.com/MVChem/medical_world_model/blob/31c98ca14173620a3cec67da2defe559d05974da/research_notes/0916_two_gpu_day_run.md)：当前使用 GPU 6、7，
 计划 Stage 1 六小时＋Stage 2 剩余十八小时；正式大 batch、四种 replay 和中断恢复已短测通过。
 官方 VQA、grounding、纯报告输入和完整临床评测仍待实现；当前不宣称完成六任务实验。
+
+### 四卡八小时与自动下游测试
+
+`configs/qwen35_08b_featup_4gpu_8h.json` 用 Qwen3.5-0.8B、FeatUp、BF16 和在线原图读取。
+总训练预算 8 小时：Stage 1 四任务 4 小时，Stage 2 时间预测与 replay 4 小时。
+`task_batch_sizes` 控制主任务每卡 batch，`replay_batch_sizes` 单独限制 Stage 2 replay，
+避免时间预测和 replay 两条计算图同时占满显存。当前图像读取与时间图像读取均可并行，
+只做内存预取，不产生磁盘图像／特征缓存。
+
+`run_experiment.py` 串起 GPU 锁、源码快照、训练、两阶段最终 checkpoint 的完整测试，
+以及原始 Qwen 0.8B 对比。测试另需时间，不计入 8 小时训练预算；最多同时用指定的四张卡。
+测试包括分类 AUROC/AP、报告 CheXbert F1、分割 Dice（pseudo/human）、SR PSNR/SSIM，
+另比较 Stage 2 与原始 Qwen 的时间预测 AUROC/AP。生成统一为贪心、最多 384 tokens，不按测试结果选 checkpoint。
+未经本项目训练的 Qwen 没有原生分割/SR 输出头，这两项记 N/A；bicubic SR 单独列为参照。
+
+原始 Qwen 结果复用前，由 `downstream_tasks/baseline_audit.py` 检查模型权重、全部测试 ID、
+参考标签及从原图重建的像素哈希；不读取旧输入缓存。原始报告预测另用当前版本 CheXbert
+重新评分，保证与本次训练模型使用同一评分实现。
+
+运行时 `status.json` 记录阶段、步数与训练截止时间，`pipeline_status.json` 记录训练／测试
+流程，`evaluation_plan.json` 列出后续测试，最终生成 `comparison.json`、`COMPARISON.md`。
+活动登记与完成／失败历史由管线自动维护。

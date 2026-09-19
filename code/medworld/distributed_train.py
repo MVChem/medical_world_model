@@ -11,6 +11,7 @@ import random
 from pathlib import Path
 import signal
 import time
+import traceback
 
 import numpy as np
 
@@ -65,8 +66,10 @@ class BatchPrefetch:
         for _ in range(cfg.get("prefetch_batches", 2)):
             self._submit()
 
-    def _request(self, task):
+    def _request(self, task, replay=False):
         size = self.cfg.get("task_batch_sizes", {}).get(task, self.cfg["batch_size"])
+        if replay:
+            size = self.cfg.get("replay_batch_sizes", {}).get(task, size)
         offset, following = rank_slice(self.planned[task], size, self.rank, self.world_size)
         self.planned[task] = following
         return task, offset, size
@@ -77,7 +80,7 @@ class BatchPrefetch:
         if self.stage == "stage2" and self.cfg["replay_every"] and (self.step + 1) % self.cfg["replay_every"] == 0:
             replay_task = TASKS[self.replay % len(TASKS)]
             self.replay += 1
-        requests = [(self._request(task), self._request(replay_task) if replay_task else None)
+        requests = [(self._request(task), self._request(replay_task, replay=True) if replay_task else None)
                     for _ in range(self.cfg[self.stage + "_accumulation"])]
         marker = {"offsets": dict(self.planned), "replay_index": self.replay}
         def load():
@@ -365,7 +368,18 @@ def main():
             trainer.run_stage()
         trainer.write_status("stopped" if trainer.stop else "complete", replica_parameter_spread=trainer.parameter_spread())
         dist.barrier()
-    finally:
+    except Exception as error:
+        # A failed rank cannot join collective teardown while peers are still
+        # waiting in a training collective. Exit so torchrun can stop the group.
+        traceback.print_exc()
+        atomic_json(out / f"rank{rank}_error.json", {
+            "rank": rank, "error": repr(error), "wall_unix": time.time(),
+            "traceback": traceback.format_exc(),
+        })
+        import sys
+        sys.stderr.flush()
+        os._exit(1)
+    else:
         dist.destroy_process_group()
 
 

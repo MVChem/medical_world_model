@@ -12,7 +12,7 @@ import torch
 
 from . import FORMAT_VERSION
 from .datasets import TASKS
-from .datasets.current import _sha256
+from .downstream_tasks.data import _sha256
 
 
 def seed_all(seed):
@@ -194,12 +194,13 @@ class Trainer:
                 replay_task = TASKS[self.progress["replay_index"] % len(TASKS)]
                 self.progress["replay_index"] += 1
                 for _ in range(accumulation):
-                    loss, _ = self.model.current_loss(replay_task, self.batch(replay_task))
+                    loss, replay_parts = self.model.current_loss(replay_task, self.batch(replay_task))
                     if not torch.isfinite(loss):
                         raise FloatingPointError("Nonfinite replay loss")
                     (self.cfg["replay_weight"] * loss / accumulation).backward()
-                    key = "replay_" + replay_task
-                    values[key] = values.get(key, 0.) + float(loss.detach()) / accumulation
+                    for name, value in replay_parts.items():
+                        key = "replay_" + name
+                        values[key] = values.get(key, 0.) + float(value) / accumulation
             norm = torch.nn.utils.clip_grad_norm_([p for p in self.model.parameters() if p.requires_grad],
                                                   self.cfg["max_grad_norm"], error_if_nonfinite=True)
             self.optimizer.step()

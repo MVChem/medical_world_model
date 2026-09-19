@@ -107,6 +107,28 @@ class DistributedTests(unittest.TestCase):
         finally:
             stream.close()
 
+    def test_replay_sizes_preserve_independent_rank_offsets(self):
+        cfg = load_config(overrides={"batch_size": 8, "stage2_accumulation": 1, "replay_every": 1,
+                                     "replay_batch_sizes": {"classification": 2}})
+        progress = {"stage": "stage2", "step": 0, "offsets": {t: 0 for t in
+                    ("classification", "report", "segmentation", "sr", "temporal")}, "replay_index": 0}
+        streams = [BatchPrefetch(IndexData(), cfg, progress, rank, 4) for rank in range(4)]
+        try:
+            samples = [s.next() for s in streams]
+            for rank, (task, replay, batches, marker) in enumerate(samples):
+                self.assertEqual(task, "temporal")
+                self.assertEqual(replay, "classification")
+                self.assertEqual(batches[0][0]["indices"], list(range(rank * 8, rank * 8 + 8)))
+                self.assertEqual(batches[0][1]["indices"], list(range(rank * 2, rank * 2 + 2)))
+                self.assertEqual(marker["offsets"]["temporal"], 32)
+                self.assertEqual(marker["offsets"]["classification"], 8)
+            self.assertEqual(progress["offsets"]["classification"], 0)
+        finally:
+            for stream in streams:
+                stream.close()
+        with self.assertRaises(ValueError):
+            load_config(overrides={"replay_batch_sizes": {"temporal": 2}})
+
     def test_time_budget_and_stage_boundary(self):
         cfg = load_config(overrides={"total_hours": 24, "stage1_hours": 6})
         progress = {"stage": "stage1", "step": 3, "deadline_unix": 240, "stage1_deadline_unix": 60}

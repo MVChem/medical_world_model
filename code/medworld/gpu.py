@@ -3,7 +3,7 @@ import fcntl
 import os
 import subprocess
 
-ALLOWED_GPUS = ("1", "2", "3", "6", "7", "0")
+ALLOWED_GPUS = ("1", "2", "3", "6", "7", "4", "5", "0")
 
 
 def acquire_gpu(selector):
@@ -14,7 +14,7 @@ def acquire_gpu(selector):
         candidates = ALLOWED_GPUS
     else:
         if selector not in ALLOWED_GPUS:
-            raise ValueError(f"GPU selector must be auto, cpu, or one of {ALLOWED_GPUS}; GPUs 4/5 are forbidden")
+            raise ValueError(f"GPU selector must be auto, cpu, or one of {ALLOWED_GPUS}")
         candidates = [selector]
     for candidate in candidates:
         try:

@@ -4,20 +4,15 @@ from torch import nn
 import torch.nn.functional as F
 
 from .adaptation import LANGUAGE_TARGETS, adapt_selected, depths, shared_frozen_copy
-from .decoders import ClassificationHead, ReportDecoder, SpatialHead, spatial_loss
+from .downstream_tasks.classification import ClassificationHead, finding_loss
+from .downstream_tasks.report import ReportDecoder
+from .downstream_tasks.spatial import SpatialHead
+from .downstream_tasks.training import current_loss as current_task_loss
 from .ema import EMATarget
 from .encoder import FrozenJEPA, StateEncoder
 from .predictor import WorldModel
 
 TEMPORAL_COLUMNS = (0, 1, 2, 3, 8, 11)
-
-
-def finding_loss(logits, labels, mask=None, pos_weight=None):
-    labels = labels.to(device=logits.device, dtype=torch.float32)
-    mask = ((labels == 0) | (labels == 1)) if mask is None else mask.to(logits.device).bool()
-    loss = F.binary_cross_entropy_with_logits(logits.float(), labels.clamp(0, 1),
-                                            pos_weight=pos_weight, reduction="none")
-    return (loss * mask).sum() / mask.sum().clamp_min(1)
 
 
 class MedWorld(nn.Module):
@@ -31,6 +26,9 @@ class MedWorld(nn.Module):
         # Clone the module tree before adding LoRA. Immutable pretrained tensors
         # remain shared, while encoder and decoder adapters are independent.
         decoder_language = shared_frozen_copy(base.model.language_model)
+        if cfg.get("spatial_decoder", "baseline") == "featup":
+            from .downstream_tasks.featup import FrozenFeatureTeacher
+            self.featup_teacher = FrozenFeatureTeacher(base.model.visual)
         self.encoder = StateEncoder(base.model.language_model, base.model.visual, cfg)
         adapt_selected(decoder_language, decoder_language.layers, LANGUAGE_TARGETS, cfg)
         self.processor = AutoProcessor.from_pretrained(cfg["qwen"], local_files_only=True)
@@ -44,10 +42,16 @@ class MedWorld(nn.Module):
         self.jepa = FrozenJEPA(cfg["jepa"])
         self.world = WorldModel(cfg)
         self.classification = ClassificationHead()
-        self.segmentation, self.sr = SpatialHead("segmentation"), SpatialHead("sr")
+        head = SpatialHead
+        if cfg.get("spatial_decoder", "baseline") == "featup":
+            from .downstream_tasks.featup import FeatUpSpatialHead
+            head = FeatUpSpatialHead
+        self.segmentation, self.sr = head("segmentation"), head("sr")
         self.register_buffer("pos_weight", torch.ones(13))
         self.target = None
         self.metadata = {
+            "spatial_decoder": cfg.get("spatial_decoder", "baseline"),
+            "feature_teacher": "fixed pretrained native vision, LR only for SR" if hasattr(self, "featup_teacher") else None,
             "architecture": "medworld_unified_4plus4_v1", "state_shape": [8, 1024],
             "language_depths_1based": [i + 1 for i in depths(len(self.encoder.language.layers))],
             "vision_depths_1based": [i + 1 for i in depths(len(self.encoder.vision.blocks))],
@@ -78,9 +82,9 @@ class MedWorld(nn.Module):
             if replay_task is not None:
                 if task != "temporal" or replay_batch is None:
                     raise ValueError("Replay requires a temporal training batch")
-                replay, _ = self.current_loss(replay_task, replay_batch)
+                replay, replay_parts = self.current_loss(replay_task, replay_batch)
                 loss = loss + self.cfg["replay_weight"] * replay
-                parts["replay_" + replay_task] = replay.detach()
+                parts.update({"replay_" + key: value for key, value in replay_parts.items()})
         return loss, parts
 
     def encode(self, images, texts=None, *, spatial=False, target=False):
@@ -109,18 +113,7 @@ class MedWorld(nn.Module):
                        tokens["attention_mask"].to(self.device), features)
 
     def current_loss(self, task, batch):
-        state = self.encode(batch["images"], spatial=task in ("segmentation", "sr"))
-        if task == "report":
-            loss = self.report.loss(state, batch["report_targets"])
-        elif task == "classification":
-            loss = finding_loss(self.classification(state), batch["labels"], batch["label_mask"],
-                                self.pos_weight)
-        elif task in ("segmentation", "sr"):
-            prediction = getattr(self, task)(batch["pixels"].to(self.device), state)
-            loss = spatial_loss(task, prediction, batch["targets"].to(self.device), batch["mask"].to(self.device))
-        else:
-            raise ValueError(f"Unsupported task {task}")
-        return loss, {task: loss.detach()}
+        return current_task_loss(self, task, batch)
 
     def temporal_loss(self, batch, *, audit=False):
         if self.target is None:
