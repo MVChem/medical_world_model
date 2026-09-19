@@ -1,7 +1,6 @@
 # GPU Usage
 
-- Never use physical GPUs `4` or `5`.
-- Prefer GPUs `1`, `2`, and `3`, then `6` and `7`; use GPU `0` last. Set `CUDA_VISIBLE_DEVICES` accordingly.
+- Prefer GPUs `1`, `2`, and `3`, then `6` and `7`, then `4` and `5`; use GPU `0` last. Set `CUDA_VISIBLE_DEVICES` accordingly.
 
 # Version Control
 
