@@ -6,7 +6,8 @@ import torch.nn.functional as F
 from .adaptation import LANGUAGE_TARGETS, adapt_selected, depths, shared_frozen_copy
 from .downstream_tasks.classification import ClassificationHead, finding_loss
 from .downstream_tasks.report import ReportDecoder
-from .downstream_tasks.spatial import SpatialHead
+from .downstream_tasks.segmentation.decoder import SegmentationHead
+from .downstream_tasks.super_resolution.decoder import SuperResolutionHead
 from .downstream_tasks.training import current_loss as current_task_loss
 from .ema import EMATarget
 from .encoder import FrozenJEPA, StateEncoder
@@ -26,9 +27,9 @@ class MedWorld(nn.Module):
         # Clone the module tree before adding LoRA. Immutable pretrained tensors
         # remain shared, while encoder and decoder adapters are independent.
         decoder_language = shared_frozen_copy(base.model.language_model)
-        if cfg.get("spatial_decoder", "baseline") == "featup":
-            from .downstream_tasks.featup import FrozenFeatureTeacher
-            self.featup_teacher = FrozenFeatureTeacher(base.model.visual)
+        if cfg.get("visual_consistency_weight", 0) > 0:
+            from .representation import FrozenFeatureTeacher
+            self.visual_teacher = FrozenFeatureTeacher(base.model.visual)
         self.encoder = StateEncoder(base.model.language_model, base.model.visual, cfg)
         adapt_selected(decoder_language, decoder_language.layers, LANGUAGE_TARGETS, cfg)
         self.processor = AutoProcessor.from_pretrained(cfg["qwen"], local_files_only=True)
@@ -42,16 +43,17 @@ class MedWorld(nn.Module):
         self.jepa = FrozenJEPA(cfg["jepa"])
         self.world = WorldModel(cfg)
         self.classification = ClassificationHead()
-        head = SpatialHead
-        if cfg.get("spatial_decoder", "baseline") == "featup":
-            from .downstream_tasks.featup import FeatUpSpatialHead
-            head = FeatUpSpatialHead
-        self.segmentation, self.sr = head("segmentation"), head("sr")
+        self.segmentation, self.sr = SegmentationHead(), SuperResolutionHead()
+        if cfg.get("visual_consistency_weight", 0) > 0:
+            from .representation import SlotSpatialReconstruction
+            # Do not perturb decoder initialization or the training RNG stream.
+            with torch.random.fork_rng(devices=[]):
+                torch.manual_seed(cfg["seed"] + 9138)
+                self.visual_reconstruction = SlotSpatialReconstruction()
         self.register_buffer("pos_weight", torch.ones(13))
         self.target = None
         self.metadata = {
-            "spatial_decoder": cfg.get("spatial_decoder", "baseline"),
-            "feature_teacher": "fixed pretrained native vision, LR only for SR" if hasattr(self, "featup_teacher") else None,
+            "representation_objective": "visual_slot_spatial_consistency" if hasattr(self, "visual_reconstruction") else None,
             "architecture": "medworld_unified_4plus4_v1", "state_shape": [8, 1024],
             "language_depths_1based": [i + 1 for i in depths(len(self.encoder.language.layers))],
             "vision_depths_1based": [i + 1 for i in depths(len(self.encoder.vision.blocks))],
@@ -113,7 +115,16 @@ class MedWorld(nn.Module):
                        tokens["attention_mask"].to(self.device), features)
 
     def current_loss(self, task, batch):
-        return current_task_loss(self, task, batch)
+        loss, parts, state = current_task_loss(self, task, batch, return_state=True)
+        if (self.training and torch.is_grad_enabled() and task in ("segmentation", "sr")
+                and hasattr(self, "visual_reconstruction")):
+            auxiliary = self.visual_reconstruction.loss(
+                state, batch["pixels"].to(self.device), batch["mask"].to(self.device),
+                batch["ids"], self.visual_teacher, self.processor, self.cfg)
+            weighted = self.cfg["visual_consistency_weight"] * auxiliary
+            parts.update(visual_consistency=auxiliary.detach(), visual_consistency_weighted=weighted.detach())
+            loss = loss + weighted
+        return loss, parts
 
     def temporal_loss(self, batch, *, audit=False):
         if self.target is None:

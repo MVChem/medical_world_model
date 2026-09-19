@@ -6,7 +6,7 @@ from pathlib import Path
 from PIL import Image, ImageOps
 import torch
 
-from ..downstream_tasks.data import _rows, _sha256
+from .protocol import _rows, _sha256
 
 SPLITS = ("train", "validate", "test")
 

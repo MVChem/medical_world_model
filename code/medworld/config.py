@@ -7,6 +7,13 @@ from pathlib import Path
 
 PROJECT = Path(os.environ.get("MEDWORLD_PROJECT_ROOT", Path(__file__).resolve().parents[2])).resolve()
 DEFAULTS = {
+    "current_data": "code/medworld_stage1/data/overnight_20260910",
+    "dense_data": "code/medworld_dense_baselines/runs/frozen_slots_20260913/data",
+    "baseline_data": "code/medworld_baselines/runs/raw_models_20260911",
+    "selection_file": "code/medworld_stage1/data/slot44_20260911_derived_v2/selection.json",
+    "classification_data": "code/medworld_open_baselines/runs/comparators_20260913/dense_4096/dinov2_vitb14",
+    "clinical_weights": "code/medworld_table1/weights",
+
     "qwen": "code/medworld_table1/weights/Qwen3.5-0.8B",
     "jepa": "code/medworld_table1/weights/vjepa2_1_vitb.pt",
     "temporal_data": "code/medworld_table1/data/linked_20260913_16k",
@@ -21,9 +28,8 @@ DEFAULTS = {
     "replay_every": 4, "replay_weight": 1.0,
     "save_every": 100, "validate_every": 200, "validation_samples": 8,
     "ce_chunk_tokens": 32, "amp": False, "task_batch_sizes": {}, "replay_batch_sizes": {}, "prefetch_batches": 2, "image_workers": 1,
+    "visual_consistency_weight": 0.0, "visual_consistency_views": 2,
     "total_hours": 0.0, "stage1_hours": 0.0,
-    "spatial_decoder": "baseline", "featup_views": 2,
-    "featup_feature_weight": 0.1, "featup_sr_scale": 0.001,
 }
 
 
@@ -39,7 +45,7 @@ def load_config(path=None, overrides=None, root=None):
     integers = ("lora_rank", "lora_alpha", "vision_pixels", "report_tokens", "context_tokens",
                 "generation_tokens", "predictor_width", "predictor_depth", "batch_size",
                 "stage1_accumulation", "stage2_accumulation", "stage1_steps", "stage2_steps",
-                "save_every", "validate_every", "validation_samples", "ce_chunk_tokens", "prefetch_batches", "image_workers", "featup_views")
+                "save_every", "validate_every", "validation_samples", "ce_chunk_tokens", "prefetch_batches", "image_workers", "visual_consistency_views")
     for key in integers:
         if type(cfg[key]) is not int or cfg[key] <= 0:
             raise ValueError(f"{key} must be a positive integer")
@@ -53,8 +59,6 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError("bidirectional must be boolean")
     if type(cfg["amp"]) is not bool:
         raise ValueError("amp must be boolean")
-    if cfg["spatial_decoder"] not in ("baseline", "featup"):
-        raise ValueError("spatial_decoder must be baseline or featup")
     for setting in ("task_batch_sizes", "replay_batch_sizes"):
         sizes = cfg[setting]
         allowed_tasks = {"classification", "report", "segmentation", "sr"}
@@ -64,7 +68,7 @@ def load_config(path=None, overrides=None, root=None):
                 or any(type(value) is not int or value <= 0 for value in sizes.values())):
             raise ValueError(f"{setting} must map known tasks to positive per-rank batch sizes")
     for key in ("ema_momentum", "learning_rate", "lora_learning_rate", "max_grad_norm",
-                "latent_weight", "report_weight", "finding_weight", "replay_weight", "total_hours", "stage1_hours", "featup_feature_weight", "featup_sr_scale"):
+                "latent_weight", "report_weight", "finding_weight", "replay_weight", "total_hours", "stage1_hours", "visual_consistency_weight"):
         value = cfg[key]
         if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value):
             raise ValueError(f"{key} must be finite")
@@ -78,7 +82,9 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError("Timed runs require 0 < stage1_hours < total_hours")
     if cfg["total_hours"] == 0 and cfg["stage1_hours"] != 0:
         raise ValueError("stage1_hours requires a timed run")
-    for key in ("qwen", "jepa", "temporal_data"):
+    for key in ('qwen', 'jepa', 'temporal_data', 'current_data', 'dense_data', 'baseline_data', 'selection_file', 'classification_data', 'clinical_weights'):
         p = Path(cfg[key]).expanduser()
-        cfg[key] = str((root / p).resolve() if not p.is_absolute() else p.resolve())
+        p = root / p if not p.is_absolute() else p
+        # Preserve manifest aliases: their logical paths are part of the existing protocol hash.
+        cfg[key] = str(p.resolve() if key in ("qwen", "jepa", "temporal_data") else p.absolute())
     return cfg

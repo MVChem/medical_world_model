@@ -26,7 +26,7 @@ def main():
     lock, device = acquire_gpu(args.gpu)
     import torch
     from PIL import Image, ImageOps
-    from .downstream_tasks.data import _sha256
+    from .datasets.protocol import _sha256
     from .runtime import atomic_json, load_model
     model, checkpoint = load_model(args.checkpoint, device)
     identity = _sha256(Path(args.checkpoint))

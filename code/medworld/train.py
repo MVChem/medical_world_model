@@ -38,9 +38,6 @@ def main():
                  "generation_tokens": 24, "validation_samples": 1, "save_every": 2} if args.smoke else None
     cfg = (saved["config"] if args.resume or args.init_checkpoint and not args.config and not args.smoke
            else load_config(args.config, overrides))
-    if args.smoke and cfg.get("spatial_decoder") == "featup":
-        # Exercise classification, report, segmentation and SR replay in Stage 2.
-        cfg["stage2_steps"] = 16
     if cfg.get("total_hours", 0):
         parser.error("Timed multi-GPU runs use medworld.launch_distributed")
     if args.init_checkpoint and cfg != saved["config"]:

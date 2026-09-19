@@ -3,7 +3,7 @@ import gc
 
 import torch
 
-from .downstream_tasks.data import _sha256
+from .datasets.protocol import _sha256
 
 
 def audit_model(model, data, out):
@@ -67,35 +67,6 @@ def audit_model(model, data, out):
         max_error = float((restored_state - state).abs().max())
         if max_error > 1e-5:
             raise AssertionError(f"Checkpoint reload changed state: {max_error}")
-    if hasattr(model, "featup_teacher"):
-        result["featup"] = {}
-        for task in ("segmentation", "sr"):
-            batch = data.batch(task, "validate", [0])
-            loss, parts = model.current_loss(task, batch)
-            head = getattr(model, task)
-            vision_lora = next(p for n, p in model.encoder.vision.named_parameters() if "lora_b" in n)
-            parameters = [model.encoder.slot_queries, model.encoder.visual_readouts[0][1].weight,
-                          vision_lora, head.upsample.kernel[-1].weight, head.feature.weight]
-            names = ["slot_queries", "visual_readout", "vision_lora", "guided_kernel", "feature_projection"]
-            gradients = torch.autograd.grad(loss, parameters)
-            norms = {name: float(g.float().norm()) for name, g in zip(names, gradients)}
-            if any(not value > 0 for value in norms.values()):
-                raise AssertionError(f"Missing FeatUp gradient: {task}: {norms}")
-            with torch.no_grad():
-                pixels = batch["pixels"].to(model.device)
-                expected = head(pixels, model.encode(batch["images"], spatial=True))
-                recovered = getattr(restored, task)(pixels, restored.encode(batch["images"], spatial=True))
-                torch.testing.assert_close(recovered, expected, rtol=0, atol=1e-5)
-                _, reloaded_parts = restored.current_loss(task, batch)
-                torch.testing.assert_close(parts[task + "_feature"], reloaded_parts[task + "_feature"],
-                                           rtol=0, atol=1e-5)
-            result["featup"][task] = {"gradient_norms": norms,
-                "feature_loss": float(parts[task + "_feature"]),
-                "prediction_reload_max_error": float((expected - recovered).abs().max())}
-            del gradients, loss
-        if any(p.requires_grad or p.grad is not None for p in model.featup_teacher.parameters()):
-            raise AssertionError("Feature teacher must stay frozen")
-        result["featup"]["teacher_frozen"] = True
     result.update(checkpoint_roundtrip_equal=True, state_reload_max_error=max_error,
                   audit_peak_gpu_memory_gib=(torch.cuda.max_memory_allocated(model.device) / 1024**3
                                             if model.device.type == "cuda" else None),

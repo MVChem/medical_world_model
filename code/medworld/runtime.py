@@ -12,7 +12,7 @@ import torch
 
 from . import FORMAT_VERSION
 from .datasets import TASKS
-from .downstream_tasks.data import _sha256
+from .datasets.protocol import _sha256
 
 
 def seed_all(seed):

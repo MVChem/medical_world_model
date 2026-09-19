@@ -23,7 +23,7 @@ def registry(run, state, outcome=None):
         identity=run.name;relative=str(run.relative_to(PROJECT))
         entries=[e for e in entries if e['id']!=identity]
         if outcome is None:
-            entries.append({'id':identity,'summary':'Qwen 0.8B FeatUp: four-GPU eight-hour two-stage training, then matched downstream tests.','status':state,
+            entries.append({'id':identity,'summary':'Qwen 0.8B: four-GPU eight-hour two-stage training, then matched downstream tests.','status':state,
                             'observed_at':datetime.now().astimezone().isoformat(),'run':relative,'live_status':relative+'/pipeline_status.json'})
         else:
             history=root/'README.md'
@@ -75,13 +75,13 @@ def evaluation_jobs(run):
     task_order += [('stage2','temporal','test')]
     for stage,task,split in task_order:
         name=task if split=='test' else 'segmentation_human';out=run/'evaluation'/stage/name
-        jobs.append({'id':stage+'/'+name,'module':'medworld.downstream_tasks.evaluate','log':f'evaluation/{stage}/{name}.log',
+        jobs.append({'id':stage+'/'+name,'module':'medworld.evaluation.evaluate','log':f'evaluation/{stage}/{name}.log',
                      'args':['--checkpoint',str(run/(stage+'.pt')),'--out',str(out),'--task',task,'--split',split,'--max-new-tokens','384']})
     for stage in ('stage1','stage2'):
         root=run/'evaluation'/stage/'report'
-        jobs.append({'id':stage+'/clinical_report','module':'medworld.downstream_tasks.clinical_report',
+        jobs.append({'id':stage+'/clinical_report','module':'medworld.evaluation.clinical_report',
                      'log':f'evaluation/{stage}/clinical_report.log','after':[stage+'/report'],
-                     'args':['--predictions',str(root/'report.jsonl'),'--out',str(root/'clinical.json')]})
+                     'args':['--predictions',str(root/'report.jsonl'),'--out',str(root/'clinical.json'),'--config',str(run/'config.json')]})
     return jobs
 
 
@@ -120,9 +120,9 @@ def main():
         frozen=dict(env,PYTHONPATH=str(run/'source'),OMP_NUM_THREADS='4',MKL_NUM_THREADS='4')
         registry(run,'evaluating')
         schedule(jobs,gpus,run,frozen)
-        subprocess.run([sys.executable,'-m','medworld.downstream_tasks.dense_reference','--config',str(run/'config.json'),
+        subprocess.run([sys.executable,'-m','medworld.evaluation.dense_reference','--config',str(run/'config.json'),
                         '--out',str(run/'bicubic_reference.json')],cwd=PROJECT,env=frozen,check=True)
-        subprocess.run([sys.executable,'-m','medworld.downstream_tasks.compare_run','--run',str(run)],cwd=PROJECT,env=frozen,check=True)
+        subprocess.run([sys.executable,'-m','medworld.evaluation.compare_run','--run',str(run)],cwd=PROJECT,env=frozen,check=True)
         atomic(run/'pipeline_status.json',{'phase':'complete','heartbeat_unix':time.time(),'comparison':'COMPARISON.md'})
         outcome='Completed: eight-hour two-stage training and full downstream tests; native-Qwen comparison available.'
     except BaseException as error:

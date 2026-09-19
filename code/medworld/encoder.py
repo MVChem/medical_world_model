@@ -1,7 +1,6 @@
 """One observation encoder for current tasks, forecasting and retrodiction."""
 import math
 from pathlib import Path
-import sys
 
 import numpy as np
 from PIL import Image, ImageOps
@@ -11,16 +10,12 @@ import torch.nn.functional as F
 
 from . import STATE_WIDTH
 from .adaptation import LANGUAGE_TARGETS, adapt_selected, capture_depths
-from .config import PROJECT
 
 
 class FrozenJEPA(nn.Module):
     def __init__(self, checkpoint):
         super().__init__()
-        source = str(PROJECT / "code/vjepa2")
-        if source not in sys.path:
-            sys.path.insert(0, source)
-        from app.vjepa_2_1.models.vision_transformer import vit_base
+        from .third_party.vjepa2.vision_transformer import vit_base
         self.backbone = vit_base(img_size=(384, 384), patch_size=16, num_frames=64,
                                  tubelet_size=2, use_sdpa=True, use_rope=True,
                                  img_temporal_dim_size=1, interpolate_rope=True)
