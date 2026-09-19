@@ -43,8 +43,6 @@ def main():
             text = Path(args.report_file).read_text() if args.report_file else ""
             state = model.encode([image], [text])
             if args.delta_hours is not None:
-                if checkpoint["progress"]["stage"] != "stage2":
-                    raise ValueError("Temporal inference requires a Stage 2 checkpoint")
                 state = model.world(state, torch.tensor([args.delta_hours], device=device))
             artifact = {"format_version": 1, "state": state.cpu(), "checkpoint_sha256": identity,
                         "delta_hours": args.delta_hours}

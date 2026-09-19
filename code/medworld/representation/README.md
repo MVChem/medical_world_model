@@ -31,8 +31,8 @@ The default `visual_consistency_weight=0` creates no auxiliary modules.
 This is an initial experimental weight, not a validated optimum. The SR task loss has a smaller scale, so monitor both raw and weighted auxiliary losses.
 
 `model.py` assembles the modules and combines losses. The downstream task dispatcher additionally returns the already-computed state and does not own auxiliary modules.
-The objective currently runs only during segmentation/sr updates when training and gradients are enabled, covering Stage 1 and Stage 2 replay.
-It is not added to classification, report, or Stage 2 temporal main updates. The total loss is task loss + weight × consistency.
+The objective currently runs only during segmentation/sr updates when training and gradients are enabled, as the spatial current-task component of joint training.
+It is not added to classification, report, or the temporal loss. The spatial current-task loss is task loss + weight × consistency; the temporal loss is added in the same optimizer update.
 Logs record task loss, `visual_consistency`, and `visual_consistency_weighted` separately.
 
 Evaluation and inference do not execute the auxiliary reconstruction branch or teacher; they use the same slots and standard task decoders.

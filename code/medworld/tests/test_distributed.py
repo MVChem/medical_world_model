@@ -12,8 +12,9 @@ from torch import nn
 from torch.nn.parallel import DistributedDataParallel
 
 from medworld.config import load_config
-from medworld.distributed_train import BatchPrefetch, phase_finished, rank_slice
+from medworld.batching import BatchPrefetch, training_finished, rank_slice
 from medworld.ema import EMATarget
+from medworld.model import MedWorld
 from medworld.launch_distributed import worker_pids
 
 
@@ -28,12 +29,25 @@ class BranchModel(nn.Module):
         self.encoder = nn.Linear(3, 4)
         self.heads = nn.ModuleList([nn.Linear(4, 1), nn.Linear(4, 1)])
 
-    def forward(self, x, task, replay=False):
-        state = self.encoder(x).tanh()
+        self.world = nn.Linear(4, 4)
+        self.target = EMATarget(self.encoder)
+        self.cfg = {"amp": False}
+
+    forward = MedWorld.forward
+
+    @property
+    def device(self):
+        return self.encoder.weight.device
+
+    def current_loss(self, task, batch):
+        state = self.encoder(batch["x"]).tanh()
         loss = (self.heads[task](state) - .25).square().mean()
-        if replay:
-            loss = loss + .7 * (self.heads[1 - task](state) + .3).square().mean()
-        return loss
+        return loss, {"current": loss.detach()}
+
+    def temporal_loss(self, batch):
+        predicted = self.world(self.encoder(batch["x"]))
+        loss = (predicted - self.target(batch["x"] + .3)).square().mean()
+        return loss, {"latent": loss.detach()}
 
 
 def ddp_worker(rank, rendezvous, output):
@@ -43,7 +57,7 @@ def ddp_worker(rank, rendezvous, output):
     model = BranchModel()
     ddp = DistributedDataParallel(model, find_unused_parameters=True, broadcast_buffers=False)
     optimizer = torch.optim.SGD(model.parameters(), lr=.03, momentum=.9)
-    target = EMATarget(model.encoder)
+    target = model.target
     for step in range(4):
         optimizer.zero_grad(set_to_none=True)
         for micro in range(2):
@@ -51,9 +65,9 @@ def ddp_worker(rank, rendezvous, output):
             x = torch.arange(start * 3, (start + 2) * 3).float().reshape(2, 3) / 100
             if micro == 0:
                 with ddp.no_sync():
-                    (ddp(x, step % 2, step >= 2) / 2).backward()
+                    (ddp(step % 2, {"x": x}, {"x": x + .1})[0] / 2).backward()
             else:
-                (ddp(x, step % 2, step >= 2) / 2).backward()
+                (ddp(step % 2, {"x": x}, {"x": x + .1})[0] / 2).backward()
         optimizer.step()
         target.update(model.encoder, .9)
     torch.save({"model": model.state_dict(), "target": target.compact_state()}, Path(output) / f"rank{rank}.pt")
@@ -81,65 +95,61 @@ class DistributedTests(unittest.TestCase):
         self.assertFalse(set(range(a, a + 4)) & set(range(b, b + 4)))
 
     def test_prefetch_does_not_commit_unconsumed_samples(self):
-        cfg = load_config(overrides={"batch_size": 3, "stage1_accumulation": 2})
-        progress = {"stage": "stage1", "step": 0, "offsets": {t: 0 for t in
-                    ("classification", "report", "segmentation", "sr", "temporal")}, "replay_index": 0}
+        cfg = load_config(overrides={"batch_size": 3, "accumulation": 2})
+        progress = {"step": 0, "offsets": {t: 0 for t in
+                    ("classification", "report", "segmentation", "sr", "temporal")}}
         streams = [BatchPrefetch(IndexData(), cfg, progress, rank, 2) for rank in range(2)]
         try:
             first, second = [s.next() for s in streams]
             self.assertEqual(first[0], "classification")
-            self.assertEqual(first[2][0][0]["indices"], [0, 1, 2])
-            self.assertEqual(second[2][0][0]["indices"], [3, 4, 5])
-            self.assertEqual(first[2][1][0]["indices"], [6, 7, 8])
-            self.assertEqual(first[3]["offsets"]["classification"], 12)
-            self.assertEqual(first[3], second[3])
+            self.assertEqual(first[1][0][0]["indices"], [0, 1, 2])
+            self.assertEqual(second[1][0][0]["indices"], [3, 4, 5])
+            self.assertEqual(first[1][1][0]["indices"], [6, 7, 8])
+            self.assertEqual(first[2]["offsets"]["classification"], 12)
+            self.assertEqual(first[2], second[2])
             self.assertTrue(all(value == 0 for value in progress["offsets"].values()))
         finally:
             for stream in streams:
                 stream.close()
-        resumed = {**progress, **first[3], "step": 1}
+        resumed = {**progress, **first[2], "step": 1}
         stream = BatchPrefetch(IndexData(), cfg, resumed, 0, 2)
         try:
-            task, _, batches, marker = stream.next()
+            task, batches, marker = stream.next()
             self.assertEqual(task, "report")
             self.assertEqual(batches[0][0]["indices"], [0, 1, 2])
             self.assertEqual(marker["offsets"]["classification"], 12)
         finally:
             stream.close()
 
-    def test_replay_sizes_preserve_independent_rank_offsets(self):
-        cfg = load_config(overrides={"batch_size": 8, "stage2_accumulation": 1, "replay_every": 1,
-                                     "replay_batch_sizes": {"classification": 2}})
-        progress = {"stage": "stage2", "step": 0, "offsets": {t: 0 for t in
-                    ("classification", "report", "segmentation", "sr", "temporal")}, "replay_index": 0}
+    def test_joint_sizes_preserve_independent_rank_offsets(self):
+        cfg = load_config(overrides={"batch_size": 8, "accumulation": 1,
+                                     "task_batch_sizes": {"classification": 2}})
+        progress = {"step": 0, "offsets": {t: 0 for t in
+                    ("classification", "report", "segmentation", "sr", "temporal")}}
         streams = [BatchPrefetch(IndexData(), cfg, progress, rank, 4) for rank in range(4)]
         try:
             samples = [s.next() for s in streams]
-            for rank, (task, replay, batches, marker) in enumerate(samples):
-                self.assertEqual(task, "temporal")
-                self.assertEqual(replay, "classification")
-                self.assertEqual(batches[0][0]["indices"], list(range(rank * 8, rank * 8 + 8)))
-                self.assertEqual(batches[0][1]["indices"], list(range(rank * 2, rank * 2 + 2)))
+            for rank, (task, batches, marker) in enumerate(samples):
+                self.assertEqual(task, "classification")
+                self.assertEqual(batches[0][0]["indices"], list(range(rank * 2, rank * 2 + 2)))
+                self.assertEqual(batches[0][1]["indices"], list(range(rank * 8, rank * 8 + 8)))
                 self.assertEqual(marker["offsets"]["temporal"], 32)
                 self.assertEqual(marker["offsets"]["classification"], 8)
             self.assertEqual(progress["offsets"]["classification"], 0)
         finally:
             for stream in streams:
                 stream.close()
-        with self.assertRaises(ValueError):
-            load_config(overrides={"replay_batch_sizes": {"temporal": 2}})
 
-    def test_time_budget_and_stage_boundary(self):
-        cfg = load_config(overrides={"total_hours": 24, "stage1_hours": 6})
-        progress = {"stage": "stage1", "step": 3, "deadline_unix": 240, "stage1_deadline_unix": 60}
-        self.assertFalse(phase_finished(progress, cfg, 61))
+    def test_one_time_or_step_budget(self):
+        cfg = load_config(overrides={"total_hours": 8})
+        progress = {"step": 3, "deadline_unix": 240}
+        self.assertFalse(training_finished(progress, cfg, 239))
+        self.assertTrue(training_finished(progress, cfg, 240))
+        cfg = load_config(overrides={"steps": 4})
+        self.assertFalse(training_finished(progress, cfg, 999))
         progress["step"] = 4
-        self.assertTrue(phase_finished(progress, cfg, 61))
-        progress["stage"] = "stage2"
-        self.assertFalse(phase_finished(progress, cfg, 239))
-        self.assertTrue(phase_finished(progress, cfg, 240))
-        for values in ({"total_hours": 24, "stage1_hours": 24}, {"total_hours": 0, "stage1_hours": 6},
-                       {"task_batch_sizes": {"temporal": 0}}):
+        self.assertTrue(training_finished(progress, cfg, 0))
+        for values in ({"stage1_hours": 4}, {"replay_every": 4}, {"task_batch_sizes": {"temporal": 0}}):
             with self.assertRaises(ValueError):
                 load_config(overrides=values)
 
@@ -149,11 +159,11 @@ class DistributedTests(unittest.TestCase):
             torch.manual_seed(8)
             model = BranchModel()
             optimizer = torch.optim.SGD(model.parameters(), lr=.03, momentum=.9)
-            target = EMATarget(model.encoder)
+            target = model.target
             for step in range(4):
                 optimizer.zero_grad(set_to_none=True)
                 x = torch.arange(step * 24, (step + 1) * 24).float().reshape(8, 3) / 100
-                model(x, step % 2, step >= 2).backward()
+                model(step % 2, {"x": x}, {"x": x + .1})[0].backward()
                 optimizer.step()
                 target.update(model.encoder, .9)
             for rank in range(2):

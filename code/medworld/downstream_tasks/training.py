@@ -1,4 +1,4 @@
-"""Current-task objectives, used by Stage 1 and Stage 2 replay."""
+"""Current-task objectives, combined with temporal prediction in joint training."""
 from .classification import finding_loss
 from .common.spatial import spatial_loss
 

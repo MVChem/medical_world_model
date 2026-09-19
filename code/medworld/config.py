@@ -22,14 +22,13 @@ DEFAULTS = {
     "generation_tokens": 64, "predictor_width": 512, "predictor_depth": 4,
     "ema_momentum": 0.99, "bidirectional": True,
     "learning_rate": 1e-4, "lora_learning_rate": 5e-5, "max_grad_norm": 1.0,
-    "batch_size": 1, "stage1_accumulation": 8, "stage2_accumulation": 32,
-    "stage1_steps": 2400, "stage2_steps": 2400,
+    "batch_size": 1, "accumulation": 8,
+    "steps": 4800,
     "latent_weight": 1.0, "report_weight": 1.0, "finding_weight": 0.5,
-    "replay_every": 4, "replay_weight": 1.0,
     "save_every": 100, "validate_every": 200, "validation_samples": 8,
-    "ce_chunk_tokens": 32, "amp": False, "task_batch_sizes": {}, "replay_batch_sizes": {}, "prefetch_batches": 2, "image_workers": 1,
+    "ce_chunk_tokens": 32, "amp": False, "task_batch_sizes": {}, "prefetch_batches": 2, "image_workers": 1,
     "visual_consistency_weight": 0.0, "visual_consistency_views": 2,
-    "total_hours": 0.0, "stage1_hours": 0.0,
+    "total_hours": 0.0,
 }
 
 
@@ -44,7 +43,7 @@ def load_config(path=None, overrides=None, root=None):
     cfg.update(supplied)
     integers = ("lora_rank", "lora_alpha", "vision_pixels", "report_tokens", "context_tokens",
                 "generation_tokens", "predictor_width", "predictor_depth", "batch_size",
-                "stage1_accumulation", "stage2_accumulation", "stage1_steps", "stage2_steps",
+                "accumulation", "steps",
                 "save_every", "validate_every", "validation_samples", "ce_chunk_tokens", "prefetch_batches", "image_workers", "visual_consistency_views")
     for key in integers:
         if type(cfg[key]) is not int or cfg[key] <= 0:
@@ -53,22 +52,17 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError("report_tokens >= 2; predictor_width must be divisible by 8")
     if type(cfg["seed"]) is not int or not 0 <= cfg["seed"] < 2**32:
         raise ValueError("seed must be in [0, 2**32)")
-    if type(cfg["replay_every"]) is not int or cfg["replay_every"] < 0:
-        raise ValueError("replay_every must be a nonnegative integer")
     if type(cfg["bidirectional"]) is not bool:
         raise ValueError("bidirectional must be boolean")
     if type(cfg["amp"]) is not bool:
         raise ValueError("amp must be boolean")
-    for setting in ("task_batch_sizes", "replay_batch_sizes"):
-        sizes = cfg[setting]
-        allowed_tasks = {"classification", "report", "segmentation", "sr"}
-        if setting == "task_batch_sizes":
-            allowed_tasks.add("temporal")
-        if (not isinstance(sizes, dict) or set(sizes) - allowed_tasks
-                or any(type(value) is not int or value <= 0 for value in sizes.values())):
-            raise ValueError(f"{setting} must map known tasks to positive per-rank batch sizes")
+    sizes = cfg["task_batch_sizes"]
+    if (not isinstance(sizes, dict)
+            or set(sizes) - {"classification", "report", "segmentation", "sr", "temporal"}
+            or any(type(value) is not int or value <= 0 for value in sizes.values())):
+        raise ValueError("task_batch_sizes must map known tasks to positive per-rank batch sizes")
     for key in ("ema_momentum", "learning_rate", "lora_learning_rate", "max_grad_norm",
-                "latent_weight", "report_weight", "finding_weight", "replay_weight", "total_hours", "stage1_hours", "visual_consistency_weight"):
+                "latent_weight", "report_weight", "finding_weight", "total_hours", "visual_consistency_weight"):
         value = cfg[key]
         if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value):
             raise ValueError(f"{key} must be finite")
@@ -78,10 +72,6 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError("ema_momentum must be in [0, 1)")
     if cfg["report_weight"] <= 0:
         raise ValueError("Predicted-state report supervision must have positive weight")
-    if cfg["total_hours"] > 0 and not 0 < cfg["stage1_hours"] < cfg["total_hours"]:
-        raise ValueError("Timed runs require 0 < stage1_hours < total_hours")
-    if cfg["total_hours"] == 0 and cfg["stage1_hours"] != 0:
-        raise ValueError("stage1_hours requires a timed run")
     for key in ('qwen', 'jepa', 'temporal_data', 'current_data', 'dense_data', 'baseline_data', 'selection_file', 'classification_data', 'clinical_weights'):
         p = Path(cfg[key]).expanduser()
         p = root / p if not p.is_absolute() else p

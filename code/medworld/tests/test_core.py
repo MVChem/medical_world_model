@@ -95,7 +95,7 @@ class PredictorTests(unittest.TestCase):
 
     def test_configuration_rejects_silent_protocol_changes(self):
         for override in ({"report_weight": 0}, {"ema_momentum": 1}, {"bidirectional": "false"},
-                         {"typo": 1}, {"predictor_width": 31}, {"stage1_steps": True}):
+                         {"typo": 1}, {"predictor_width": 31}, {"steps": True}):
             with self.assertRaises(ValueError):
                 load_config(overrides=override)
 

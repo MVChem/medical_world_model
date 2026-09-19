@@ -46,8 +46,6 @@ def main():
     tasks = (*TASKS, "temporal") if args.task == "all" else TASKS if args.task == "current" else (args.task,)
     if args.split == "human_test" and tasks != ("segmentation",):
         parser.error("human_test is available only with --task segmentation")
-    if "temporal" in tasks and saved["progress"]["stage"] != "stage2":
-        parser.error("Temporal evaluation requires a Stage 2 checkpoint")
     out.mkdir(parents=True, exist_ok=True)
     summary = {"checkpoint_sha256": _sha256(Path(args.checkpoint)), "split": args.split,
                "limit": args.limit, "data_fingerprint": data.fingerprint, "tasks": {}}

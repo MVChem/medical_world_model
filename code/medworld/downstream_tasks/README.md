@@ -11,5 +11,5 @@ This directory contains task models, losses, and metrics. Data loading lives in 
 
 Segmentation and super-resolution decoders inherit the standard architecture in `common/spatial.py`, with separate instances and independent parameters.
 `common/` contains positional encodings, shape checks, and shared model components. It does not load data or aggregate experiments.
-`registry.py` defines stable task identifiers (super-resolution remains `sr`). `training.py` dispatches current-task losses and is reused for Stage 2 replay.
+`registry.py` defines stable task identifiers (super-resolution remains `sr`). `training.py` dispatches current-task losses within joint current-task and temporal training.
 `__init__.py` files expose public interfaces. To add a task, define its model, loss, and metrics in a separate package, then connect it to datasets, registry, training, and evaluation.

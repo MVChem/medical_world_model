@@ -23,7 +23,7 @@ def registry(run, state, outcome=None):
         identity=run.name;relative=str(run.relative_to(PROJECT))
         entries=[e for e in entries if e['id']!=identity]
         if outcome is None:
-            entries.append({'id':identity,'summary':'Qwen 0.8B: four-GPU eight-hour two-stage training, then matched downstream tests.','status':state,
+            entries.append({'id':identity,'summary':'Qwen 0.8B: four-GPU joint training, then matched downstream tests.','status':state,
                             'observed_at':datetime.now().astimezone().isoformat(),'run':relative,'live_status':relative+'/pipeline_status.json'})
         else:
             history=root/'README.md'
@@ -69,25 +69,22 @@ def schedule(jobs, gpus, run, env):
 
 def evaluation_jobs(run):
     jobs=[]
-    # Start the two longer current-report jobs first, then distribute other tasks.
-    task_order=[(stage,'report','test') for stage in ('stage1','stage2')]
-    task_order += [(stage,task,split) for task,split in [('classification','test'),('segmentation','test'),('sr','test'),('segmentation','human_test')] for stage in ('stage1','stage2')]
-    task_order += [('stage2','temporal','test')]
-    for stage,task,split in task_order:
-        name=task if split=='test' else 'segmentation_human';out=run/'evaluation'/stage/name
-        jobs.append({'id':stage+'/'+name,'module':'medworld.evaluation.evaluate','log':f'evaluation/{stage}/{name}.log',
-                     'args':['--checkpoint',str(run/(stage+'.pt')),'--out',str(out),'--task',task,'--split',split,'--max-new-tokens','384']})
-    for stage in ('stage1','stage2'):
-        root=run/'evaluation'/stage/'report'
-        jobs.append({'id':stage+'/clinical_report','module':'medworld.evaluation.clinical_report',
-                     'log':f'evaluation/{stage}/clinical_report.log','after':[stage+'/report'],
-                     'args':['--predictions',str(root/'report.jsonl'),'--out',str(root/'clinical.json'),'--config',str(run/'config.json')]})
+    task_order=[('report','test'),('classification','test'),('segmentation','test'),
+                ('sr','test'),('segmentation','human_test'),('temporal','test')]
+    for task,split in task_order:
+        name=task if split=='test' else 'segmentation_human';out=run/'evaluation'/name
+        jobs.append({'id':name,'module':'medworld.evaluation.evaluate','log':f'evaluation/{name}.log',
+                     'args':['--checkpoint',str(run/'final.pt'),'--out',str(out),'--task',task,'--split',split,'--max-new-tokens','384']})
+    report=run/'evaluation'/'report'
+    jobs.append({'id':'clinical_report','module':'medworld.evaluation.clinical_report',
+                 'log':'evaluation/clinical_report.log','after':['report'],
+                 'args':['--predictions',str(report/'report.jsonl'),'--out',str(report/'clinical.json'),'--config',str(run/'config.json')]})
     return jobs
 
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--config',required=True);p.add_argument('--out',required=True)
-    p.add_argument('--gpus',default='0,1,2,3');p.add_argument('--baseline-audit',required=True)
+    p.add_argument('--gpus',default='1,2,3,6');p.add_argument('--baseline-audit',required=True)
     a=p.parse_args();run=Path(a.out).resolve();cfg=load_config(a.config);gpus=a.gpus.split(',')
     if len(gpus)>4 or len(gpus)!=len(set(gpus)):raise ValueError('Use at most four distinct GPUs')
     audit=json.loads(Path(a.baseline_audit).read_text())
@@ -108,15 +105,15 @@ def main():
             if (run/'source_manifest.json').exists() and not initialized:
                 atomic(run/'baseline_audit.json',audit)
                 atomic(run/'evaluation_plan.json',{'jobs':jobs,'gpus':gpus,'baseline':'native Qwen3.5-0.8B, no project training',
-                      'generation_tokens':384,'train_hours':cfg['total_hours'],'stage1_hours':cfg['stage1_hours'],
-                      'evaluation_after_training':True,'test_selection':'Final stage1.pt and stage2.pt; no best-on-test selection'})
+                      'generation_tokens':384,'train_hours':cfg['total_hours'],
+                      'evaluation_after_training':True,'test_selection':'final.pt at training completion; no best-on-test selection'})
                 initialized=True;registry(run,'training')
             if initialized:atomic(run/'pipeline_status.json',{'phase':'training','launcher_pid':child.pid,'heartbeat_unix':time.time()})
             time.sleep(15)
         if child.returncode:raise RuntimeError(f'Training launcher exited {child.returncode}')
         state=json.loads((run/'status.json').read_text())
-        if state.get('stopped') or state.get('stage')!='stage2' or not state.get('stage_complete'):
-            raise RuntimeError('Training stopped before completing both stages')
+        if state.get('stopped') or not state.get('complete'):
+            raise RuntimeError('Joint training stopped before completion')
         frozen=dict(env,PYTHONPATH=str(run/'source'),OMP_NUM_THREADS='4',MKL_NUM_THREADS='4')
         registry(run,'evaluating')
         schedule(jobs,gpus,run,frozen)
@@ -124,7 +121,7 @@ def main():
                         '--out',str(run/'bicubic_reference.json')],cwd=PROJECT,env=frozen,check=True)
         subprocess.run([sys.executable,'-m','medworld.evaluation.compare_run','--run',str(run)],cwd=PROJECT,env=frozen,check=True)
         atomic(run/'pipeline_status.json',{'phase':'complete','heartbeat_unix':time.time(),'comparison':'COMPARISON.md'})
-        outcome='Completed: eight-hour two-stage training and full downstream tests; native-Qwen comparison available.'
+        outcome='Completed: joint training and full downstream tests; native-Qwen comparison available.'
     except BaseException as error:
         if child is not None and child.poll() is None:
             child.terminate()

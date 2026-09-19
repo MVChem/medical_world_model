@@ -35,7 +35,7 @@ def audit_model(model, data, out):
     del graph, gradients
     model.zero_grad(set_to_none=True)
     gc.collect()
-    checkpoint = out / "stage2.pt"
+    checkpoint = out / "final.pt"
     checkpoint_hash = _sha256(checkpoint)
     with torch.no_grad():
         evidence = data.batch("temporal", "validate", [0, 1], source_only=True)

@@ -16,6 +16,18 @@ class LayoutTests(unittest.TestCase):
             with self.subTest(module=module):
                 importlib.import_module('medworld.' + module)
 
+    def test_evaluation_uses_one_final_checkpoint(self):
+        from medworld.run_experiment import evaluation_jobs
+        run = Path("/tmp/example_joint_run")
+        jobs = evaluation_jobs(run)
+        evaluation = [j for j in jobs if j["module"] == "medworld.evaluation.evaluate"]
+        self.assertEqual(len(evaluation), 6)
+        self.assertEqual(len({j["id"] for j in jobs}), len(jobs))
+        for job in evaluation:
+            args = job["args"]
+            self.assertEqual(args[args.index("--checkpoint") + 1], str(run / "final.pt"))
+        self.assertEqual(jobs[-1]["after"], ["report"])
+
     def test_data_alias_does_not_change_protocol_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

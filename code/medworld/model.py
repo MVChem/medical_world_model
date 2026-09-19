@@ -51,13 +51,13 @@ class MedWorld(nn.Module):
                 torch.manual_seed(cfg["seed"] + 9138)
                 self.visual_reconstruction = SlotSpatialReconstruction()
         self.register_buffer("pos_weight", torch.ones(13))
-        self.target = None
         self.metadata = {
             "representation_objective": "visual_slot_spatial_consistency" if hasattr(self, "visual_reconstruction") else None,
+            "training": "joint current-task and temporal loss from the first update",
             "architecture": "medworld_unified_4plus4_v1", "state_shape": [8, 1024],
             "language_depths_1based": [i + 1 for i in depths(len(self.encoder.language.layers))],
             "vision_depths_1based": [i + 1 for i in depths(len(self.encoder.vision.blocks))],
-            "target_update": "EMA of all trainable state encoder parameters after each Stage 2 optimizer update",
+            "target_update": "EMA of all trainable state encoder parameters after each joint optimizer update",
             "text_decoder_inputs": ["state", "fixed task prompt"],
             "time_condition": "signed realized_gap_hours; direction is a predictor input only",
             "current_tasks": ["classification", "report", "segmentation", "sr"],
@@ -66,35 +66,31 @@ class MedWorld(nn.Module):
             "frozen_backbone_shared": True, "encoder_decoder_lora_shared": False,
         }
         self.to(device)
+        self.target = EMATarget(self.encoder).to(self.device)
 
     @property
     def device(self):
         return self.encoder.slot_queries.device
 
-    def begin_stage2(self):
-        if self.target is not None:
-            raise ValueError("EMA already initialized; restoring must preserve its saved state")
-        self.target = EMATarget(self.encoder).to(self.device)
-
-    def forward(self, task, batch, replay_task=None, replay_batch=None):
-        """One DDP forward owns all graphs for an optimizer microbatch."""
+    def forward(self, task, batch, temporal_batch=None):
+        """One DDP forward owns current-task and temporal graphs for an update."""
         with torch.autocast(device_type=self.device.type, dtype=torch.bfloat16,
                             enabled=self.cfg.get("amp", False)):
-            loss, parts = self.temporal_loss(batch) if task == "temporal" else self.current_loss(task, batch)
-            if replay_task is not None:
-                if task != "temporal" or replay_batch is None:
-                    raise ValueError("Replay requires a temporal training batch")
-                replay, replay_parts = self.current_loss(replay_task, replay_batch)
-                loss = loss + self.cfg["replay_weight"] * replay
-                parts.update({"replay_" + key: value for key, value in replay_parts.items()})
+            if task == "temporal":
+                if temporal_batch is not None:
+                    raise ValueError("Joint updates require a current task")
+                return self.temporal_loss(batch)
+            loss, parts = self.current_loss(task, batch)
+            if temporal_batch is not None:
+                temporal, temporal_parts = self.temporal_loss(temporal_batch)
+                loss = loss + temporal
+                parts.update({"temporal_" + key: value for key, value in temporal_parts.items()})
         return loss, parts
 
     def encode(self, images, texts=None, *, spatial=False, target=False):
         if not images:
             raise ValueError("At least one observation image is required")
         encoder = self.target if target else self.encoder
-        if encoder is None:
-            raise ValueError("Initialize Stage 2 before using the target encoder")
         pixels = self.cfg["vision_pixels"]
         inputs = self.processor.image_processor(images=images, return_tensors="pt",
                                                 min_pixels=pixels**2, max_pixels=pixels**2)
@@ -127,8 +123,6 @@ class MedWorld(nn.Module):
         return loss, parts
 
     def temporal_loss(self, batch, *, audit=False):
-        if self.target is None:
-            raise ValueError("Stage 2 requires an EMA target")
         target = self.encode(**batch["target"], target=True)
         source = self.encode(**batch["source"])
         predicted = self.world(source, batch["delta_hours"].to(self.device))
@@ -157,7 +151,7 @@ class MedWorld(nn.Module):
         return {
             "parameters": {n: p.detach().cpu().clone() for n, p in self.named_parameters() if p.requires_grad},
             "pos_weight": self.pos_weight.detach().cpu().clone(),
-            "ema": None if self.target is None else self.target.compact_state(),
+            "ema": self.target.compact_state(),
         }
 
     @torch.no_grad()
@@ -172,9 +166,6 @@ class MedWorld(nn.Module):
         if state["pos_weight"].shape != self.pos_weight.shape:
             raise ValueError("Classification weights differ")
         self.pos_weight.copy_(state["pos_weight"])
-        if state["ema"] is not None:
-            if self.target is None:
-                self.begin_stage2()
-            self.target.restore(state["ema"])
-        elif self.target is not None:
-            raise ValueError("Cannot discard an initialized EMA target")
+        if state["ema"] is None:
+            raise ValueError("Joint checkpoints require EMA state")
+        self.target.restore(state["ema"])

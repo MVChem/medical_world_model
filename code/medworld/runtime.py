@@ -10,6 +10,7 @@ import time
 import numpy as np
 import torch
 
+from .batching import BatchPrefetch
 from . import FORMAT_VERSION
 from .datasets import TASKS
 from .datasets.protocol import _sha256
@@ -100,14 +101,14 @@ def validate(model, data, samples):
     model.eval()
     metrics = {}
     try:
-        for task in (*TASKS, *(("temporal",) if model.target is not None else ())):
+        for task in (*TASKS, "temporal"):
             count = min(samples, len(data.rows(task, "validate")))
             if not count:
                 continue
             values = []
             for index in range(count):
                 batch = data.batch(task, "validate", [index])
-                loss, _ = (model.temporal_loss(batch) if task == "temporal" else model.current_loss(task, batch))
+                loss, _ = model(task, batch)
                 values.append(float(loss))
             metrics[task + "_loss"] = float(np.mean(values))
         return metrics
@@ -120,8 +121,8 @@ class Trainer:
     def __init__(self, model, data, out, weights_fingerprint):
         self.model, self.data, self.out = model, data, Path(out)
         self.cfg, self.weights_fingerprint = model.cfg, weights_fingerprint
-        self.progress = {"stage": "stage1", "step": 0, "stage_complete": False,
-                         "offsets": {task: 0 for task in (*TASKS, "temporal")}, "replay_index": 0}
+        self.progress = {"step": 0, "complete": False,
+                         "offsets": {task: 0 for task in (*TASKS, "temporal")}}
         self.optimizer = optimizer_for(model, self.cfg)
         self.stop = False
 
@@ -142,87 +143,60 @@ class Trainer:
         self.model.restore(saved["model"])
         self.progress = saved["progress"]
         self.optimizer.load_state_dict(saved["optimizer"])
-        if self.progress["stage"] == "stage2":
-            if self.model.target is None or int(self.model.target.updates) != self.progress["step"]:
-                raise ValueError("EMA update count differs from completed optimizer steps")
+        if int(self.model.target.updates) != self.progress["step"]:
+            raise ValueError("EMA update count differs from completed optimizer steps")
         restore_rng(saved["rng"])
-
-    def enter_stage2(self):
-        if self.progress["stage"] != "stage1" or not self.progress["stage_complete"]:
-            raise ValueError("Stage 2 must start from a completed Stage 1 checkpoint")
-        self.model.begin_stage2()
-        self.progress.update(stage="stage2", step=0, stage_complete=False, replay_index=0)
-        self.optimizer = optimizer_for(self.model, self.cfg)
 
     def save(self, name="last.pt"):
         save_checkpoint(self.out / name, self.model, self.optimizer, self.progress,
                         self.data.fingerprint, self.weights_fingerprint)
 
-    def batch(self, task):
-        offset = self.progress["offsets"][task]
-        batch = self.data.training_batch(task, offset, self.cfg["batch_size"], self.cfg["seed"])
-        self.progress["offsets"][task] += self.cfg["batch_size"]
-        return batch
-
-    def run_stage(self):
-        if self.progress["stage_complete"]:
+    def run(self):
+        if self.progress["complete"]:
             return True
-        stage = self.progress["stage"]
-        budget = self.cfg[stage + "_steps"]
-        accumulation = self.cfg[stage + "_accumulation"]
         self.model.train()
-        while self.progress["step"] < budget and not self.stop:
-            device = next(self.model.parameters()).device
-            if device.type == "cuda":
-                torch.cuda.reset_peak_memory_stats(device)
-            start = time.monotonic()
-            step = self.progress["step"]
-            task = TASKS[step % len(TASKS)] if stage == "stage1" else "temporal"
-            self.optimizer.zero_grad(set_to_none=True)
-            values = {}
-            for _ in range(accumulation):
-                batch = self.batch(task)
-                loss, parts = (self.model.temporal_loss(batch) if task == "temporal"
-                               else self.model.current_loss(task, batch))
-                if not torch.isfinite(loss):
-                    raise FloatingPointError(f"Nonfinite {task} loss")
-                (loss / accumulation).backward()
-                for key, value in parts.items():
-                    values[key] = values.get(key, 0.) + float(value) / accumulation
-            replay_every = self.cfg["replay_every"]
-            if stage == "stage2" and replay_every and (step + 1) % replay_every == 0:
-                replay_task = TASKS[self.progress["replay_index"] % len(TASKS)]
-                self.progress["replay_index"] += 1
-                for _ in range(accumulation):
-                    loss, replay_parts = self.model.current_loss(replay_task, self.batch(replay_task))
+        stream = BatchPrefetch(self.data, self.cfg, self.progress, rank=0, world_size=1)
+        try:
+            while self.progress["step"] < self.cfg["steps"] and not self.stop:
+                device = next(self.model.parameters()).device
+                if device.type == "cuda":
+                    torch.cuda.reset_peak_memory_stats(device)
+                start = time.monotonic()
+                task, batches, marker = stream.next()
+                self.optimizer.zero_grad(set_to_none=True)
+                values = {}
+                for batch, temporal_batch in batches:
+                    loss, parts = self.model(task, batch, temporal_batch)
                     if not torch.isfinite(loss):
-                        raise FloatingPointError("Nonfinite replay loss")
-                    (self.cfg["replay_weight"] * loss / accumulation).backward()
-                    for name, value in replay_parts.items():
-                        key = "replay_" + name
-                        values[key] = values.get(key, 0.) + float(value) / accumulation
-            norm = torch.nn.utils.clip_grad_norm_([p for p in self.model.parameters() if p.requires_grad],
-                                                  self.cfg["max_grad_norm"], error_if_nonfinite=True)
-            self.optimizer.step()
-            # Exactly once per optimizer update, including updates with replay.
-            if stage == "stage2":
+                        raise FloatingPointError("Nonfinite joint loss")
+                    (loss / len(batches)).backward()
+                    for key, value in parts.items():
+                        values[key] = values.get(key, 0.) + float(value) / len(batches)
+                    del loss, parts, batch, temporal_batch
+                norm = torch.nn.utils.clip_grad_norm_(
+                    [p for p in self.model.parameters() if p.requires_grad],
+                    self.cfg["max_grad_norm"], error_if_nonfinite=True)
+                self.optimizer.step()
                 self.model.target.update(self.model.encoder, self.cfg["ema_momentum"])
-            self.progress["step"] = step + 1
-            self.progress["stage_complete"] = step + 1 == budget
-            record = {"stage": stage, "step": step + 1, "task": task, **values,
-                      "grad_norm": float(norm), "seconds": time.monotonic() - start,
-                      "ema_updates": 0 if self.model.target is None else int(self.model.target.updates)}
-            if device.type == "cuda":
-                record.update(cuda_step_peak_allocated_gib=torch.cuda.max_memory_allocated(device) / 1024**3,
-                              cuda_step_peak_reserved_gib=torch.cuda.max_memory_reserved(device) / 1024**3)
-            print(json.dumps(record), flush=True)
-            with (self.out / "metrics.jsonl").open("a") as handle:
-                handle.write(json.dumps(record) + "\n")
-            if (step + 1) % self.cfg["validate_every"] == 0 or self.progress["stage_complete"]:
-                metrics = validate(self.model, self.data, self.cfg["validation_samples"])
-                atomic_json(self.out / f"validation_{stage}.json", {"step": step + 1, **metrics})
-                print(json.dumps({"validation": stage, **metrics}), flush=True)
-            if (step + 1) % self.cfg["save_every"] == 0 or self.stop or self.progress["stage_complete"]:
-                self.save()
-        self.save(stage + ".pt" if self.progress["stage_complete"] else "last.pt")
-        return self.progress["stage_complete"]
+                self.progress.update(marker)
+                self.progress["step"] += 1
+                self.progress["complete"] = self.progress["step"] == self.cfg["steps"]
+                record = {"step": self.progress["step"], "task": task, **values,
+                          "grad_norm": float(norm), "seconds": time.monotonic() - start,
+                          "ema_updates": int(self.model.target.updates)}
+                if device.type == "cuda":
+                    record.update(cuda_step_peak_allocated_gib=torch.cuda.max_memory_allocated(device) / 1024**3,
+                                  cuda_step_peak_reserved_gib=torch.cuda.max_memory_reserved(device) / 1024**3)
+                print(json.dumps(record), flush=True)
+                with (self.out / "metrics.jsonl").open("a") as handle:
+                    handle.write(json.dumps(record) + "\n")
+                del batches
+                if self.progress["step"] % self.cfg["validate_every"] == 0 or self.progress["complete"]:
+                    metrics = validate(self.model, self.data, self.cfg["validation_samples"])
+                    atomic_json(self.out / "validation.json", {"step": self.progress["step"], **metrics})
+                if self.progress["step"] % self.cfg["save_every"] == 0 or self.stop or self.progress["complete"]:
+                    self.save()
+        finally:
+            stream.close()
+        self.save("final.pt" if self.progress["complete"] else "last.pt")
+        return self.progress["complete"]

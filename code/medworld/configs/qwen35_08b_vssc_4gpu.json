@@ -22,38 +22,27 @@
   "learning_rate": 0.0001,
   "lora_learning_rate": 5e-05,
   "max_grad_norm": 1.0,
-  "batch_size": 64,
-  "stage1_accumulation": 1,
-  "stage2_accumulation": 1,
-  "stage1_steps": 2400,
-  "stage2_steps": 2400,
+  "batch_size": 16,
   "latent_weight": 1.0,
   "report_weight": 1.0,
   "finding_weight": 0.5,
-  "replay_every": 4,
-  "replay_weight": 1.0,
   "save_every": 10,
   "validate_every": 50,
   "validation_samples": 16,
   "ce_chunk_tokens": 128,
   "amp": true,
   "task_batch_sizes": {
-    "classification": 96,
-    "report": 64,
-    "segmentation": 64,
-    "sr": 64,
-    "temporal": 64
-  },
-  "replay_batch_sizes": {
     "classification": 16,
     "report": 16,
     "segmentation": 16,
-    "sr": 16
+    "sr": 16,
+    "temporal": 32
   },
   "prefetch_batches": 2,
   "image_workers": 8,
   "visual_consistency_weight": 0.1,
   "visual_consistency_views": 2,
   "total_hours": 8,
-  "stage1_hours": 4
+  "steps": 4800,
+  "accumulation": 1
 }
