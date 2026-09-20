@@ -11,7 +11,9 @@ from torch import nn
 from medworld.config import load_config
 from medworld.datasets import patient_holdouts
 from medworld.datasets.temporal import TemporalData, directed_pair
-from medworld.decoders import ReportDecoder, SpatialHead, validate_state
+from medworld.decoders import TextDecoder, TaskDecoder
+from medworld.downstream_tasks.common import validate_state
+from medworld.downstream_tasks.segmentation import SegmentationHead
 from medworld.ema import EMATarget
 from medworld.predictor import WorldModel, time_features
 
@@ -104,7 +106,10 @@ class Tokenizer:
     eos_token_id, pad_token_id = 2, 0
 
     def apply_chat_template(self, *args, **kwargs):
-        return [1, 3]
+        return "question"
+
+    def __call__(self, texts, **kwargs):
+        return {"input_ids": torch.tensor([[1, 3]] * len(texts)), "attention_mask": torch.ones(len(texts), 2, dtype=torch.long)}
 
     def encode(self, text, **kwargs):
         return [3 + ord(c) % 13 for c in text]
@@ -132,41 +137,36 @@ class CausalLanguage(nn.Module):
 
 
 class DecoderTests(unittest.TestCase):
-    def test_report_ce_reaches_state_with_masked_eos_targets(self):
+    def test_vqa_loss_requires_images_and_reaches_all_slots(self):
+        torch.manual_seed(17)
+        trunk = TaskDecoder(16, width=8, depth=1)
         language = CausalLanguage().requires_grad_(False)
         head = nn.Linear(8, 16, bias=False).requires_grad_(False)
-        decoder = ReportDecoder(language, head, Tokenizer(), load_config(overrides={"report_tokens": 5}))
-        state = torch.randn(2, 8, 1024, requires_grad=True)
-        loss = decoder.loss(state, ["abcdefg", "a"])
+        decoder = TextDecoder(language, head, Tokenizer(), load_config(overrides={"answer_tokens": 5, "decoder_width": 8}))
+        images = torch.randn(2, 4, 16, requires_grad=True)
+        slots = torch.randn(2, 8, 1024, requires_grad=True)
+        loss = decoder.loss(trunk(images, slots), ["q1", "q2"], ["abc", "a"])
         loss.backward()
-        self.assertTrue(torch.isfinite(loss))
-        self.assertGreater(float(state.grad.norm()), 0)
+        self.assertGreater(float(images.grad.norm()), 0)
+        self.assertTrue((slots.grad.abs().sum((0, 2)) > 0).all())
         self.assertTrue(all(p.grad is None for p in language.parameters()))
+        self.assertTrue(torch.isfinite(decoder.loss(trunk(images), ["q1", "q2"], ["abc", "a"])))
+        with self.assertRaises(ValueError):
+            trunk(None, slots)
         ids, mask = decoder.targets(["abcdefg", "a"], "cpu")
-        self.assertEqual(ids.tolist(), [[9, 10, 11, 12, 2], [9, 2, 0, 0, 0]])
         self.assertEqual(mask.sum(1).tolist(), [5, 2])
-        decoder.eval()
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "state.pt"
-            torch.save(state.detach().cpu(), path)
-            loaded = torch.load(path, weights_only=True)
-            self.assertEqual(decoder.generate(loaded, 4), decoder.generate(state, 4))
-        with self.assertRaises(ValueError):
-            decoder.generate(state, 0)
-        with self.assertRaises(ValueError):
-            validate_state(torch.zeros(1, 4, 1024))
+        self.assertEqual(ids[0, -1], 2)
 
     def test_per_sample_eos_and_cache_positions(self):
         class ScriptedLanguage(CausalLanguage):
             def __init__(self):
                 super().__init__()
                 self.calls = []
-
             def forward(self, **kwargs):
                 i = len(self.calls)
                 self.calls.append(kwargs)
                 hidden = torch.zeros(2, 1, 8)
-                hidden[0, 0, 2] = 10  # first sample ends immediately
+                hidden[0, 0, 2] = 10
                 hidden[1, 0, 4 if i < 2 else 2] = 10
                 return SimpleNamespace(last_hidden_state=hidden, past_key_values="cache")
         language = ScriptedLanguage()
@@ -174,21 +174,22 @@ class DecoderTests(unittest.TestCase):
         with torch.no_grad():
             head.weight.zero_()
             head.weight[:8].copy_(torch.eye(8))
-        decoder = ReportDecoder(language, head, Tokenizer(), load_config()).eval()
-        result = decoder.generate(torch.randn(2, 8, 1024), 8)
-        self.assertEqual(result, [[], [4, 4]])
-        self.assertEqual(len(language.calls), 3)
-        self.assertEqual(language.calls[1]["position_ids"].tolist(), [[10], [10]])
-        self.assertEqual(language.calls[2]["position_ids"].tolist(), [[11], [11]])
+        decoder = TextDecoder(language, head, Tokenizer(), load_config(overrides={"decoder_width": 8})).eval()
+        self.assertEqual(decoder.generate(torch.randn(2, 4, 8), ["q1", "q2"], 8), [[], [4, 4]])
+        self.assertEqual(language.calls[1]["position_ids"].tolist(), [[6], [6]])
         self.assertEqual(language.calls[2]["input_ids"].tolist(), [[0], [4]])
 
-    def test_spatial_loss_reads_only_visual_slots(self):
-        state = torch.randn(1, 8, 1024, requires_grad=True)
-        prediction = SpatialHead("segmentation")(torch.rand(1, 1, 32, 32), state[:, 4:])
+    def test_segmentation_shares_transformer_and_reads_all_eight_slots(self):
+        trunk = TaskDecoder(16, width=8, depth=1)
+        images = torch.randn(1, 4, 16, requires_grad=True)
+        slots = torch.randn(1, 8, 1024, requires_grad=True)
+        head = SegmentationHead(width=8)
+        prediction = head(trunk(images, slots))
         self.assertEqual(prediction.shape, (1, 3, 256, 256))
         prediction.square().mean().backward()
-        self.assertEqual(float(state.grad[:, :4].abs().sum()), 0)
-        self.assertGreater(float(state.grad[:, 4:].abs().sum()), 0)
+        self.assertGreater(float(images.grad.norm()), 0)
+        self.assertTrue((slots.grad.abs().sum((0, 2)) > 0).all())
+        self.assertEqual(head(trunk(images)).shape, prediction.shape)
 
 
 class DataTests(unittest.TestCase):

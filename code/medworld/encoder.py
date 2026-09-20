@@ -63,13 +63,13 @@ class StateEncoder(nn.Module):
             nn.Sequential(nn.LayerNorm(visual_width), nn.Linear(visual_width, STATE_WIDTH)) for _ in range(4)])
         self.visual_norm = nn.LayerNorm(STATE_WIDTH)
 
-    def forward(self, image_inputs, text_ids=None, text_mask=None, features=None, *, spatial=False):
+    def forward(self, image_inputs, text_ids=None, text_mask=None, features=None, *, spatial=False, return_image_features=False):
         grid = image_inputs["image_grid_thw"]
         batch = len(grid)
         if not batch or not torch.equal(grid, grid[:1].expand_as(grid)):
             raise ValueError("Use one equally prepared square image per observation")
         with capture_depths(self.vision.blocks) as captured:
-            self.vision(hidden_states=image_inputs["pixel_values"].to(next(self.vision.parameters()).dtype),
+            vision_output = self.vision(hidden_states=image_inputs["pixel_values"].to(next(self.vision.parameters()).dtype),
                         grid_thw=grid)
         visual = []
         for j in range(4):
@@ -93,4 +93,6 @@ class StateEncoder(nn.Module):
             self.language(inputs_embeds=sequence, attention_mask=mask, position_ids=positions,
                           use_cache=False, return_dict=True)
         fusion = [self.fusion_readouts[j](captured[j][:, -4 + j].float()) for j in range(4)]
-        return torch.stack(fusion + visual, 1)
+        state = torch.stack(fusion + visual, 1)
+        image_features = vision_output.pooler_output.reshape(batch, -1, self.language.get_input_embeddings().weight.shape[1])
+        return (state, image_features) if return_image_features else state

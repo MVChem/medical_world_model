@@ -101,7 +101,7 @@ def validate(model, data, samples):
     model.eval()
     metrics = {}
     try:
-        for task in (*TASKS, "temporal"):
+        for task in TASKS:
             count = min(samples, len(data.rows(task, "validate")))
             if not count:
                 continue

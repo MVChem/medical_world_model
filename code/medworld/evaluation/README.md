@@ -1,11 +1,7 @@
 # Evaluation
 
-- `evaluate.py`: Evaluates a checkpoint on complete task cohorts using metric functions from downstream_tasks.
-- `baseline_audit.py`: Checks native Qwen weights, samples, references, and pixels reconstructed from source images.
-- `clinical_report.py`: CLI for clinical report scoring; `chexbert.py` and `clinical_metrics.py` provide local scoring implementations.
-- `dense_reference.py`: Computes the bicubic super-resolution reference online.
-- `compare_run.py`: Aggregates final joint-model results and audited baseline comparisons.
+`evaluate.py` evaluates classification, segmentation or VQA using a completed checkpoint. `compare_run.py` compares separately trained image-only and image-plus-slots models on matching complete cohorts.
 
-Usage: `python -m medworld.evaluation.MODULE --help`.
-Clinical scoring accepts `--config` to override `clinical_weights`; it does not import scoring code from older experiments.
-All outputs belong in the selected run directory and are excluded from Git by default.
+`medworld.evaluate_run` reads the run's JSON `testing` block: enabled, selected tasks, human segmentation and validated result reuse. `medworld.run_experiment` trains both arms and automatically compares the configured tests. See the project README for commands.
+
+All outputs stay under original run directories. Historical raw-Qwen/report/SR comparisons remain in their frozen runs; they are not part of the new three-task comparison.

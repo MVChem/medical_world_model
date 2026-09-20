@@ -10,9 +10,9 @@ class LayoutTests(unittest.TestCase):
     def test_runtime_entrypoints_import(self):
         for module in ('datasets.current', 'datasets.temporal', 'datasets.protocol',
                        'datasets.unified', 'downstream_tasks.segmentation.decoder',
-                       'downstream_tasks.super_resolution.decoder', 'evaluation.evaluate',
-                       'evaluation.baseline_audit', 'evaluation.compare_run',
-                       'evaluation.clinical_report', 'evaluation.dense_reference'):
+                       'evaluation.evaluate',
+                       'evaluation.compare_run', 'downstream_tasks.text.decoder',
+                       'downstream_tasks.common.decoder'):
             with self.subTest(module=module):
                 importlib.import_module('medworld.' + module)
 
@@ -21,12 +21,11 @@ class LayoutTests(unittest.TestCase):
         run = Path("/tmp/example_joint_run")
         jobs = evaluation_jobs(run)
         evaluation = [j for j in jobs if j["module"] == "medworld.evaluation.evaluate"]
-        self.assertEqual(len(evaluation), 6)
+        self.assertEqual(len(evaluation), 4)
         self.assertEqual(len({j["id"] for j in jobs}), len(jobs))
         for job in evaluation:
             args = job["args"]
             self.assertEqual(args[args.index("--checkpoint") + 1], str(run / "final.pt"))
-        self.assertEqual(jobs[-1]["after"], ["report"])
 
     def test_data_alias_does_not_change_protocol_path(self):
         with tempfile.TemporaryDirectory() as tmp:

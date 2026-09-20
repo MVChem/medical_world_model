@@ -97,7 +97,7 @@ class DistributedTests(unittest.TestCase):
     def test_prefetch_does_not_commit_unconsumed_samples(self):
         cfg = load_config(overrides={"batch_size": 3, "accumulation": 2})
         progress = {"step": 0, "offsets": {t: 0 for t in
-                    ("classification", "report", "segmentation", "sr", "temporal")}}
+                    ("classification", "segmentation", "vqa", "temporal")}}
         streams = [BatchPrefetch(IndexData(), cfg, progress, rank, 2) for rank in range(2)]
         try:
             first, second = [s.next() for s in streams]
@@ -115,7 +115,7 @@ class DistributedTests(unittest.TestCase):
         stream = BatchPrefetch(IndexData(), cfg, resumed, 0, 2)
         try:
             task, batches, marker = stream.next()
-            self.assertEqual(task, "report")
+            self.assertEqual(task, "segmentation")
             self.assertEqual(batches[0][0]["indices"], [0, 1, 2])
             self.assertEqual(marker["offsets"]["classification"], 12)
         finally:
@@ -125,7 +125,7 @@ class DistributedTests(unittest.TestCase):
         cfg = load_config(overrides={"batch_size": 8, "accumulation": 1,
                                      "task_batch_sizes": {"classification": 2}})
         progress = {"step": 0, "offsets": {t: 0 for t in
-                    ("classification", "report", "segmentation", "sr", "temporal")}}
+                    ("classification", "segmentation", "vqa", "temporal")}}
         streams = [BatchPrefetch(IndexData(), cfg, progress, rank, 4) for rank in range(4)]
         try:
             samples = [s.next() for s in streams]

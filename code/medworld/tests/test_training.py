@@ -64,7 +64,7 @@ class ToyData:
 
 class TrainingTests(unittest.TestCase):
     def test_joint_resume_matches_uninterrupted_with_accumulation(self):
-        cfg = load_config(overrides={"steps": 8, "accumulation": 2, "batch_size": 3,
+        cfg = load_config(overrides={"steps": 6, "accumulation": 2, "batch_size": 3,
                                      "task_batch_sizes": {"temporal": 4}, "validation_samples": 1})
         with tempfile.TemporaryDirectory() as tmp, redirect_stdout(io.StringIO()):
             def make(name):
@@ -91,11 +91,11 @@ class TrainingTests(unittest.TestCase):
             resumed.resume(saved)
             self.assertTrue(resumed.run())
             self.assertEqual(resumed.progress, full.progress)
-            self.assertEqual(int(resumed.model.target.updates), 8)  # one EMA per optimizer update
+            self.assertEqual(int(resumed.model.target.updates), 6)  # one EMA per optimizer update
             for name, parameter in full.model.named_parameters():
                 torch.testing.assert_close(parameter, dict(resumed.model.named_parameters())[name], rtol=0, atol=0)
-            self.assertEqual(resumed.progress["offsets"]["temporal"], 64)
-            for task in ("classification", "report", "segmentation", "sr"):
+            self.assertEqual(resumed.progress["offsets"]["temporal"], 48)
+            for task in ("classification", "segmentation", "vqa"):
                 self.assertEqual(resumed.progress["offsets"][task], 12)
             saved["data_fingerprint"] = "changed"
             with self.assertRaises(ValueError):

@@ -14,7 +14,7 @@ def main():
     parser.add_argument("--config", help="Probe the actual training architecture/configuration")
     parser.add_argument("--out", required=True)
     parser.add_argument("--batches", default="4,8,16,32")
-    parser.add_argument("--tasks", default="classification,report,segmentation,sr")
+    parser.add_argument("--tasks", default="classification,segmentation,vqa")
     parser.add_argument("--repeats", type=int, default=2)
     parser.add_argument("--max-memory-gib", type=float, default=20)
     parser.add_argument("--image-workers", type=int, default=8)

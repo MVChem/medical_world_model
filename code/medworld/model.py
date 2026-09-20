@@ -5,10 +5,11 @@ import torch.nn.functional as F
 
 from .adaptation import LANGUAGE_TARGETS, adapt_selected, depths, shared_frozen_copy
 from .downstream_tasks.classification import ClassificationHead, finding_loss
-from .downstream_tasks.report import ReportDecoder
+from .downstream_tasks.text import TextDecoder
 from .downstream_tasks.segmentation.decoder import SegmentationHead
-from .downstream_tasks.super_resolution.decoder import SuperResolutionHead
 from .downstream_tasks.training import current_loss as current_task_loss
+from .downstream_tasks.registry import TASKS
+from .downstream_tasks.common.decoder import TaskDecoder
 from .ema import EMATarget
 from .encoder import FrozenJEPA, StateEncoder
 from .predictor import WorldModel
@@ -39,11 +40,12 @@ class MedWorld(nn.Module):
             raise ValueError("Report decoding requires an EOS token")
         if self.tokenizer.pad_token_id is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.report = ReportDecoder(decoder_language, base.lm_head, self.tokenizer, cfg)
+        self.text = TextDecoder(decoder_language, base.lm_head, self.tokenizer, cfg)
         self.jepa = FrozenJEPA(cfg["jepa"])
         self.world = WorldModel(cfg)
-        self.classification = ClassificationHead()
-        self.segmentation, self.sr = SegmentationHead(), SuperResolutionHead()
+        self.task_decoder = TaskDecoder(base.lm_head.weight.shape[1], cfg["decoder_width"], cfg["decoder_depth"])
+        self.classification = ClassificationHead(width=cfg["decoder_width"])
+        self.segmentation = SegmentationHead(width=cfg["decoder_width"])
         if cfg.get("visual_consistency_weight", 0) > 0:
             from .representation import SlotSpatialReconstruction
             # Do not perturb decoder initialization or the training RNG stream.
@@ -54,13 +56,13 @@ class MedWorld(nn.Module):
         self.metadata = {
             "representation_objective": "visual_slot_spatial_consistency" if hasattr(self, "visual_reconstruction") else None,
             "training": "joint current-task and temporal loss from the first update",
-            "architecture": "medworld_unified_4plus4_v1", "state_shape": [8, 1024],
+            "architecture": "medworld_image_conditioned_v3", "slot_conditioning": cfg["slot_conditioning"], "state_shape": [8, 1024],
             "language_depths_1based": [i + 1 for i in depths(len(self.encoder.language.layers))],
             "vision_depths_1based": [i + 1 for i in depths(len(self.encoder.vision.blocks))],
             "target_update": "EMA of all trainable state encoder parameters after each joint optimizer update",
-            "text_decoder_inputs": ["state", "fixed task prompt"],
+            "text_decoder_inputs": ["image_features", "question", "optional_eight_slots"],
             "time_condition": "signed realized_gap_hours; direction is a predictor input only",
-            "current_tasks": ["classification", "report", "segmentation", "sr"],
+            "current_tasks": list(TASKS),
             "temporal_inputs": ["source image", "source report", "signed delta_hours"],
             "report_only_input": False, "ehr_input": False,
             "frozen_backbone_shared": True, "encoder_decoder_lora_shared": False,
@@ -87,7 +89,7 @@ class MedWorld(nn.Module):
                 parts.update({"temporal_" + key: value for key, value in temporal_parts.items()})
         return loss, parts
 
-    def encode(self, images, texts=None, *, spatial=False, target=False):
+    def encode(self, images, texts=None, *, spatial=False, target=False, return_image_features=False):
         if not images:
             raise ValueError("At least one observation image is required")
         encoder = self.target if target else self.encoder
@@ -108,44 +110,54 @@ class MedWorld(nn.Module):
                                 max_length=self.cfg["context_tokens"], return_tensors="pt")
         features = self.jepa(images)
         return encoder(inputs, tokens["input_ids"].to(self.device),
-                       tokens["attention_mask"].to(self.device), features)
+                       tokens["attention_mask"].to(self.device), features, return_image_features=return_image_features)
+
+    def task_inputs(self, images):
+        """Image features are always present; slots are optional extra evidence."""
+        if self.cfg["slot_conditioning"] or (self.training and hasattr(self, "visual_reconstruction")):
+            slots, features = self.encode(images, return_image_features=True)
+            return self.task_decoder(features, slots if self.cfg["slot_conditioning"] else None), slots
+        pixels = self.cfg["vision_pixels"]
+        inputs = self.processor.image_processor(images=images, return_tensors="pt",
+                                                min_pixels=pixels**2, max_pixels=pixels**2)
+        inputs = {k: v.to(self.device) for k, v in inputs.items() if torch.is_tensor(v)}
+        output = self.encoder.vision(hidden_states=inputs["pixel_values"].to(next(self.encoder.vision.parameters()).dtype),
+                                     grid_thw=inputs["image_grid_thw"])
+        features = output.pooler_output.reshape(len(images), -1, self.text.output_head.weight.shape[1])
+        return self.task_decoder(features), None
 
     def current_loss(self, task, batch):
         loss, parts, state = current_task_loss(self, task, batch, return_state=True)
-        if (self.training and torch.is_grad_enabled() and task in ("segmentation", "sr")
+        if (self.training and task == "segmentation" and state is not None
                 and hasattr(self, "visual_reconstruction")):
             auxiliary = self.visual_reconstruction.loss(
-                state, batch["pixels"].to(self.device), batch["mask"].to(self.device),
+                state[:, 4:], batch["pixels"].to(self.device), batch["mask"].to(self.device),
                 batch["ids"], self.visual_teacher, self.processor, self.cfg)
             weighted = self.cfg["visual_consistency_weight"] * auxiliary
             parts.update(visual_consistency=auxiliary.detach(), visual_consistency_weighted=weighted.detach())
             loss = loss + weighted
         return loss, parts
 
-    def temporal_loss(self, batch, *, audit=False):
+    def temporal_loss(self, batch):
+        # Representation learning only; no temporal classification/report task.
         target = self.encode(**batch["target"], target=True)
         source = self.encode(**batch["source"])
         predicted = self.world(source, batch["delta_hours"].to(self.device))
         latent = F.mse_loss(F.layer_norm(predicted.float(), (1024,)),
                             F.layer_norm(target.float(), (1024,)))
-        report = self.report.loss(predicted, batch["report_targets"])
-        finding = finding_loss(self.classification(predicted)[:, TEMPORAL_COLUMNS], batch["labels"])
-        loss = (self.cfg["latent_weight"] * latent + self.cfg["report_weight"] * report
-                + self.cfg["finding_weight"] * finding)
-        parts = {"latent": latent.detach(), "report": report.detach(), "finding": finding.detach()}
-        if audit:
-            # Expose differentiable scalars only on explicit request, never store
-            # activation graphs on the module (which is later copied for EMA).
-            return loss, parts, {"report": report, "source": source, "predicted": predicted, "target": target}
-        return loss, parts
+        return self.cfg["latent_weight"] * latent, {"latent": latent.detach()}
 
     @torch.no_grad()
-    def predict_state(self, source, delta_hours):
-        return self.world(self.encode(**source), delta_hours.to(self.device))
-
-    @torch.no_grad()
-    def decode_state(self, state, max_new_tokens=None):
-        return self.report.generate(state, self.cfg["generation_tokens"] if max_new_tokens is None else max_new_tokens)
+    def predict(self, task, batch):
+        features, slots = self.task_inputs(batch["images"])
+        if task == "classification":
+            return self.classification(features).sigmoid()
+        if task == "segmentation":
+            return self.segmentation(features)
+        if task == "vqa":
+            from .datasets.vqa import INSTRUCTION
+            return self.text.generate(features, [INSTRUCTION + q for q in batch["questions"]], self.cfg["generation_tokens"])
+        raise ValueError(f"Unknown task: {task}")
 
     def compact_state(self):
         return {

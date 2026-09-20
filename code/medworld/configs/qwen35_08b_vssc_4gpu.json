@@ -4,15 +4,13 @@
   "baseline_data": "code/medworld_baselines/runs/raw_models_20260911",
   "selection_file": "code/medworld_stage1/data/slot44_20260911_derived_v2/selection.json",
   "classification_data": "code/medworld_open_baselines/runs/comparators_20260913/dense_4096/dinov2_vitb14",
-  "clinical_weights": "code/medworld_table1/weights",
   "qwen": "code/medworld_table1/weights/Qwen3.5-0.8B",
-  "jepa": "code/medworld_table1/weights/vjepa2_1_vitb.pt",
+  "jepa": "code/vjepa2/checkpoints/vjepa2_1_vitb_dist_vitG_384.pt",
   "temporal_data": "code/medworld_table1/data/linked_20260913_16k",
   "seed": 42,
   "lora_rank": 8,
   "lora_alpha": 16,
   "vision_pixels": 256,
-  "report_tokens": 384,
   "context_tokens": 384,
   "generation_tokens": 64,
   "predictor_width": 512,
@@ -24,25 +22,36 @@
   "max_grad_norm": 1.0,
   "batch_size": 16,
   "latent_weight": 1.0,
-  "report_weight": 1.0,
-  "finding_weight": 0.5,
   "save_every": 10,
   "validate_every": 50,
   "validation_samples": 16,
   "ce_chunk_tokens": 128,
   "amp": true,
   "task_batch_sizes": {
-    "classification": 16,
-    "report": 16,
-    "segmentation": 16,
-    "sr": 16,
-    "temporal": 32
+    "classification": 8,
+    "segmentation": 8,
+    "vqa": 4,
+    "temporal": 8
   },
   "prefetch_batches": 2,
   "image_workers": 8,
   "visual_consistency_weight": 0.1,
   "visual_consistency_views": 2,
-  "total_hours": 8,
+  "total_hours": 0,
   "steps": 4800,
-  "accumulation": 1
+  "accumulation": 1,
+  "answer_tokens": 384,
+  "slot_conditioning": true,
+  "decoder_width": 256,
+  "decoder_depth": 2,
+  "testing": {
+    "enabled": true,
+    "tasks": [
+      "classification",
+      "segmentation",
+      "vqa"
+    ],
+    "human_segmentation": true,
+    "reuse_completed": true
+  }
 }

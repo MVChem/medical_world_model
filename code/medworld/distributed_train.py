@@ -120,7 +120,7 @@ class DistributedTrainer:
         self.model.eval()
         metrics = {}
         try:
-            for task in (*TASKS, "temporal"):
+            for task in TASKS:
                 count = min(self.cfg["validation_samples"], len(self.data.rows(task, "validate")))
                 values = torch.zeros(2, device=self.device, dtype=torch.float64)
                 for index in range(self.rank, count, self.world_size):
@@ -208,7 +208,7 @@ class DistributedTrainer:
                 del batches, parts_sum, values
                 if self.progress["step"] % self.cfg["validate_every"] == 0:
                     metrics = self.validate()
-                    score = metrics["temporal_loss"] + sum(metrics[t + "_loss"] for t in TASKS) / len(TASKS)
+                    score = sum(metrics[t + "_loss"] for t in TASKS) / len(TASKS)
                     if score < self.progress.get("best_validation", float("inf")):
                         self.progress["best_validation"] = score
                         self.save("best.pt")

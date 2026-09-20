@@ -41,7 +41,7 @@ class BatchPrefetch:
         marker = {"offsets": dict(self.planned)}
         def load():
             def batch(request):
-                return self.data.training_batch(*request, self.cfg["seed"])
+                return self.data.training_batch(*request, self.cfg["seed"]) if request is not None else None
             return task, [(batch(current), batch(temporal)) for current, temporal in requests], marker
         self.queue.append(self.pool.submit(load))
         self.step += 1

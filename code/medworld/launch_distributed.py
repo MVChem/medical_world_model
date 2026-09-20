@@ -99,6 +99,8 @@ def main():
     parser.add_argument("--resume", help="Checkpoint from this same distributed run")
     parser.add_argument("--monitor-seconds", type=float, default=10)
     parser.add_argument("--cpu-base", type=int, help="First physical CPU core for rank affinity, e.g. 32 for GPUs 4-7")
+    parser.add_argument("--skip-evaluation", action="store_true",
+                        help="Explicitly skip full held-out tests (e.g. a short preflight)")
     args = parser.parse_args()
     selectors = args.gpus.split(",")
     if len(selectors) < 2 or len(set(selectors)) != len(selectors):
@@ -199,6 +201,19 @@ def main():
                     child.wait()
             for lock in locks:
                 lock.close()
+    if code == 0 and not stop_requested:
+        state = json.loads((out / "status.json").read_text())
+        if state.get("complete") and not state.get("stopped"):
+            if args.skip_evaluation:
+                atomic(out / "pipeline_status.json", {"phase": "training_complete", "evaluation_complete": False,
+                       "evaluation_skipped": True, "heartbeat_unix": time.time()})
+            else:
+                from .evaluate_run import evaluate_run
+                def interrupt_evaluation(*_):
+                    raise KeyboardInterrupt
+                for sig in (signal.SIGINT, signal.SIGTERM):
+                    signal.signal(sig, interrupt_evaluation)
+                evaluate_run(out, selectors)
     raise SystemExit(code)
 
 

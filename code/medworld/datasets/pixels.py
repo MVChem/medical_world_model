@@ -14,14 +14,6 @@ def source_canvas(record):
     return torch.from_numpy(canvas)[None].float() / 255
 
 
-def low_resolution(hr, scale=4):
-    # Preserve the previous uint8 rounding, including antialiasing and clamping.
-    if scale != 4:
-        raise ValueError("Unified current SR uses scale 4")
-    lr = F.interpolate(hr[None], scale_factor=1 / scale, mode="bicubic", align_corners=False, antialias=True)[0]
-    return (lr.clamp(0, 1) * 255).round().byte().float() / 255
-
-
 def human_target(record):
     y, x, height, width = [n // 2 for n in record["box"]]
     target = torch.zeros(2, 256, 256)

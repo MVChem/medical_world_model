@@ -26,8 +26,8 @@ def main():
     from .model import MedWorld
     from .runtime import (Trainer, atomic_json, read_checkpoint, seed_all, source_fingerprint)
     saved = read_checkpoint(args.resume) if args.resume else None
-    overrides = {"steps": 4, "accumulation": 1, "total_hours": 0,
-                 "report_tokens": 64, "context_tokens": 96, "batch_size": 1,
+    overrides = {"steps": 3, "accumulation": 1, "total_hours": 0,
+                 "answer_tokens": 64, "context_tokens": 96, "batch_size": 1,
                  "task_batch_sizes": {}, "generation_tokens": 24,
                  "validation_samples": 1, "save_every": 2} if args.smoke else None
     cfg = saved["config"] if saved else load_config(args.config, overrides)
@@ -42,6 +42,9 @@ def main():
     if args.resume:
         trainer.resume(saved)
     out.mkdir(parents=True, exist_ok=True)
+    if not args.resume:
+        from .launch_distributed import snapshot
+        snapshot(out)
     atomic_json(out / "config.json", cfg)
     atomic_json(out / "data_protocol.json", data.metadata)
     atomic_json(out / "model.json", model.metadata)
@@ -54,6 +57,15 @@ def main():
     # Keep the file descriptor alive throughout training and smoke checks.
     if lock is not None:
         lock.close()
+    if not args.smoke and trainer.progress["complete"] and not trainer.stop:
+        import gc
+        import torch
+        del trainer, model, data
+        gc.collect()
+        torch.cuda.empty_cache()
+        from .evaluate_run import evaluate_run
+        from .gpu import ALLOWED_GPUS
+        evaluate_run(out, list(ALLOWED_GPUS) if args.gpu == "auto" else [args.gpu])
 
 
 if __name__ == "__main__":

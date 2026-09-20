@@ -14,21 +14,22 @@ from .config import PROJECT, load_config
 from .launch_distributed import gpu_status, atomic
 
 
-def registry(run, state, outcome=None):
+def registry(run, state, outcome=None, summary="Classification, segmentation and VQA training/evaluation."):
     root=PROJECT/'experiments';root.mkdir(exist_ok=True)
     with (root/'.registry.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
         path=root/'registry.json'
         entries=json.loads(path.read_text()) if path.exists() else []
-        identity=run.name;relative=str(run.relative_to(PROJECT))
+        identity=(run.parent.name + "_" + run.name) if run.name in ("baseline", "slots") else run.name;relative=str(run.relative_to(PROJECT))
         entries=[e for e in entries if e['id']!=identity]
         if outcome is None:
-            entries.append({'id':identity,'summary':'Qwen 0.8B: four-GPU joint training, then matched downstream tests.','status':state,
+            entries.append({'id':identity,'summary':summary,'status':state,
                             'observed_at':datetime.now().astimezone().isoformat(),'run':relative,'live_status':relative+'/pipeline_status.json'})
         else:
             history=root/'README.md'
             row=f"| {datetime.now().astimezone().date()} | `{identity}` | {outcome} | [Run](../{relative}/) |\n"
-            history.write_text(history.read_text().rstrip()+'\n'+row)
+            lines = [line for line in history.read_text().splitlines() if f'| `{identity}` |' not in line]
+            history.write_text('\n'.join(lines).rstrip()+'\n'+row)
         atomic(path,entries)
 
 
@@ -67,73 +68,72 @@ def schedule(jobs, gpus, run, env):
             handle.close()
 
 
-def evaluation_jobs(run):
-    jobs=[]
-    task_order=[('report','test'),('classification','test'),('segmentation','test'),
-                ('sr','test'),('segmentation','human_test'),('temporal','test')]
-    for task,split in task_order:
-        name=task if split=='test' else 'segmentation_human';out=run/'evaluation'/name
-        jobs.append({'id':name,'module':'medworld.evaluation.evaluate','log':f'evaluation/{name}.log',
-                     'args':['--checkpoint',str(run/'final.pt'),'--out',str(out),'--task',task,'--split',split,'--max-new-tokens','384']})
-    report=run/'evaluation'/'report'
-    jobs.append({'id':'clinical_report','module':'medworld.evaluation.clinical_report',
-                 'log':'evaluation/clinical_report.log','after':['report'],
-                 'args':['--predictions',str(report/'report.jsonl'),'--out',str(report/'clinical.json'),'--config',str(run/'config.json')]})
+def evaluation_jobs(run, cfg=None):
+    cfg = cfg or load_config(run / 'config.json' if (run / 'config.json').exists() else None)
+    testing = cfg['testing']
+    if not testing['enabled']:
+        return []
+    pairs = [(task, 'test') for task in testing['tasks']]
+    if 'segmentation' in testing['tasks'] and testing['human_segmentation']:
+        pairs.append(('segmentation', 'human_test'))
+    jobs = []
+    for task, split in pairs:
+        name = task if split == 'test' else 'segmentation_human'
+        jobs.append({'id': name, 'module': 'medworld.evaluation.evaluate', 'log': f'evaluation/{name}.log',
+                     'args': ['--checkpoint', str(run / 'final.pt'), '--out', str(run / 'evaluation' / name),
+                              '--task', task, '--split', split]})
     return jobs
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--config',required=True);p.add_argument('--out',required=True)
-    p.add_argument('--gpus',default='1,2,3,6');p.add_argument('--baseline-audit',required=True)
-    a=p.parse_args();run=Path(a.out).resolve();cfg=load_config(a.config);gpus=a.gpus.split(',')
-    if len(gpus)>4 or len(gpus)!=len(set(gpus)):raise ValueError('Use at most four distinct GPUs')
-    audit=json.loads(Path(a.baseline_audit).read_text())
-    if audit['status']!='passed' or 'native_report_rescore' not in audit:
-        raise ValueError('A passed raw-Qwen audit and current-version native report re-score are required')
-    if run.exists() and any(run.iterdir()):raise ValueError('Choose a fresh run directory')
-    jobs=evaluation_jobs(run);child=None;outcome=None
-    def interrupted(*_):raise KeyboardInterrupt
-    signal.signal(signal.SIGTERM,interrupted);signal.signal(signal.SIGINT,interrupted)
-    registry(run,'initializing')
-    env=dict(os.environ,MEDWORLD_PROJECT_ROOT=str(PROJECT),PYTHONPATH=str(PROJECT/'code'),
-             PYTORCH_ALLOC_CONF='expandable_segments:True',PYTHONUNBUFFERED='1')
+    p = argparse.ArgumentParser(description='Train and test matched no-slots and eight-slot models.')
+    p.add_argument('--config', required=True)
+    p.add_argument('--out', required=True)
+    p.add_argument('--gpus', default='1,2,3,6')
+    a = p.parse_args()
+    cfg = load_config(a.config)
+    if cfg['total_hours']:
+        raise ValueError('Paired experiments require total_hours=0 and equal optimizer-update budgets')
+    run = Path(a.out).resolve()
+    if run.exists() and any(run.iterdir()):
+        raise ValueError('Choose a new experiment directory')
+    run.mkdir(parents=True, exist_ok=True)
+    registry(run, 'training', summary='Three-task matched no-slots/slots training and test comparison.')
+    child = None
+    outcome = 'Failed; see pipeline_status.json and original run logs.'
+    def interrupted(*_):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, interrupted)
+    signal.signal(signal.SIGINT, interrupted)
+    env = dict(os.environ, PYTHONPATH=str(PROJECT / 'code'), MEDWORLD_PROJECT_ROOT=str(PROJECT))
     try:
-        command=[sys.executable,'-m','medworld.launch_distributed','--config',str(Path(a.config).resolve()),'--gpus',a.gpus,'--out',str(run)]
-        child=subprocess.Popen(command,cwd=PROJECT,env=env)
-        initialized=False
-        while child.poll() is None:
-            if (run/'source_manifest.json').exists() and not initialized:
-                atomic(run/'baseline_audit.json',audit)
-                atomic(run/'evaluation_plan.json',{'jobs':jobs,'gpus':gpus,'baseline':'native Qwen3.5-0.8B, no project training',
-                      'generation_tokens':384,'train_hours':cfg['total_hours'],
-                      'evaluation_after_training':True,'test_selection':'final.pt at training completion; no best-on-test selection'})
-                initialized=True;registry(run,'training')
-            if initialized:atomic(run/'pipeline_status.json',{'phase':'training','launcher_pid':child.pid,'heartbeat_unix':time.time()})
-            time.sleep(15)
-        if child.returncode:raise RuntimeError(f'Training launcher exited {child.returncode}')
-        state=json.loads((run/'status.json').read_text())
-        if state.get('stopped') or not state.get('complete'):
-            raise RuntimeError('Joint training stopped before completion')
-        frozen=dict(env,PYTHONPATH=str(run/'source'),OMP_NUM_THREADS='4',MKL_NUM_THREADS='4')
-        registry(run,'evaluating')
-        schedule(jobs,gpus,run,frozen)
-        subprocess.run([sys.executable,'-m','medworld.evaluation.dense_reference','--config',str(run/'config.json'),
-                        '--out',str(run/'bicubic_reference.json')],cwd=PROJECT,env=frozen,check=True)
-        subprocess.run([sys.executable,'-m','medworld.evaluation.compare_run','--run',str(run)],cwd=PROJECT,env=frozen,check=True)
-        atomic(run/'pipeline_status.json',{'phase':'complete','heartbeat_unix':time.time(),'comparison':'COMPARISON.md'})
-        outcome='Completed: joint training and full downstream tests; native-Qwen comparison available.'
+        for name, use_slots in [('baseline', False), ('slots', True)]:
+            config = run / f'{name}_config.json'
+            atomic(config, {**cfg, 'slot_conditioning': use_slots})
+            atomic(run / 'pipeline_status.json', {'phase': name, 'heartbeat_unix': time.time()})
+            child = subprocess.Popen([sys.executable, '-m', 'medworld.launch_distributed', '--config', str(config),
+                                      '--out', str(run / name), '--gpus', a.gpus], cwd=PROJECT, env=env)
+            if child.wait():
+                raise RuntimeError(f'{name} training/evaluation failed')
+        if cfg['testing']['enabled']:
+            from .evaluation.compare_run import compare
+            compare(run / 'baseline', run / 'slots', run)
+        atomic(run / 'pipeline_status.json', {'phase': 'complete', 'comparison': 'COMPARISON.md' if cfg['testing']['enabled'] else None, 'testing_enabled': cfg['testing']['enabled'], 'heartbeat_unix': time.time()})
+        outcome = 'Completed: matched baseline/slots training; configured tests and comparison complete.' if cfg['testing']['enabled'] else 'Completed: matched baseline/slots training; testing disabled in config.'
     except BaseException as error:
         if child is not None and child.poll() is None:
             child.terminate()
-            try:child.wait(timeout=360)
-            except subprocess.TimeoutExpired:child.kill();child.wait()
-        run.mkdir(parents=True,exist_ok=True)
-        atomic(run/'pipeline_status.json',{'phase':'interrupted' if isinstance(error,KeyboardInterrupt) else 'failed',
-               'error':repr(error),'heartbeat_unix':time.time()})
-        outcome='Interrupted; see pipeline_status.json.' if isinstance(error,KeyboardInterrupt) else 'Failed; see pipeline_status.json and original run logs.'
+            try:
+                child.wait(timeout=360)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait()
+        atomic(run / 'pipeline_status.json', {'phase': 'interrupted' if isinstance(error, KeyboardInterrupt) else 'failed',
+               'error': repr(error), 'heartbeat_unix': time.time()})
         raise
     finally:
-        if outcome is not None:registry(run,'finished',outcome)
+        registry(run, 'finished', outcome)
 
 
-if __name__=='__main__':main()
+if __name__ == '__main__':
+    main()

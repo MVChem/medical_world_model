@@ -1,7 +1,7 @@
 """Four-task cohorts with on-demand source image/mask decoding.
 
 No prepared pixel arrays, LR arrays, or encoder features are read or written.
-Reports are supervision only. Existing CXAS soft labels remain fixed targets.
+Existing CXAS soft labels remain fixed segmentation targets.
 """
 from __future__ import annotations
 
@@ -40,18 +40,7 @@ class TaskDataset(Dataset):
 
 
 class MultiTaskData:
-    """Four real tasks with common patient holdouts and historical test IDs.
-
-    ``dataset(task, split)`` is a PyTorch Dataset. ``collate(task, examples)``
-    returns CPU tensors and PIL RGB images. All tasks have ``images``, ``pixels``,
-    ``ids``, ``subject_ids``, ``boxes``, ``task`` and ``split``. Classification
-    adds ``labels`` / ``label_mask``; report adds ``report_targets``; dense tasks
-    add ``targets`` / ``mask``. No report text is returned for another task.
-
-    Pixel branch shapes are [B,1,256,256], except SR [B,1,128,128]. PIL images
-    are 512-square, except SR 128-square. Segmentation targets are 3x256x256,
-    or 2x256x256 for the external human test. SR targets are 1x512x512.
-    """
+    """Source-image classification and segmentation, plus text task adapters."""
 
     def __init__(self, root: str | Path | None = None, dense_train_n: int = 4096, cfg=None):
         if dense_train_n != 4096:
@@ -108,16 +97,6 @@ class MultiTaskData:
             record["box"] = source["box"]
             self._records["classification"][split].append(record)
 
-        for row in old_rows:
-            if not row["report_valid"] or not row["report"].strip():
-                continue
-            split = selection.get(str(row["subject_id"]), row["split"])
-            self._records["report"][split].append({
-                "id": row["id"], "subject_id": str(row["subject_id"]),
-                "image_index": row["index"], "box": row["box"],
-                "report_target": row["report"],
-            })
-
         raw_protocol = _read(self.raw / "protocol.json")
         for split in ("validate", "test"):
             inputs_path = self.raw / "cohort" / f"table2_inputs_{split}.jsonl"
@@ -129,7 +108,7 @@ class MultiTaskData:
                 source_hashes[manifest_key(path, self.root)] = actual
             inputs = _rows(inputs_path)
             refs = {row["id"]: row for row in _rows(refs_path)}
-            for task, flag in (("classification", "classification"), ("report", "report_generation")):
+            for task, flag in (("classification", "classification"),):
                 records = {row["id"]: row for row in self._records[task][split]}
                 selected = [row for row in inputs if row[flag]]
                 if set(records) != {row["id"] for row in selected}:
@@ -152,7 +131,7 @@ class MultiTaskData:
         for i, row in enumerate(dense_rows):
             if row["index"] != i:
                 raise ValueError("Dense observation indices differ from image array order")
-            for task in ("segmentation", "sr"):
+            for task in ("segmentation",):
                 if task not in row["tasks"] or row["split"] not in SPLITS:
                     continue
                 record = {key: row[key] for key in ("id", "subject_id", "index", "box", "kind")}
@@ -164,25 +143,21 @@ class MultiTaskData:
                         raise ValueError("Dense pseudo-target mapping differs from original image identity")
                 self._records[task][row["split"]].append(record)
 
+        from .vqa import load_vqa
+        source_hashes.update(load_vqa(cfg, self._records["vqa"]))
+
         self.counts = {task: {split: len(rows) for split, rows in splits.items()}
                        for task, splits in self._records.items()}
-        expected = {"classification": (13681, 160, 353, 0), "report": (22646, 307, 507, 0),
-                    "segmentation": (4096, 249, 447, 138), "sr": (4096, 249, 447, 0)}
-        for task, counts in expected.items():
-            if tuple(self.counts[task][split] for split in SPLITS) != counts:
-                raise ValueError(f"Unexpected matched cohort counts for {task}: {self.counts[task]}")
         labels = np.asarray([row["labels"] for row in self._records["classification"]["train"]])
         self.pos_weight = torch.tensor(np.clip((labels == 0).sum(0) / np.maximum((labels == 1).sum(0), 1),
                                               .25, 10), dtype=torch.float32)
         self.metadata = {
-            "version": 2, "input_mode": "on_demand_source_no_pixel_cache", "tasks": list(TASKS), "pending_tasks": dict(PENDING_TASKS),
+            "version": 3, "input_mode": "on_demand_source_no_pixel_cache", "tasks": list(TASKS), "pending_tasks": dict(PENDING_TASKS),
             "counts": self.counts, "findings": list(FINDINGS),
             "source_sha256": source_hashes,
-            "patient_audit": _patient_audit(self._records),
+            "patient_audit": "Computed after global holdout filtering",
             "classification": "Image only; exact C0 labels/IDs; unknown and uncertain labels masked",
-            "report": "Current image only; report is target only; exact C0 validation/test cohort",
             "segmentation": "CXAS 3-organ soft targets; Montgomery human test has two lungs only",
-            "sr": "x4; every encoder/decoder input is the same prepared uint8 LR; HR target only",
             "jepa_features": "Computed from images by the model; no cached features loaded",
             "image_geometry": "Existing 512-square padded canvases; dense valid ROI boxes preserved",
             "declared_array_sha256": {
@@ -218,84 +193,60 @@ class MultiTaskData:
         return self._arrays[key]
 
     def _pixels(self, key, index):
-        from .pixels import source_canvas, low_resolution
-        if key not in ("current", "dense_hr", "dense_lr"):
+        from .pixels import source_canvas
+        if key not in ("current", "dense_hr"):
             raise ValueError(f"Unknown source pixel kind: {key}")
         record = (self._old_sources if key == "current" else self._dense_sources)[index]
         pixels = source_canvas(record)
-        if key == "dense_lr":
-            pixels = low_resolution(pixels)
         return (pixels[0] * 255).round().byte().numpy()
 
     def _human_target(self, row):
         from .pixels import human_target
         return human_target(self._dense_sources[row["index"]]).numpy()
 
-    def _example(self, task: str, split: str, row: dict) -> dict:
-        if task in ("classification", "report"):
-            source = self._pixels("current", row["image_index"])
-        elif task == "sr":
-            from .pixels import low_resolution
-            hr_source = self._pixels("dense_hr", row["index"])
-            hr_tensor = torch.from_numpy(hr_source).float()[None] / 255
-            source = (low_resolution(hr_tensor)[0] * 255).round().byte().numpy()
-        else:
-            source = self._pixels("dense_hr", row["index"])
-        source = np.array(source, copy=True)
-        pixels = torch.from_numpy(source).float()[None] / 255
-        if task != "sr":
-            pixels = F.interpolate(pixels[None], (256, 256), mode="area")[0]
-        result = {"task": task, "split": split, "id": row["id"],
-                  "subject_id": str(row["subject_id"]), "box": list(row["box"]),
+    def _example(self, task, split, row):
+        from PIL import ImageOps
+        if task == "vqa":
+            with Image.open(row["image"]) as image:
+                image = ImageOps.pad(image.convert("RGB"), (512, 512), method=Image.Resampling.BICUBIC, color="black")
+            return {"task": task, "split": split, "id": row["id"], "subject_id": str(row["subject_id"]),
+                    "image": image, "question": row["question"], "answer": row["answer"],
+                    "semantic_type": row.get("semantic_type", "diagnosis")}
+        source = self._pixels("current" if task == "classification" else "dense_hr",
+                              row["image_index"] if task == "classification" else row["index"])
+        pixels = torch.from_numpy(np.array(source, copy=True)).float()[None] / 255
+        pixels = F.interpolate(pixels[None], (256, 256), mode="area")[0]
+        result = {"task": task, "split": split, "id": row["id"], "subject_id": str(row["subject_id"]),
                   "image": Image.fromarray(source).convert("RGB"), "pixels": pixels}
         if task == "classification":
             result["labels"] = torch.tensor(row["labels"], dtype=torch.float32)
             result["label_mask"] = (result["labels"] == 0) | (result["labels"] == 1)
-        elif task == "report":
-            result["report_target"] = row["report_target"]
-        else:
-            if task == "sr":
-                target = hr_tensor
-                size = 512
-            else:
-                target = self._human_target(row) if row["kind"] == "montgomery" else self._array("pseudo")[row["old_index"]]
-                target = torch.from_numpy(np.array(target, copy=True)).float()
-                size = 256
-            mask = torch.zeros(1, size, size, dtype=torch.float32)
-            y, x, height, width = [value // (512 // size) for value in row["box"]]
-            if min(y, x, height, width) < 0 or height == 0 or width == 0 or y + height > size or x + width > size:
-                raise ValueError("Invalid dense target ROI")
+        elif task == "segmentation":
+            target = self._human_target(row) if row["kind"] == "montgomery" else self._array("pseudo")[row["old_index"]]
+            target = torch.from_numpy(np.array(target, copy=True)).float()
+            mask = torch.zeros(1, 256, 256)
+            y, x, height, width = [value // 2 for value in row["box"]]
+            if min(y, x, height, width) < 0 or height == 0 or width == 0 or y + height > 256 or x + width > 256:
+                raise ValueError("Invalid segmentation ROI")
             mask[:, y:y + height, x:x + width] = 1
             if not torch.isfinite(target).all():
-                raise ValueError("Nonfinite dense target")
+                raise ValueError("Nonfinite segmentation target")
             result.update(targets=target, mask=mask)
+        else:
+            raise ValueError(f"Unsupported task: {task}")
         return result
 
     @staticmethod
-    def collate(task: str, examples: list[dict]) -> dict:
-        if not examples:
-            raise ValueError("Cannot collate an empty task batch")
-        if any(example["task"] != task for example in examples):
-            raise ValueError("Cannot mix tasks within a batch")
-        split = examples[0]["split"]
-        if any(example["split"] != split for example in examples):
-            raise ValueError("Cannot mix splits within a batch")
-        result = {
-            "task": task, "split": split,
-            "images": [example["image"] for example in examples],
-            "pixels": torch.stack([example["pixels"] for example in examples]),
-            "ids": [example["id"] for example in examples],
-            "subject_ids": [example["subject_id"] for example in examples],
-            "boxes": [example["box"] for example in examples],
-        }
-        if task == "report":
-            result["report_targets"] = [example["report_target"] for example in examples]
-        elif task == "classification":
-            for key in ("labels", "label_mask"):
-                result[key] = torch.stack([example[key] for example in examples])
-        elif task in ("segmentation", "sr"):
-            for key in ("targets", "mask"):
-                result[key] = torch.stack([example[key] for example in examples])
+    def collate(task, examples):
+        if not examples or any(e["task"] != task or e["split"] != examples[0]["split"] for e in examples):
+            raise ValueError("Expected a nonempty batch from one task and split")
+        result = {"task": task, "split": examples[0]["split"], "images": [e["image"] for e in examples],
+                  "ids": [e["id"] for e in examples], "subject_ids": [str(e["subject_id"]) for e in examples]}
+        if task == "vqa":
+            result.update(questions=[e["question"] for e in examples], answers=[e["answer"] for e in examples],
+                          semantic_types=[e["semantic_type"] for e in examples])
         else:
-            raise ValueError(f"Unsupported task: {task}")
+            keys = ("pixels", "labels", "label_mask") if task == "classification" else ("pixels", "targets", "mask")
+            for key in keys:
+                result[key] = torch.stack([e[key] for e in examples])
         return result
