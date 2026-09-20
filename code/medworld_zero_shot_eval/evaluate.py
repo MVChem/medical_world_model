@@ -40,7 +40,7 @@ def main():
     from medworld.config import load_config
     from medworld.gpu import acquire_gpu
     cfg = load_config(a.config)
-    from medworld_baselines.base import models
+    from .models import models
     spec = next(s for s in models() if s['id'] == a.model)
     out = a.out.resolve()
     if out.exists() and any(out.iterdir()):

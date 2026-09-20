@@ -161,10 +161,10 @@ class MultiTaskData:
             "jepa_features": "Computed from images by the model; no cached features loaded",
             "image_geometry": "Existing 512-square padded canvases; dense valid ROI boxes preserved",
             "declared_array_sha256": {
-                str((self.old / "images.npy").relative_to(self.root)): class_contract["image_sha256"],
-                str((self.dense / "images.npy").relative_to(self.root)): dense_manifest["image_sha256"],
-                str((self.dense / "lr_images.npy").relative_to(self.root)): dense_manifest["lr_image_sha256"],
-                str((self.dense / "human_masks.npy").relative_to(self.root)): dense_manifest["human_mask_sha256"],
+                manifest_key(self.old / "images.npy", self.root): class_contract["image_sha256"],
+                manifest_key(self.dense / "images.npy", self.root): dense_manifest["image_sha256"],
+                manifest_key(self.dense / "lr_images.npy", self.root): dense_manifest["lr_image_sha256"],
+                manifest_key(self.dense / "human_masks.npy", self.root): dense_manifest["human_mask_sha256"],
             },
             "array_validation": "Only original CXAS label array is loaded with shape/dtype checks; historical pixel-array hashes are provenance only, pixel arrays are never read",
         }

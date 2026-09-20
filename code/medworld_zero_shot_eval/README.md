@@ -8,7 +8,7 @@ Evaluate pretrained Qwen3.5-0.8B, Qwen3.5-4B, Qwen3.5-9B and MedGemma-1.5-4B wit
 - VQA: the same selected test questions, JSON instruction, greedy generation budget and strict label-set scorer as MedWorld; exact match, micro-F1, per-type metrics and invalid-output counts. No constrained decoding or answer-based filtering.
 - Segmentation: unavailable through the native models' interfaces.
 
-Images come from MedWorld's on-demand data loader. Qwen uses its configured visual pixel budget; MedGemma uses its native processor. This matches source images but not visual token counts or compute budgets. The checkpoint inventory is defined in `medworld_baselines/base.py`; data and evaluation settings come from the supplied MedWorld JSON.
+Images come from MedWorld's on-demand data loader. Qwen uses its configured visual pixel budget; MedGemma uses its native processor. This matches source images but not visual token counts or compute budgets. The checkpoint inventory is defined in `models.py`; data and evaluation settings come from the supplied MedWorld JSON.
 
 ## Single-model evaluation
 
@@ -33,7 +33,7 @@ PYTHONPATH=code /home/data2/chk/workspace/2026/.venv/bin/python -m unittest disc
 
 ## Historical VQA utilities
 
-This project was renamed from `medworld_vqa`; that path remains a compatibility symlink. The older `prepare`, `run`, `export` and `literature_*` utilities implement separate sampled VQA protocols, including vocabulary-constrained JSON and free short answers. They are not the matched evaluator described above.
+This project was renamed from `medworld_vqa`; the compatibility symlink was removed during the September 20 cleanup. The older `prepare`, `run`, `export` and `literature_*` utilities implement separate sampled VQA protocols, including vocabulary-constrained JSON and free short answers. They are not the matched evaluator described above.
 
 Previous run directories were deleted at the user's request on 2026-09-20. Aggregate reports remain in `results/mimic_cxr_vqa_pilot_20260916` and `results/mimic_cxr_vqa_literature_20260916`; their original run links no longer resolve. No historical aggregate scores have been changed.
 

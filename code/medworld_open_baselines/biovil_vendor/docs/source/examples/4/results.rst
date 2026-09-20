@@ -1,1 +1,0 @@
-.. literalinclude:: results.py

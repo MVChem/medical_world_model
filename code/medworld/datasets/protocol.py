@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 from ..downstream_tasks.registry import SPLITS
+from ..asset_paths import provenance_path
 
 def _read(path: Path) -> dict:
     return json.loads(path.read_text())
@@ -79,6 +80,7 @@ def patient_holdouts(current_records, observations):
 
 def manifest_key(path, root):
     """Preserve historical relative fingerprints; allow external data roots."""
+    path = provenance_path(path, root)
     try:
         return str(Path(path).relative_to(root))
     except ValueError:

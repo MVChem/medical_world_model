@@ -1,6 +1,6 @@
 # MedWorld: three image-conditioned tasks
 
-The supported downstream tasks are **classification, segmentation and VQA**. Diagnosis is the same disease-label recognition problem and is not counted again. Super-resolution, report generation and temporal task evaluation have been removed from active code. Old experiments remain reproducible through their unchanged `runs/*/source` snapshots.
+The supported downstream tasks are **classification, segmentation and VQA**. Diagnosis is the same disease-label recognition problem and is not counted again. Super-resolution, report generation and temporal task evaluation have been removed from active code. Historical source is retained in Git; obsolete local experiment artifacts were removed in the [September 20 cleanup](../CLEANUP_20260920.md).
 
 Every task retains the image as its primary input. VQA also receives the question. The same Qwen visual encoder and shared two-layer Transformer task decoder serve all three tasks:
 
@@ -74,3 +74,11 @@ Checkpoint format 3 reflects the new task interfaces. Older weights require thei
 ## VQA test sampling
 
 `testing.vqa_per_type` selects this many questions from each of Verify, Choose and Query, using `testing.vqa_seed`. Zero retains the complete test set. The provided four-GPU training config now selects 100 per type with seed 42. Training data is unchanged. The native-model baseline uses the same selection helper; both save exact IDs and their hash. Balanced-subset metrics are distinct from full-test metrics.
+
+## Local assets
+
+Required manifests, labels and the Qwen 0.8B checkpoint are stored under
+`code/data/medworld/`, a local symlink to `/home/data2/chk/data/medworld`.
+The V-JEPA checkpoint remains under `code/vjepa2/checkpoints/`.
+Historical configs are translated by `asset_paths.py`; unchanged manifests keep
+their historical provenance keys so relocation does not change data fingerprints.

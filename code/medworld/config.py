@@ -5,23 +5,24 @@ import math
 import os
 from pathlib import Path
 from .downstream_tasks.registry import TASKS
+from .asset_paths import relocate_asset
 
 PROJECT = Path(os.environ.get("MEDWORLD_PROJECT_ROOT", Path(__file__).resolve().parents[2])).resolve()
 DEFAULTS = {
-    "current_data": "code/medworld_stage1/data/overnight_20260910",
-    "dense_data": "code/medworld_dense_baselines/runs/frozen_slots_20260913/data",
-    "baseline_data": "code/medworld_baselines/runs/raw_models_20260911",
-    "selection_file": "code/medworld_stage1/data/slot44_20260911_derived_v2/selection.json",
-    "classification_data": "code/medworld_open_baselines/runs/comparators_20260913/dense_4096/dinov2_vitb14",
+    "current_data": "code/data/medworld/current",
+    "dense_data": "code/data/medworld/dense",
+    "baseline_data": "code/data/medworld/baseline",
+    "selection_file": "code/data/medworld/selection/selection.json",
+    "classification_data": "code/data/medworld/classification",
     "vqa_data": "code/data/MIMIC_CXR_VQA/MIMIC-Ext-MIMIC-CXR-VQA/dataset",
     "image_root": "code/data/MIMIC_CXR/files",
     "slot_conditioning": True,
     "testing": {"enabled": True, "tasks": list(TASKS), "human_segmentation": True, "reuse_completed": True, "vqa_per_type": 0, "vqa_seed": 42},
     "decoder_width": 256, "decoder_depth": 2,
 
-    "qwen": "code/medworld_table1/weights/Qwen3.5-0.8B",
+    "qwen": "code/data/medworld/weights/Qwen3.5-0.8B",
     "jepa": "code/vjepa2/checkpoints/vjepa2_1_vitb_dist_vitG_384.pt",
-    "temporal_data": "code/medworld_table1/data/linked_20260913_16k",
+    "temporal_data": "code/data/medworld/temporal",
     "seed": 42, "lora_rank": 8, "lora_alpha": 16,
     "vision_pixels": 256, "answer_tokens": 128, "context_tokens": 384,
     "generation_tokens": 64, "predictor_width": 512, "predictor_depth": 4,
@@ -96,7 +97,7 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError("ema_momentum must be in [0, 1)")
     for key in ('qwen', 'jepa', 'temporal_data', 'current_data', 'dense_data', 'baseline_data', 'selection_file', 'classification_data', 'vqa_data', 'image_root'):
         p = Path(cfg[key]).expanduser()
-        p = root / p if not p.is_absolute() else p
+        p = relocate_asset(p, root)
         # Preserve manifest aliases: their logical paths are part of the existing protocol hash.
         cfg[key] = str(p.resolve() if key in ("qwen", "jepa", "temporal_data") else p.absolute())
     return cfg

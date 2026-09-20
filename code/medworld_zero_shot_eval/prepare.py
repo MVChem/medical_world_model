@@ -150,7 +150,7 @@ def main(args):
         for a, b in (("train", "valid"), ("train", "test"), ("valid", "test"))
     }
     atomic(run / "official_split_audit.json", split_audit)
-    from medworld_baselines.base import models
+    from .models import models
 
     specs = {s["id"]: s for s in models()}
     inventory = []
@@ -178,11 +178,6 @@ def main(args):
         ignore=shutil.ignore_patterns("runs", "__pycache__"),
     )
     shutil.copy2(PROJECT / "code/medworld/gpu.py", source / "gpu.py")
-    (source / "startup").mkdir()
-    shutil.copy2(
-        PROJECT / "code/medworld_zero_shot/startup/sitecustomize.py",
-        source / "startup/sitecustomize.py",
-    )
     atomic(
         run / "source_manifest.json",
         {

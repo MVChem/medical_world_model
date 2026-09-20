@@ -1,4 +1,0 @@
-# uv pip install --python .venv/bin/python --target metric_vendor --no-deps -r requirements-metrics.txt
-transformers==4.57.1
-huggingface-hub==0.36.0
-tokenizers==0.22.2
