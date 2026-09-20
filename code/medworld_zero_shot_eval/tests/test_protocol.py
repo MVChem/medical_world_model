@@ -2,9 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from medworld_vqa.common import atomic, write_rows
-from medworld_vqa.prepare import sample_rows
-from medworld_vqa.score import comparison, parse, score, summarize
+from medworld_zero_shot_eval.common import atomic, write_rows
+from medworld_zero_shot_eval.prepare import sample_rows
+from medworld_zero_shot_eval.score import comparison, parse, score, summarize
 
 
 class ProtocolTest(unittest.TestCase):

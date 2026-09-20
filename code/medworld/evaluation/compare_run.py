@@ -23,7 +23,7 @@ def compare(baseline, conditioned, out):
     from ..config import load_config
     testing = load_config(conditioned / 'config.json')['testing']
     other_testing = load_config(baseline / 'config.json')['testing']
-    if not testing['enabled'] or any(testing[k] != other_testing[k] for k in ('enabled', 'tasks', 'human_segmentation')):
+    if not testing['enabled'] or any(testing[k] != other_testing[k] for k in ('enabled', 'tasks', 'human_segmentation', 'vqa_per_type', 'vqa_seed')):
         raise ValueError('Both runs must select the same enabled tests')
     rows = []
     for task, folder, keys in [('classification', 'classification', ('macro_auroc', 'macro_ap')),
@@ -41,6 +41,11 @@ def compare(baseline, conditioned, out):
                     or summary['data_fingerprint'] != saved['data_fingerprint']
                     or summary['checkpoint_sha256'] != _sha256(run / 'final.pt')):
                 raise ValueError('Expected full matched test results on final.pt')
+            if task == 'vqa':
+                selection = summary.get('vqa_selection', {})
+                if (selection.get('per_type', 0) != testing['vqa_per_type'] or
+                        selection.get('seed', 42) != testing['vqa_seed']):
+                    raise ValueError('VQA sampling protocol differs from selected tests')
             summaries.append(summary['tasks'][task])
             records.append(_rows(directory / f'{task}.jsonl'))
         fields = ['id', 'patient'] + (['labels'] if task == 'classification' else ['question', 'answer'] if task == 'vqa' else [])

@@ -52,6 +52,8 @@
       "vqa"
     ],
     "human_segmentation": true,
-    "reuse_completed": true
+    "reuse_completed": true,
+    "vqa_per_type": 100,
+    "vqa_seed": 42
   }
 }

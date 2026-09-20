@@ -13,6 +13,8 @@ def main():
     p.add_argument('--task', choices=('all', *TASKS), default='all')
     p.add_argument('--split', choices=('validate', 'test', 'human_test'), default='test')
     p.add_argument('--limit', type=int)
+    p.add_argument('--vqa-per-type', type=int, default=0)
+    p.add_argument('--vqa-seed', type=int, default=42)
     p.add_argument('--gpu', default='auto')
     a = p.parse_args()
     if a.limit is not None and a.limit <= 0:
@@ -42,14 +44,20 @@ def main():
                    'predictions_sha256': {}, 'slot_conditioning': model.cfg['slot_conditioning'], 'split': a.split, 'limit': a.limit, 'tasks': {}}
         with torch.no_grad():
             for task in TASKS if a.task == 'all' else (a.task,):
-                count = len(data.rows(task, a.split))
+                from .selection import select_vqa
+                indices = list(range(len(data.rows(task, a.split))))
+                if task == 'vqa':
+                    indices, selection = select_vqa(data.rows(task, a.split), a.vqa_per_type, a.vqa_seed)
+                    summary['vqa_selection'] = selection
+                    atomic_json(out / 'vqa_selection.json', selection)
+                count = len(indices)
                 count = min(count, a.limit) if a.limit else count
                 if not count:
                     raise ValueError(f'Empty evaluation cohort: {task}/{a.split}')
                 records = []
                 with (out / f'{task}.jsonl').open('w', buffering=1) as journal:
                     for index in range(count):
-                        batch = data.batch(task, a.split, [index])
+                        batch = data.batch(task, a.split, [indices[index]])
                         prediction = model.predict(task, batch)
                         row = {'id': batch['ids'][0], 'patient': batch['subject_ids'][0]}
                         if task == 'classification':

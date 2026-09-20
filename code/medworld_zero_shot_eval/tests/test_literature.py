@@ -1,8 +1,8 @@
 import unittest
 from typing import ClassVar
 
-from medworld_vqa.literature_score import comparison, text_labels
-from medworld_vqa.score import INVALID
+from medworld_zero_shot_eval.literature_score import comparison, text_labels
+from medworld_zero_shot_eval.score import INVALID
 
 
 class TextAdapterTest(unittest.TestCase):

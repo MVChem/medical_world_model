@@ -70,3 +70,7 @@ Paired experiments require `total_hours=0` and equal `steps`; a fixed wall-clock
 Global patient holdouts cover all tasks and temporal representation learning. Higher-priority held-out membership removes conflicting training/validation rows; it never moves rows into evaluation. The public 110-answer vocabulary is stored in `datasets/vqa_vocabulary.json`, copied from the previously frozen official `ans2idx.json` metadata, not inferred from test answers.
 
 Checkpoint format 3 reflects the new task interfaces. Older weights require their original frozen source and cannot resume into this architecture. The code still reads local Qwen and V-JEPA weights; no external services are required.
+
+## VQA test sampling
+
+`testing.vqa_per_type` selects this many questions from each of Verify, Choose and Query, using `testing.vqa_seed`. Zero retains the complete test set. The provided four-GPU training config now selects 100 per type with seed 42. Training data is unchanged. The native-model baseline uses the same selection helper; both save exact IDs and their hash. Balanced-subset metrics are distinct from full-test metrics.

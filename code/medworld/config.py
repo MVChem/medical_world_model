@@ -16,7 +16,7 @@ DEFAULTS = {
     "vqa_data": "code/data/MIMIC_CXR_VQA/MIMIC-Ext-MIMIC-CXR-VQA/dataset",
     "image_root": "code/data/MIMIC_CXR/files",
     "slot_conditioning": True,
-    "testing": {"enabled": True, "tasks": list(TASKS), "human_segmentation": True, "reuse_completed": True},
+    "testing": {"enabled": True, "tasks": list(TASKS), "human_segmentation": True, "reuse_completed": True, "vqa_per_type": 0, "vqa_seed": 42},
     "decoder_width": 256, "decoder_depth": 2,
 
     "qwen": "code/medworld_table1/weights/Qwen3.5-0.8B",
@@ -54,6 +54,9 @@ def load_config(path=None, overrides=None, root=None):
     for key in ("enabled", "human_segmentation", "reuse_completed"):
         if type(testing[key]) is not bool:
             raise ValueError(f"testing.{key} must be boolean")
+    for key in ("vqa_per_type", "vqa_seed"):
+        if type(testing[key]) is not int or testing[key] < 0:
+            raise ValueError(f"testing.{key} must be a nonnegative integer")
     tasks = testing["tasks"]
     if (not isinstance(tasks, list) or any(not isinstance(t, str) or t not in TASKS for t in tasks)
             or len(set(tasks)) != len(tasks) or (testing["enabled"] and not tasks)):

@@ -19,6 +19,11 @@ def completed_job(run, job, checkpoint_hash, fingerprint):
     summary = json.loads(summary_path.read_text())
     args = job['args']
     task, split = args[args.index('--task') + 1], args[args.index('--split') + 1]
+    if task == 'vqa':
+        for flag, key, default in [('--vqa-per-type', 'per_type', 0), ('--vqa-seed', 'seed', 42)]:
+            expected = int(args[args.index(flag) + 1]) if flag in args else default
+            if summary.get('vqa_selection', {}).get(key, default) != expected:
+                raise ValueError('VQA sampling protocol changed')
     predictions = directory / f'{task}.jsonl'
     if (summary.get('checkpoint_sha256') != checkpoint_hash or summary.get('data_fingerprint') != fingerprint
             or summary.get('limit') is not None or summary.get('split') != split or task not in summary.get('tasks', {})):

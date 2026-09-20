@@ -81,7 +81,8 @@ def evaluation_jobs(run, cfg=None):
         name = task if split == 'test' else 'segmentation_human'
         jobs.append({'id': name, 'module': 'medworld.evaluation.evaluate', 'log': f'evaluation/{name}.log',
                      'args': ['--checkpoint', str(run / 'final.pt'), '--out', str(run / 'evaluation' / name),
-                              '--task', task, '--split', split]})
+                              '--task', task, '--split', split,
+                              '--vqa-per-type', str(testing['vqa_per_type']), '--vqa-seed', str(testing['vqa_seed'])]})
     return jobs
 
 
