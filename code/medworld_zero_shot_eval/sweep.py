@@ -39,8 +39,14 @@ def main():
     p.add_argument('--resume', action='store_true')
     p.add_argument('--adopt', action='append', default=[], help='Existing worker as model:pid')
     a=p.parse_args()
-    root=Path(os.environ['MEDWORLD_PROJECT_ROOT'])
+    from medworld.config import PROJECT, load_config
+    root=PROJECT
     run=a.run.resolve(); run.mkdir(parents=True,exist_ok=True)
+    # Resolve legacy asset names before launching any child process. Keep the
+    # resolved configuration with the run so retries do not reuse stale paths.
+    config_path = run / 'evaluation_config.json'
+    config = load_config(a.config, root=root)
+    atomic(config_path, config)
     gpus=a.gpus.split(',')
     if len(gpus) not in (1,4) or len(set(gpus))!=len(gpus):
         raise ValueError('Provide one GPU for serial evaluation or four distinct GPUs')
@@ -53,7 +59,9 @@ def main():
     guard=threading.Lock()
     def worker(item):
         model,gpu=item
-        for phase,extra in ([('test',[])] if a.skip_smoke else [('smoke',['--limit','2']),('test',[])]):
+        if state[model]['status'] == 'failed':
+            return
+        for phase,extra in [active_phase]:
             status_path = run/model/phase/'status.json'
             if a.resume and status_path.exists():
                 while True:
@@ -70,7 +78,7 @@ def main():
                 continue
             with guard:
                 state[model]['status']=phase;atomic(run/'status.json',state)
-            command=[sys.executable,'-m','medworld_zero_shot_eval.evaluate','--config',a.config,
+            command=[sys.executable,'-m','medworld_zero_shot_eval.evaluate','--config',str(config_path),
                      '--model',model,'--gpu',gpu,'--out',str(run/model/phase),*extra]
             log_path = run/f'{model}_{phase}.log'
             for attempt in range(60):
@@ -85,9 +93,11 @@ def main():
                     atomic(run/'status.json',state)
                 return
         with guard:
-            state[model]['status']='complete';atomic(run/'status.json',state)
+            state[model]['status']='complete' if phase == 'test' else 'smoke_complete'
+            atomic(run/'status.json',state)
     try:
-        with ThreadPoolExecutor(max_workers=len(gpus)) as pool:list(pool.map(worker,assignments))
+        for active_phase in ([('test',[])] if a.skip_smoke else [('smoke',['--limit','2']),('test',[])]):
+            with ThreadPoolExecutor(max_workers=len(gpus)) as pool:list(pool.map(worker,assignments))
         outcome='Completed: all four native models evaluated.' if all(s['status']=='complete' for s in state.values()) else 'Failed or partial; see per-model status and logs.'
     except BaseException:
         register(root,run,'Interrupted; inspect original logs.');raise

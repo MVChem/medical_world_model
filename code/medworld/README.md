@@ -21,6 +21,11 @@ The training JSON sets `slot_conditioning`, model/training parameters and testin
 ```json
 {
   "slot_conditioning": true,
+  "total_hours": 3,
+  "baselines": {
+    "no_slots": true,
+    "qwen": true
+  },
   "testing": {
     "enabled": true,
     "tasks": ["classification", "segmentation", "vqa"],
@@ -49,7 +54,7 @@ python -m medworld.train --smoke --gpu 1 --out code/medworld/runs/smoke_YYYYMMDD
 python -m medworld.launch_distributed --config code/medworld/configs/qwen35_08b_vssc_2gpu.json \
   --gpus 1,2 --out code/medworld/runs/slots_YYYYMMDD
 
-# Main experiment: separately train both arms, run configured tests, compare.
+# Recommended: train/test slots, optionally train/test no-slots, then test native Qwen.
 python -m medworld.run_experiment --config code/medworld/configs/qwen35_08b_vssc_2gpu.json \
   --gpus 1,2 --out code/medworld/runs/paired_YYYYMMDD
 
@@ -59,7 +64,13 @@ python -m medworld.evaluate_run --run code/medworld/runs/slots_YYYYMMDD --gpus 1
 python -m unittest discover -s code/medworld/tests -v
 ```
 
-Paired experiments require `total_hours=0` and equal `steps`; a fixed wall-clock budget would give different numbers of updates. Outputs include task predictions/metrics under `evaluation/`, `evaluation_summary.json`, and the pair's `COMPARISON.md`/`comparison.json`. Turning testing off also skips automatic comparison. Selecting a subset compares only that subset. Single-run testing does not launch another training run; use `run_experiment` for the paired experiment.
+Use `run_experiment` for the complete comparison. `baselines.no_slots` and `baselines.qwen` independently enable the two baselines (both default to true). Formal training/testing runs slots first, then the enabled no-slots arm, then native Qwen3.5-0.8B. Qwen receives no project training and tests only selected classification/VQA tasks; it cannot perform segmentation. All evaluated arms use the same source test cohort and VQA selection. The no-slots arm keeps the shared task decoder and auxiliary objectives, removing the eight slots only from the decoder's inputs.
+
+With both trained arms enabled, `total_hours=3` is an approximate **combined training budget**, not 1.5 hours per arm. The runner first measures nine updates per arm, discards those probe weights, and estimates one common update count from their measured speeds. The estimate subtracts calibration time, reserves 10% for overhead, and rounds down to a complete three-task cycle. Both formal arms restart from the same pretrained initialization and must finish **exactly that many optimizer updates**, with identical per-rank batches, accumulation and GPU count. A slower model receives more time; clock estimates never truncate either arm. Startup, validation and throughput variation can change the actual duration. Evaluation is additional time. `budget_plan.json` records the estimate; `training_budget.json` records actual updates and training durations.
+
+Set `total_hours=0` to train both arms for the explicit `steps` count without timing calibration. With the no-slots baseline disabled, a timed run uses the whole budget for the slots model. The low-level `launch_distributed` entry still trains one model only and interprets `total_hours` as that model's budget; baseline switches are handled only by `run_experiment`.
+
+Outputs remain under the experiment: `slots/`, optional `baseline/` and `qwen/`, task predictions/metrics and `evaluation_summary.json`, plus the combined `COMPARISON.md`/`comparison.json`. Comparisons reject unequal optimizer steps, mismatched data/initial weights, or different test IDs/references. Turning `testing.enabled` off skips all held-out tests and native Qwen, while still training the enabled trainable arms. Reports explicitly record skipped baselines. Selecting a task subset compares only that subset.
 
 ## Data and metrics
 

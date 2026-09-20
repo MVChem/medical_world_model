@@ -71,11 +71,6 @@ def main(previous, run, repositories, prompt_style):
         package, source, ignore=shutil.ignore_patterns("runs", "__pycache__")
     )
     shutil.copy2(previous / "source/medworld_vqa/gpu.py", source / "gpu.py")
-    shutil.copytree(
-        previous / "source/medworld_vqa/startup",
-        source / "startup",
-        ignore=shutil.ignore_patterns("__pycache__"),
-    )
     atomic(
         run / "source_manifest.json",
         {

@@ -32,6 +32,12 @@ class ComparisonTests(unittest.TestCase):
             checkpoints[1]['progress']['step'] = 11
             with patch('medworld.runtime.read_checkpoint', side_effect=checkpoints), self.assertRaisesRegex(ValueError, 'update counts'):
                 compare(root / 'baseline', root / 'slots', root / 'comparison')
+            for saved in checkpoints:
+                saved['config']['total_hours'] = 1.5
+            with patch('medworld.runtime.read_checkpoint', side_effect=checkpoints), self.assertRaisesRegex(ValueError, 'update counts'):
+                compare(root / 'baseline', root / 'slots', root / 'comparison')
+            for saved in checkpoints:
+                saved['config']['total_hours'] = 0
             checkpoints[1]['progress']['step'] = 10
             (root / 'slots/evaluation/vqa/vqa.jsonl').write_text('{"id":"other","patient":"1","question":"q","answer":["yes"]}\n')
             with patch('medworld.runtime.read_checkpoint', side_effect=checkpoints), self.assertRaisesRegex(ValueError, 'IDs or references'):

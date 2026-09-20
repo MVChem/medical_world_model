@@ -1,7 +1,5 @@
 import hashlib
 import json
-import urllib.error
-import urllib.request
 from pathlib import Path
 
 
@@ -35,19 +33,6 @@ def write_rows(path, values):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("".join(json.dumps(v, ensure_ascii=False) + "\n" for v in values))
-
-
-def request(endpoint, payload=None, route="/v1/chat/completions", timeout=180):
-    req = urllib.request.Request(
-        endpoint + route,
-        data=None if payload is None else json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as f:
-            return json.load(f)
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"HTTP {e.code}: {e.read().decode()[:1000]}") from e
 
 
 def verify(run):

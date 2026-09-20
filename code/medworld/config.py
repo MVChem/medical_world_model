@@ -18,6 +18,7 @@ DEFAULTS = {
     "image_root": "code/data/MIMIC_CXR/files",
     "slot_conditioning": True,
     "testing": {"enabled": True, "tasks": list(TASKS), "human_segmentation": True, "reuse_completed": True, "vqa_per_type": 0, "vqa_seed": 42},
+    "baselines": {"no_slots": True, "qwen": True},
     "decoder_width": 256, "decoder_depth": 2,
 
     "qwen": "code/data/medworld/weights/Qwen3.5-0.8B",
@@ -47,6 +48,11 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError(f"Unknown configuration keys: {sorted(unknown)}")
     cfg = deepcopy(DEFAULTS)
     cfg.update(supplied)
+    baselines = supplied.get("baselines", {})
+    if (not isinstance(baselines, dict) or set(baselines) - set(DEFAULTS["baselines"])
+            or any(type(value) is not bool for value in baselines.values())):
+        raise ValueError("baselines accepts boolean no_slots and qwen switches")
+    cfg["baselines"] = {**DEFAULTS["baselines"], **baselines}
     testing = supplied.get("testing", {})
     if not isinstance(testing, dict) or set(testing) - set(DEFAULTS["testing"]):
         raise ValueError("Unknown testing configuration")

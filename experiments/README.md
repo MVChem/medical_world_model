@@ -38,3 +38,6 @@ Details remain in the linked run directories. When a run ends, move its entry he
 | 2026-09-20 | `native_four_models_20260920` | Interrupted at user request; replaced by serial test-only evaluation. | Original run `code/medworld_zero_shot_eval/runs/native_four_models_20260920/` deleted at user request. |
 | 2026-09-20 | `native_serial_test_20260920` | Interrupted: replaced by balanced 300-question VQA protocol. | Superseded run deleted per requested run cleanup. |
 | 2026-09-20 | `native_serial_vqa300_20260920` | Failed or partial; see per-model status and logs. | [Run](../code/medworld_zero_shot_eval/runs/native_serial_vqa300_20260920/) |
+| 2026-09-20 | `throughput_probe_20260920` | Completed: batch scaling 1x/2x/4x, three tasks with temporal supervision. | [Run](../code/medworld/runs/throughput_probe_20260920/) |
+| 2026-09-20 | `native_retest_vqa300_20260920` | Completed: all four native models evaluated. | [Run](../code/medworld_zero_shot_eval/runs/native_retest_vqa300_20260920/) |
+| 2026-09-20 | `qwen35_08b_vssc_2gpu_3h_20260920` | Completed configured tests: classification, vqa. | [Run](../code/medworld/runs/qwen35_08b_vssc_2gpu_3h_20260920/) |

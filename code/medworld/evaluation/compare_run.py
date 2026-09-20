@@ -16,8 +16,13 @@ def compare(baseline, conditioned, out):
     for cfg in (ca, cb):
         cfg.pop('slot_conditioning')
         cfg.pop('testing')
-    if ca != cb or ca['total_hours'] or a['progress']['step'] != b['progress']['step']:
-        raise ValueError('Comparison requires equal configs and update counts, not equal wall-clock budgets')
+        cfg.pop('baselines', None)
+    if ca != cb or a['progress']['step'] != b['progress']['step']:
+        raise ValueError('Comparison requires equal configs and equal optimizer update counts')
+    if a['progress'].get('world_size') != b['progress'].get('world_size'):
+        raise ValueError('Comparison requires the same world size and effective batches')
+    if any(s['progress'].get('stopped') or s['progress'].get('complete') is False for s in checkpoints):
+        raise ValueError('Comparison requires successfully completed training')
     if a['data_fingerprint'] != b['data_fingerprint'] or a['weights_fingerprint'] != b['weights_fingerprint']:
         raise ValueError('Data or initial pretrained weights differ')
     from ..config import load_config
@@ -58,10 +63,14 @@ def compare(baseline, conditioned, out):
             rows.append({'task': folder, 'metric': key, 'n': len(records[0]), 'baseline': x, 'slots': y,
                          'delta': y - x if x is not None and y is not None else None})
     out.mkdir(parents=True, exist_ok=True)
-    atomic_json(out / 'comparison.json', {'baseline': str(baseline), 'conditioned': str(conditioned), 'rows': rows})
+    updates = {'baseline': a['progress']['step'], 'slots': b['progress']['step']}
+    atomic_json(out / 'comparison.json', {'baseline': str(baseline), 'conditioned': str(conditioned),
+                'budget_mode': 'time' if ca['total_hours'] else 'steps', 'optimizer_steps': updates, 'rows': rows})
     def fmt(x):
         return 'N/A' if x is None else f'{x:.5f}'
-    lines = ['# Image-only vs image + slots', '', 'Same task inputs, shared Transformer architecture, separate training and equal update budgets.', '',
+    lines = ['# Image-only vs image + slots', '',
+             'Same training settings, effective batches and exact optimizer update counts.',
+             f"Optimizer updates: no slots {updates['baseline']}, slots {updates['slots']}.", '',
              '| Task | Metric | N | No slots | With 8 slots | Delta |', '|---|---|---:|---:|---:|---:|']
     lines += ['| ' + ' | '.join([r['task'], r['metric'], str(r['n']), fmt(r['baseline']), fmt(r['slots']), fmt(r['delta'])]) + ' |' for r in rows]
     (out / 'COMPARISON.md').write_text('\n'.join(lines) + '\n')

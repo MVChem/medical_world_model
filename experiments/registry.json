@@ -1,10 +1,10 @@
 [
   {
-    "id": "qwen35_08b_vssc_2gpu_3h_20260920",
-    "summary": "Two-GPU slots model, 3h training; classification and balanced 300-question VQA tests.",
+    "id": "paired_vssc_2gpu_16h_20260920",
+    "summary": "Slots first; optional equal-step no-slots training and native Qwen tests.",
     "status": "training",
-    "observed_at": "2026-09-20T11:30:06.434206+08:00",
-    "run": "code/medworld/runs/qwen35_08b_vssc_2gpu_3h_20260920",
-    "live_status": "code/medworld/runs/qwen35_08b_vssc_2gpu_3h_20260920/pipeline_status.json"
+    "observed_at": "2026-09-20T15:04:27.856668+08:00",
+    "run": "code/medworld/runs/paired_vssc_2gpu_16h_20260920",
+    "live_status": "code/medworld/runs/paired_vssc_2gpu_16h_20260920/pipeline_status.json"
   }
 ]

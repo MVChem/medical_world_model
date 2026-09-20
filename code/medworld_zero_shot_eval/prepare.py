@@ -156,7 +156,6 @@ def main(args):
     inventory = []
     for name in args.models.split(","):
         model = dict(specs[name])
-        model.pop("endpoint", None)
         assert model["tp"] == 1
         root = Path(model["path"])
         files = sorted(
@@ -224,7 +223,7 @@ def main(args):
         "training": "None; unmodified public BF16 checkpoints; public pretraining overlap unknown",
         "versions": {
             p: importlib.metadata.version(p)
-            for p in ("torch", "transformers", "vllm", "Pillow", "numpy")
+            for p in ("torch", "transformers", "Pillow", "numpy")
         },
         "file_sha256": file_sha256,
     }

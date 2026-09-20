@@ -2,6 +2,8 @@
 
 Evaluate pretrained Qwen3.5-0.8B, Qwen3.5-4B, Qwen3.5-9B and MedGemma-1.5-4B without project fine-tuning. Qwen3.5-0.8B is the primary same-backbone baseline for MedWorld; the larger models provide additional reference points.
 
+Inference uses Hugging Face Transformers and PyTorch only: local `AutoModelForImageTextToText` checkpoints, BF16 and SDPA. Classification reads next-token logits directly; VQA uses `model.generate()`. The supported entry points are `evaluate.py` and `sweep.py`.
+
 ## Tasks and protocol
 
 - Classification: the same 13-label test cohort as MedWorld; normalized Yes/No next-token probabilities; macro and per-label AUROC/AP. Missing and uncertain labels are masked.
@@ -25,6 +27,8 @@ Model IDs: `qwen08b`, `qwen4b`, `qwen9b`, `medgemma4b`. Add `--limit 2` for a pa
 
 `sweep.py` runs a two-example check for each model before its full evaluation, using one explicitly selected idle GPU by default (models run serially). Use `--skip-smoke` after preflights have passed to run only the test sets. It maintains the experiment registry and writes per-model logs and status under the run folder. Use a dated output name. GPU preference is 1,2,3, then 6,7, then 4,5, with 0 last.
 
+The sweep resolves historical asset paths through the current MedWorld configuration loader and saves `evaluation_config.json` before launching workers. Launch retries with the current source code and a fresh output directory; source snapshots from before the asset migration do not contain the relocation logic.
+
 ## Validation
 
 ```bash
@@ -33,7 +37,7 @@ PYTHONPATH=code /home/data2/chk/workspace/2026/.venv/bin/python -m unittest disc
 
 ## Historical VQA utilities
 
-This project was renamed from `medworld_vqa`; the compatibility symlink was removed during the September 20 cleanup. The older `prepare`, `run`, `export` and `literature_*` utilities implement separate sampled VQA protocols, including vocabulary-constrained JSON and free short answers. They are not the matched evaluator described above.
+This project was renamed from `medworld_vqa`; the compatibility symlink was removed during the September 20 cleanup. The remaining `prepare`, `export` and `literature_*` utilities support historical sampled VQA data and reports. Their service-based inference launcher and client have been removed; use `evaluate` or `sweep` for current inference.
 
 Previous run directories were deleted at the user's request on 2026-09-20. Aggregate reports remain in `results/mimic_cxr_vqa_pilot_20260916` and `results/mimic_cxr_vqa_literature_20260916`; their original run links no longer resolve. No historical aggregate scores have been changed.
 
