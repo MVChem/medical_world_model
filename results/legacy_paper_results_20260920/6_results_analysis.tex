@@ -1,0 +1,120 @@
+\section{Results}
+\label{sec:results}
+
+% Declare both wide tables early so they can float near the results text.
+\input{tables/table1_future}
+\input{tables/table2_downstream}
+% Queue the wide trajectory panel early so it can float near its subsection.
+\input{sections/candidate_forecasting}
+
+\input{sections/5_experiments}
+
+\subsection{Future prediction}
+
+\Cref{tab:future_prediction} evaluates four dimensions of the predicted future
+state: clinical status, disease progression, report fidelity, and probabilistic
+reliability, with two metrics per dimension. Inputs comprise the current radiograph and
+report, clinical history available by the source cutoff, and a horizon bin.
+The current report is assumed available retrospectively; follow-up images and
+reports supply targets only. Four public VLM checkpoints use zero-shot forecast
+prompts, with Qwen3.5-9B used for the Qwen reference. BioViL-T and CheXWorld
+receive trained forecast modules; Copy Current and a finding-transition prior
+provide simple references. The bottom three rows report legacy Qwen3.5-9B full-token,
+eight-slot, and cross-patient shuffled-state forecasters. These conditions
+complete matched forecast training from a shared 9B Stage~1 initialization
+and evaluation on all 297 test pairs, including GREEN. The slot adaptation uses final-language-layer
+queries, separate from the proposed multi-depth $4+4$-slot model. Their decoder
+reads the predicted representation without the native current-image context.
+Evaluation of the unified joint model and matched native supervised controls remains
+pending; the legacy full-token row is not native Qwen image--text fine-tuning.
+
+Clinical status uses finding macro AP (non-interpolated average precision) and
+AUROC. Disease progression uses Transition F1, averaged over supported
+finding-specific onset and resolution events, and Direction F1, which measures
+improvement, stability, and worsening of persistent findings. Stable references
+remain eligible for false-change penalties. RadGraph partial F1 and GREEN assess
+the clinical content of generated future reports. Probabilistic reliability uses
+macro Brier score and classwise ECE on the same future-finding probabilities.
+Zero-shot VLM scores are derived from fixed Yes/No answer likelihoods; trained
+forecasters use supervised finding heads. The planned native supervised and
+state-augmented comparison will use matched finding heads. All methods share
+the reference-defined eligibility masks for each metric; training and readout
+differences and calibration rules are specified in the supplementary material.
+Direction annotations remain unadjudicated for this cohort, so that column is
+pending; the separate 82-pair direction study is not included.
+
+All scores below and in the two tables are multiplied by 100, except PSNR (dB).
+Qwen3.5-9B reaches AP 85.55 and AUROC 81.77 without task adaptation; CheXagent
+reaches 86.89/81.48. BioViL-T reaches 84.30/81.24 with the shared trained
+predictor. Relative to the full-token forecaster, the 9B slots improve
+Transition F1 (28.51 versus 16.03) and AUROC (77.94 versus 76.42), with lower
+Brier/ECE, but slightly lower AP, RadGraph, and GREEN. Shuffling reduces AUROC
+to 52.85 and GREEN to 8.87; all 297 generated reports collapse to one output,
+with zero CheXbert F1. Its lower ECE (4.97) therefore accompanies poor
+discrimination and report content. These point estimates support a limited
+state-condition comparison; they do not validate the proposed multi-depth
+model or establish the effect of native Qwen fine-tuning. A future comparison
+against native supervised Qwen will test the added state branch as a whole;
+current-slot and full-token controls with the same encoders are needed to
+separate prediction and compression effects. Historical 0.8B ablation scores
+remain archived separately.
+
+\subsection{Downstream tasks}
+
+\Cref{tab:downstream_tasks} covers six tasks without the future predictor:
+classification, standard VQA, current report generation, phrase grounding,
+organ segmentation, and super-resolution. This expanded image-based evaluation
+withholds the same-exam report from state construction. Questions and phrases
+condition task readout after the state is encoded. The no-slots baseline and
+\method{} remain pending under matched six-task supervision and decoders.
+Their earlier report-assisted results and separate two-epoch joint dense-task
+pilots do not populate those rows. Frozen Qwen3.5-9B visual-slot task heads,
+their shuffled control, and an image-only decoder are reported separately.
+
+Classification uses 13 MIMIC finding/device labels and reports macro AUROC/AP
+on 353 test images. DINOv2/CheXWorld classification heads use 13,681 training
+and 160 validation images for 20 epochs. Current-report scoring uses 507 images.
+MIMIC-CXR-VQA provides standard questions and official Accuracy/micro F1;
+Verify/Choose/Query and whole-image/region breakdowns will be reported separately.
+Current report generation uses MIMIC-CXR with RadGraph partial F1 and CheXbert
+macro-positive F1. MS-CXR phrase grounding uses mIoU and box accuracy at
+IoU $\geq0.5$ under one fixed conversion and matching protocol.
+
+Segmentation measures Dice for the lungs and heart against CXAS pseudo-labels
+and, separately, human lung masks from Montgomery. Super-resolution uses
+synthetic $4\times$ downsampling per spatial dimension, with LR imagery in both
+input branches and HR used only as the target. PSNR and SSIM exclude padding.
+DINOv2/CheXWorld use frozen visual encoders with supervised heads; MAIRA-2 and
+SwinIR provide reporting/grounding and reconstruction references, respectively.
+The completed SwinIR adaptation reaches 37.27 dB and SSIM 94.51, but consumes
+8.313 GPU hours including evaluation, versus 0.161 for the image-only SR run.
+This is not an equal-compute comparison. Formal VQA, MS-CXR grounding, and the
+full six-task model rows remain pending; derived QA and anatomical-region
+localization scores are excluded.
+
+\subsection{Patient trajectory}
+\label{sec:patient_trajectory}
+
+\Cref{fig:candidate_longitudinal_forecasting} reserves a longitudinal case study
+with four to five observations from one test patient. The planned analysis
+predicts each follow-up independently from the same Day~0 radiograph and report,
+conditioned on the actual elapsed time. Observed follow-up images and reports
+provide references only. Predicted reports and finding probabilities will be
+compared with Copy Current and a matched forecaster at the irregular observation
+times. This is fixed-origin, multi-horizon forecasting; connecting the predictions
+does not constitute an autoregressive rollout. Case selection and predictions
+remain pending.
+
+\subsection{Attention visualization}
+\label{sec:attention_visualization}
+
+\Cref{fig:candidate_slot_attention} reserves a view of how the four visual slots
+aggregate patches from the current radiograph. The planned visualization uses
+the actual softmax weights of the learned visual-slot readout at each selected
+encoder depth, with a shared color scale. These weights describe current-state
+construction; the accompanying report text supplies case context, not a
+finding-specific attention query. Slots have no prescribed anatomical roles,
+and the maps do not establish future lesion locations or forecasting accuracy.
+Weight export and verification of the token-to-image mapping remain pending.
+
+\input{sections/candidate_slot_attention}

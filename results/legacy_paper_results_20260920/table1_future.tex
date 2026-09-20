@@ -1,0 +1,64 @@
+\begin{table*}[t]
+\caption{Available future-state results on 297 held-out pairs (94 patients).
+All scores are multiplied by 100 and shown to two decimals; arrows indicate the preferred direction.
+$\mathrm{ZS}$ denotes public-checkpoint zero-shot inference.}
+\label{tab:future_prediction}
+\centering
+\begingroup
+\small
+\setlength{\tabcolsep}{2pt}
+\renewcommand{\arraystretch}{1.14}
+\begin{tabular}{@{}L{0.30\linewidth}*{4}{C{0.075\linewidth}}C{0.095\linewidth}*{3}{C{0.075\linewidth}}@{}}
+\toprule
+ & \multicolumn{2}{c}{\shortstack{Future clinical\\status}}
+ & \multicolumn{2}{c}{\shortstack{Disease\\progression}}
+ & \multicolumn{2}{c}{\shortstack{Future report\\fidelity}}
+ & \multicolumn{2}{c}{\shortstack{Probabilistic\\reliability}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+Method & \shortstack{AP\\$\uparrow$} & \shortstack{AUROC\\$\uparrow$}
+ & \shortstack{Trans.\\F1$\uparrow$} & \shortstack{Dir.\\F1$\uparrow$}
+ & \shortstack{RadGraph\\F1$\uparrow$} & \shortstack{GREEN\\$\uparrow$}
+ & \shortstack{Brier\\$\downarrow$} & \shortstack{ECE\\$\downarrow$} \\
+\midrule
+% code/medworld_baselines/runs/raw_models_20260911/qwen9b/test/metrics.json; code/medworld_baselines/runs/raw_models_20260911/qwen9b/test/green_metrics.json
+Qwen3.5-9B$^{\mathrm{ZS}}$ & 85.55 & 81.77 & 13.60 & \tbd & 20.44 & 31.70 & 20.22 & 27.90 \\
+% code/medworld_open_baselines/runs/comparators_20260913/zero_shot/llava16mistral7b/llava16mistral7b/test/metrics.json; code/medworld_open_baselines/runs/comparators_20260913/zero_shot/llava16mistral7b/llava16mistral7b/test/green_metrics.json
+LLaVA-v1.6-Mistral-7B$^{\mathrm{ZS}}$ & 82.90 & 73.96 & 13.67 & \tbd & 19.24 & 30.78 & 21.87 & 29.28 \\
+% code/medworld_open_baselines/runs/comparators_20260913/zero_shot/llava_med7b/llava_med7b/test/metrics.json; code/medworld_open_baselines/runs/comparators_20260913/zero_shot/llava_med7b/llava_med7b/test/green_metrics.json
+LLaVA-Med-v1.5-7B$^{\mathrm{ZS}}$ & 81.59 & 73.31 & 1.92 & \tbd & 18.23 & 21.24 & 17.61 & 17.90 \\
+% code/medworld_open_baselines/runs/comparators_20260913/zero_shot/chexagent8b/chexagent8b/test/metrics.json; code/medworld_open_baselines/runs/comparators_20260913/zero_shot/chexagent8b/chexagent8b/test/green_metrics.json
+CheXagent-8B$^{\mathrm{ZS}}$ & 86.89 & 81.48 & 0.00 & \tbd & 13.43 & 15.51 & 13.00 & 13.22 \\
+% code/medworld_open_baselines/biovil_runs/forecast_16k/evaluation_test/metrics.json; code/medworld_open_baselines/biovil_runs/forecast_16k/green/biovil_t_adapted/test/green_metrics.json
+BioViL-T + predictor & 84.30 & 81.24 & 22.65 & \tbd & 14.70 & 15.37 & 10.75 & 7.73 \\
+% code/medworld_open_baselines/chexworld_runs/forecast_16k/evaluation_test/metrics.json; code/medworld_open_baselines/chexworld_runs/forecast_16k/green/chexworld_adapted/test/green_metrics.json
+CheXWorld + predictor & 83.80 & 79.56 & 23.71 & \tbd & 13.15 & 12.63 & 11.73 & 9.04 \\
+% code/medworld_open_baselines/runs/comparators_20260913/simple_future/copy_current/test/metrics.json; code/medworld_open_baselines/runs/comparators_20260913/simple_future/copy_current/test/green_metrics.json
+Copy Current & \na & \na & 0.00 & \tbd & 20.77 & 24.58 & \na & \na \\
+% code/medworld_open_baselines/runs/comparators_20260913/simple_future/finding_prior/test/metrics.json
+Finding-transition prior & 75.48 & 64.60 & \tbd & \na & \na & \na & 13.22 & 7.19 \\
+\midrule
+% code/medworld_table1/runs/qwen9b_ablation_20260914/no_slots/config.json; code/medworld_table1/runs/qwen9b_ablation_20260914/no_slots/status.json; code/medworld_table1/runs/qwen9b_ablation_20260914/no_slots/evaluation_test/generation.json; code/medworld_table1/runs/qwen9b_ablation_20260914/no_slots/evaluation_test/metrics.json; code/medworld_table1/runs/qwen9b_ablation_20260914/green/no_slots/test/green_metrics.json
+Full-token forecaster (Qwen3.5-9B) & 83.09 & 76.42 & 16.03 & \tbd & 17.11 & 17.83 & 11.64 & 9.42 \\
+% code/medworld_table1/runs/qwen9b_ablation_20260914/slots/config.json; code/medworld_table1/runs/qwen9b_ablation_20260914/slots/status.json; code/medworld_table1/runs/qwen9b_ablation_20260914/slots/evaluation_test/generation.json; code/medworld_table1/runs/qwen9b_ablation_20260914/slots/evaluation_test/metrics.json; code/medworld_table1/runs/qwen9b_ablation_20260914/green/slots/test/green_metrics.json
+\method{} (Qwen3.5-9B slots) & 82.70 & 77.94 & 28.51 & \tbd & 15.96 & 17.61 & 11.47 & 8.93 \\
+% code/medworld_table1/runs/qwen9b_ablation_20260914/shuffled/config.json; code/medworld_table1/runs/qwen9b_ablation_20260914/shuffled/status.json; code/medworld_table1/runs/qwen9b_ablation_20260914/shuffled/evaluation_test/generation.json; code/medworld_table1/runs/qwen9b_ablation_20260914/shuffled/evaluation_test/metrics.json; code/medworld_table1/runs/qwen9b_ablation_20260914/green/shuffled/test/green_metrics.json
+Qwen3.5-9B (shuffled state) & 70.93 & 52.85 & 6.04 & \tbd & 10.78 & 8.87 & 13.33 & 4.97 \\
+\bottomrule
+\end{tabular}
+\endgroup\par
+\vspace{3pt}
+\begin{minipage}{\linewidth}\fontsize{8}{9.5}\selectfont
+AP is non-interpolated average precision; AP/AUROC/Brier/ECE are macro-averaged
+over findings with common reference masks. RadGraph uses partial F1.
+VLM scores use Yes/No likelihoods. Trained forecasters use 16,000 pairs,
+2,400 updates and batch 32; actual GPU hours differ. ``+ predictor'' is an
+official frozen-encoder adaptation with shared forecast modules, not an original
+published forecasting system. The bottom three rows are legacy JEPA-path
+Qwen3.5-9B forecasters with shared Stage-1 initialization. Their slots
+use eight final-language-layer queries, distinct from the proposed multi-depth
+fusion/vision architecture; the full-token control retains the same predictor.
+Native-image-conditioned 4+4 results, Direction labels and the prior's
+transition readout are pending. The prior reads structured source findings.
+TBD: pending; ---: no score for this interface. Single-seed point estimates.
+\end{minipage}
+\end{table*}
