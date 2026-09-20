@@ -44,10 +44,9 @@ invalid answers for Qwen3.5-0.8B, 4B, 9B, and MedGemma, respectively.
 These scores reflect both answer content and compliance with the output
 format; they do not establish a general ordering of model capabilities.
 
-Segmentation will report Dice against CXAS pseudo-labels for the two lungs
-and heart on 447 test images, and human lung Dice on 138 Montgomery images.
-Pseudo-label agreement and external human-mask performance are separate
-endpoints. Final segmentation testing is not enabled in the current paired
+Segmentation will report lung Dice on 138 Montgomery images with human
+annotations. Agreement with CXAS pseudo-labels is reserved for supplementary
+analysis. Final segmentation testing is not enabled in the current paired
 run, so neither trained row has a segmentation score yet. The matched
 with/without-slots comparison also remains pending for classification and VQA.
 Gains over native zero-shot checkpoints would measure the entire adapted

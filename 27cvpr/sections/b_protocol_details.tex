@@ -91,8 +91,10 @@ Greedy generation uses at most 64 tokens. The subset is shared across all
 Table~\ref{main-tab:downstream_tasks} models; it is not a full-test score.
 
 Segmentation uses CXAS pseudo-labels for the two lungs and heart; an external
-set of 138 Montgomery images supplies human lung masks. Padding is excluded
-from spatial losses and metrics. These endpoints remain pending because the
+set of 138 Montgomery images supplies human lung masks for the main-table
+Lung Dice metric. Dice against CXAS pseudo-labels on 447 test images is
+reserved for supplementary analysis. Padding is excluded from spatial losses
+and metrics. Both evaluations remain pending because the
 current paired run enables only classification and VQA final tests.
 The matched trained rows remain unfilled until evaluation completes. Direct
 native Qwen fine-tuning and removal of temporal supervision are separate
