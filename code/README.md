@@ -14,6 +14,6 @@ model comparisons. `mimic_atlas/` and `glioma_explorer/` provide data browsers.
 The retained third-party references are listed in [THIRD_PARTY.md](THIRD_PARTY.md).
 
 Obsolete experiment packages were removed on September 20, 2026. See the
-[cleanup record](CLEANUP_20260920.md) for scope, historical source recovery, and
+[cleanup record](https://github.com/MVChem/medical_world_model/blob/e17f2b9d442763b1ac411a519671143a73b9264c/code/CLEANUP_20260920.md) for scope, historical source recovery, and
 local asset migration. Required MedWorld assets live outside Git under
 `/home/data2/chk/data/medworld`, linked as `code/data/medworld/`.

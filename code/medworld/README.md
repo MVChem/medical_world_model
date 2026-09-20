@@ -1,6 +1,6 @@
 # MedWorld: three image-conditioned tasks
 
-The supported downstream tasks are **classification, segmentation and VQA**. Diagnosis is the same disease-label recognition problem and is not counted again. Super-resolution, report generation and temporal task evaluation have been removed from active code. Historical source is retained in Git; obsolete local experiment artifacts were removed in the [September 20 cleanup](../CLEANUP_20260920.md).
+The supported downstream tasks are **classification, segmentation and VQA**. Diagnosis is the same disease-label recognition problem and is not counted again. Super-resolution, report generation and temporal task evaluation have been removed from active code. Historical source is retained in Git; obsolete local experiment artifacts were removed in the [September 20 cleanup](https://github.com/MVChem/medical_world_model/blob/e17f2b9d442763b1ac411a519671143a73b9264c/code/CLEANUP_20260920.md).
 
 Every task retains the image as its primary input. VQA also receives the question. The same Qwen visual encoder and shared two-layer Transformer task decoder serve all three tasks:
 
