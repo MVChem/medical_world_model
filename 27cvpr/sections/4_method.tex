@@ -6,14 +6,14 @@
     \centering
     % User-selected Figure 1: ppt/ppt/fig1_v8.pptx with the obsolete stage label removed (2026-09-19).
     \includegraphics[width=\textwidth]{ppt/ppt/fig1_v8.pdf}
-    \caption{Overview of \method{}. The state $S\in\mathbb R^{8\times d}$ supports task decoding and horizon-conditioned prediction; Figure~\ref{fig:task_supervised_slots} details its construction. Spatial tasks receive the input image and visual slots, using low-resolution evidence for super-resolution. The world model maps $(S_t,h)$ to $\widehat S_{t,h}$, supervised by the stop-gradient follow-up target $S^*_{t^+}$. Task supervision and temporal prediction are optimized jointly from the first update. The encoding blocks are schematic; the multi-depth readouts are specified in Figure~\ref{fig:task_supervised_slots}.}
+    \caption{Overview of \method{}. The state $S\in\mathbb R^{8\times d}$ supports task decoding and horizon-conditioned prediction; Figure~\ref{fig:task_supervised_slots} details its construction. The current task decoder combines native image tokens with all eight slots for classification, VQA, and segmentation. The world model maps $(S_t,h)$ to $\widehat S_{t,h}$, supervised by the stop-gradient follow-up target $S^*_{t^+}$. Task supervision and latent temporal prediction are optimized jointly from the first update. \pending{update the schematic task examples and image-token pathway to match the three-task readout in \cref{eq:task_interface}}. The encoding blocks are schematic; the multi-depth readouts are specified in Figure~\ref{fig:task_supervised_slots}.}
     \label{fig:medworld_jepa_overview}
 \end{figure*}
 
 \input{sections/3_problem_formulation}
 
 \paragraph{Overview.}
-\method{} couples a multimodal state encoder with a horizon-conditioned latent world model (\cref{fig:medworld_jepa_overview}). At both time points, four vision--language slots and four visual slots form the state. Task decoders jointly supervise its construction, with direct image input for segmentation and super-resolution. The world model predicts future slots from the current state and horizon while jointly adapting the state encoder. For forecasting, a Qwen language decoder reads the predicted slots and a fixed report-generation prompt; the source observation and time interval reach it through the predicted state. The current implementation uses Qwen3.5-0.8B and a frozen V-JEPA encoder. Evaluation of this unified implementation remains pending; the completed Table~\ref{tab:future_prediction} adaptations are legacy prototypes with a different readout.
+\method{} couples a multimodal state encoder with a horizon-conditioned latent world model (\cref{fig:medworld_jepa_overview}). Four vision--language slots and four visual slots form the state. A shared task decoder combines native image tokens with these eight slots for classification, visual question answering (VQA), and segmentation. Longitudinal supervision trains the predictor to map a source state to a detached follow-up state. The current implementation uses Qwen3.5-0.8B and a frozen V-JEPA encoder; its temporal objective is latent prediction only. Clinical forecast readouts and their evaluation in Table~\ref{tab:future_prediction} remain pending.
 
 \subsection{State Representation}
 \label{sec:state_representation}
@@ -45,24 +45,19 @@ As shown in Figure~\ref{fig:task_supervised_slots}, we select four depths from e
 \end{equation}
 For Qwen3.5-0.8B, the selected language layers are 6, 12, 18, and 24, and the vision layers are 3, 6, 9, and 12 (one-based). Four learned query tokens follow the visual prefix and observation text; fusion readout $j$ projects query token $j$ at language layer $\ell_j$. Each visual readout projects its layer's patch tokens, applies learned-query attention pooling, and normalizes the pooled vector plus its query. Each group stacks its four slots in depth order: $S_\tau^{\mathrm{f}}=S_{\tau,1:4}$ and $S_\tau^{\mathrm{v}}=S_{\tau,5:8}$. Alignment gives them a common width while preserving their sources; visual readouts do not receive fused or report features. Slots vary with the observation, with no fixed assignment to diseases, organs, or image regions. All eight enter the world model without further pooling. The encoder parameters $\eta$ comprise the adapters, slot readouts, and selected VLM parameters.
 
-\paragraph{Task-conditioned readout.}
-Each task uses a decoder with parameters $\omega_q$ and, when needed, a query $Q_q$. Classification and report generation read all eight slots. The classification head uses finding-specific attention queries; the report decoder receives projected slots followed by a fixed task prompt. Segmentation reads the input image together with only the four visual slots:
-\begin{equation}
-    \widehat M_\tau=H_{\omega_{\mathrm{seg}}}(X_\tau,S_\tau^{\mathrm{v}},Q_{\mathrm{seg}}).
-    \label{eq:segmentation_interface}
-\end{equation}
-Image-guided feature upsampling motivates this combination: FeatUp's guided variant~\citep{fu2024featup} lifts coarse backbone features to higher spatial resolution using image detail and multi-view consistency, while UPLiFT~\citep{walmer2026uplift} combines image guidance with local feature aggregation and multi-scale reconstruction supervision. We use this complementarity through hidden-state conditioning: the image branch retains spatially resolved local evidence, and $S_\tau^{\mathrm{v}}$ supplies visual context from multiple depths as the decoder constructs dense outputs. Task losses learn their interaction without imposing a one-to-one slot-to-pixel correspondence. An optional training-only visual consistency objective additionally supervises the visual slots, as described below.
-
-Super-resolution likewise reads image pixels and four visual slots, both derived exclusively from the same low-resolution input:
+\paragraph{Image-conditioned task readout.}
+Let $I_\tau$ denote the final native Qwen image tokens after its vision merger. The shared task decoder projects these tokens and the eight state slots to width 256, adds spatial positions to image tokens and learned type embeddings to slots, and applies two eight-head Transformer layers. Only its image-token outputs are retained:
 \begin{equation}
     \begin{aligned}
-        \widehat X^{\mathrm{HR}}&=H_{\omega_{\mathrm{SR}}}(X^{\mathrm{LR}},S^{\mathrm{v,LR}}),\\
-        \mathcal L_{\mathrm{SR}}
-        &=\frac{1}{N}\left\|\widehat X^{\mathrm{HR}}-X^{\mathrm{HR}}\right\|_F^2.
+        Z_\tau &= T_\omega\bigl([\pi_I(I_\tau);\pi_S(S_\tau)]\bigr)_{1:N_I},\\
+        \widehat y_\tau^{(q)} &= H_{\omega_q}(Z_\tau,Q_q).
     \end{aligned}
-    \label{eq:sr_loss}
+    \label{eq:task_interface}
 \end{equation}
-Here $S^{\mathrm{v,LR}}$ is obtained by applying the visual encoder and its four readouts to $X^{\mathrm{LR}}$. The HR image supplies supervision only. $N$ counts valid target pixels, excluding padding; prediction and target share an intensity scale. Neither spatial decoder reads $S^{\mathrm{f}}$. The unified training pipeline implements classification, report generation, segmentation, and super-resolution; VQA, instruction-based disease recognition, and phrase grounding remain outside this implementation.
+Positions and type embeddings are implicit in this notation. Classification uses finding-specific attention queries over $Z_\tau$ and predicts 13 labels. For VQA, projected $Z_\tau$ tokens precede the question and a fixed answer-format instruction in a Qwen language decoder; token cross-entropy supervises a serialized JSON answer list. Segmentation reshapes $Z_\tau$ into a spatial grid and uses a convolutional upsampling head for the two lungs and heart. All three tasks retain image evidence and can use all eight slots, including during segmentation. The same-exam report and VQA question are absent from state construction; the question enters only the VQA readout.
+
+\paragraph{Matched no-slots control.}
+The control uses the same image encoder, Transformer task decoder, and task heads, but omits $\pi_S(S_\tau)$ from the decoder input. It is trained independently with matched data, effective batches, and optimizer updates. Both arms retain the temporal objective and, when enabled, visual consistency supervision. Thus this control tests the contribution of slot conditioning to task decoding, rather than removing state learning from the entire training system. A native zero-shot Qwen checkpoint is a separate reference; neither comparison substitutes for direct task fine-tuning of Qwen through its pretrained interface.
 
 \subsection{State Prediction}
 \label{sec:state_prediction}
@@ -89,16 +84,8 @@ where $\operatorname{sg}$ stops target-branch gradients. The follow-up image sup
 
 The fixed source and depth ordering establishes correspondence between predicted and target slots. We use elementwise mean squared distance after independently applying non-affine LayerNorm over each predicted and target slot's 1024 channels. Current spatial decoders also require the corresponding input image and therefore do not directly define dense future outputs.
 
-\paragraph{Report forecasting from predicted states.}
-Let $A_\gamma$ project the eight predicted slots to the Qwen language width, and let $Q_{\mathrm{report}}$ be a fixed report-generation prompt. The report decoder and finding head read the predicted state:
-\begin{equation}
-    \begin{aligned}
-        \widehat R_{t,h}&=D_\omega\!\left(A_\gamma(\widehat S_{t,h}),Q_{\mathrm{report}}\right),\\
-        \widehat p_{t,h}&=H_{\omega_{\mathrm{cls}}}(\widehat S_{t,h}).
-    \end{aligned}
-    \label{eq:augmented_forecast}
-\end{equation}
-Projected slots precede the fixed prompt in the language decoder's input sequence. The decoder has no direct source-image, source-report, or horizon input. Source evidence is encoded into $S_t$, and temporal conditioning is applied by $P_\psi$. The same report decoder and 13-finding classification head serve current-task learning; temporal supervision selects six finding outputs. Encoder and report decoder share immutable pretrained language weights but have independent LoRA parameters, initialized before joint training and trained through their respective losses. Target report tokens are used for causally masked teacher forcing, while target images and reports also supply the detached target state through $E_{\bar\eta}$.
+\paragraph{Scope of temporal prediction.}
+The current joint model does not decode future reports or findings during training or evaluation. Its classification, VQA, and segmentation heads require current image tokens, so they cannot be applied to predicted slots alone. Decoding clinical outcomes from $\widehat S_{t,h}$ requires separately trained and evaluated forecast readouts. Table~\ref{tab:future_prediction} specifies the planned clinical forecast evaluation; no such scores are currently available for this implementation.
 
 % Place the compact slot detail near the training discussion, after the
 % state construction and dynamics text, to separate it from Figure 1.
@@ -115,34 +102,30 @@ Projected slots precede the fixed prompt in the language decoder's input sequenc
 Single-time-point annotations supervise state content, while longitudinal pairs supervise its evolution. We optimize both in one continuous training run from pretrained JEPA and VLM weights. Every optimizer update combines a current-task batch with a temporal batch, jointly training the online state encoder, dynamics predictor, and active task heads.
 
 \paragraph{Current-task supervision.}
-Starting from pretrained JEPA and VLM weights, we jointly train the adapters, multi-scale slot readouts, task decoders, and selected VLM parameters using parameter-efficient adaptation~\citep{hu2022lora}; JEPA remains frozen. The current-task component cycles through classification, report generation, segmentation, and super-resolution, drawing each batch from its task-specific training pool. Each task contributes once every four optimizer updates, alongside temporal supervision at every update. The task objective is
+Starting from pretrained JEPA and VLM weights, we jointly train the adapters, multi-scale slot readouts, task decoders, and selected VLM parameters using parameter-efficient adaptation~\citep{hu2022lora}; JEPA remains frozen. The current-task component cycles through classification, segmentation, and VQA, drawing each batch from its task-specific training pool. Each task contributes once every three optimizer updates, alongside temporal supervision at every update. The task objective is
 \begin{equation}
     \mathcal L_{\mathrm{task}}
-    =\frac{1}{4}\sum_{q\in\mathcal Q}
+    =\frac{1}{3}\sum_{q\in\mathcal Q}
       \mathbb E_{i\sim\mathcal D_q}
       \left[\ell_q\!\left(\widehat y_i^{(q)},y_i^{(q)}\right)\right],
     \label{eq:task_loss}
 \end{equation}
-where $\mathcal Q$ contains the four implemented tasks and $\mathcal D_q$ is the corresponding training pool. Each prediction uses the task-specific slot subset and inputs defined above. Classification uses class-weighted binary cross-entropy with unknown and uncertain labels masked, report generation uses token cross-entropy, segmentation uses Dice and pixelwise binary cross-entropy, and SR uses \cref{eq:sr_loss}.
+where $\mathcal Q$ contains the three tasks and $\mathcal D_q$ is the corresponding training pool. Each prediction uses the shared image-conditioned decoder in \cref{eq:task_interface}. Classification uses class-weighted binary cross-entropy with unknown and uncertain labels masked, VQA uses token cross-entropy, and segmentation uses Dice and pixelwise binary cross-entropy.
 
-There is no stop-gradient between the task decoders and slot readouts. Task gradients flow through $S$ into the learned aggregation/projection modules and any adapted source layers, jointly with decoder updates. Classification and report generation supervise both slot groups; segmentation and SR directly supervise $S^{\mathrm{v}}$ and their image decoders. Thus training updates the shared parameters that produce observation-dependent slots, rather than treating each sample's slots as independent optimization variables. Current-task inputs withhold the same-exam report, including during report generation; segmentation and SR compute only the visual branch.
+There is no stop-gradient between the task decoders and slot readouts. Task gradients flow through $S$ into the learned aggregation/projection modules and any adapted source layers, jointly with decoder updates. All three tasks supervise both slot groups through the shared task decoder. Thus training updates the shared parameters that produce observation-dependent slots, rather than treating each sample's slots as independent optimization variables. Current-task inputs withhold the same-exam report. Encoder and VQA-decoder LoRA parameters are independent, while immutable pretrained language weights share storage.
 
 \paragraph{Optional visual slot spatial consistency.}
-During segmentation and SR updates, an auxiliary reconstruction module maps the four visual slots to a spatial feature field without reading image pixels. A frozen, unadapted Qwen vision teacher supplies feature targets for the original input and two independently encoded deterministic crops. The reconstructed field undergoes matching spatial transformations and is compared with channel-normalized teacher features over valid image regions. The maintained training configuration adds this loss with weight 0.1; the base configuration disables it. For SR, both slot and teacher inputs derive exclusively from the LR image. This objective updates the visual-slot encoder and auxiliary reconstruction module whenever the current-task component is segmentation or SR; it is inactive during evaluation.
+During segmentation updates, an auxiliary reconstruction module maps the four visual slots to a spatial feature field without reading image pixels. A frozen, unadapted Qwen vision teacher supplies feature targets for the original input and two independently encoded deterministic crops. The reconstructed field undergoes matching spatial transformations and is compared with channel-normalized teacher features over valid image regions. The maintained training configuration adds this loss with weight 0.1; the base configuration disables it. This objective updates the visual-slot encoder and auxiliary reconstruction module whenever the current-task component is segmentation; it is inactive during evaluation.
 
 \paragraph{Joint objective.}
-From the first update, we train $P_\psi$ on same-patient current--future observations, primarily MIMIC-CXR image--report pairs~\citep{johnson2019mimiccxr}, together with the current-task objective. Future latent, report, and finding losses update $P_\psi$ and the current-state construction modules, while report and finding losses also update their respective decoder and classification head; JEPA remains frozen. The expected joint objective is
+Every optimizer update combines a current-task batch with directed same-patient observation pairs, primarily from MIMIC-CXR~\citep{johnson2019mimiccxr}. The expected objective is
 \begin{equation}
-    \begin{aligned}
     \mathcal L_{\mathrm{joint}}
-    ={}&\lambda_S\mathcal L_{\mathrm{future}}
-       +\lambda_R\mathcal L_{\mathrm{report}}\\
-      &+\lambda_F\mathcal L_{\mathrm{finding}}
-       +\mathcal L_{\mathrm{task}},
-    \end{aligned}
+    =\lambda_S\mathcal L_{\mathrm{future}}+\mathcal L_{\mathrm{task}}
+     +\lambda_V\mathcal L_{\mathrm{VSC}},
     \label{eq:joint_loss}
 \end{equation}
-where the main losses are averaged over sampled directed pairs, $\mathcal L_{\mathrm{report}}$ is future-report token cross-entropy, and $\mathcal L_{\mathrm{finding}}$ is masked binary cross-entropy on future findings. We use $(\lambda_S,\lambda_R,\lambda_F)=(1,1,0.5)$. Every optimizer update sums the temporal loss and one current-task loss, with unit weight on the latter. Cycling through the four tasks implements the task average in \cref{eq:task_loss}. Spatial current-task batches include the auxiliary consistency term when enabled. Temporal prediction and reusable representation are evaluated separately on held-out patients.
+where $\lambda_S=1$ and $\lambda_V=0.1$ when visual consistency is enabled. The consistency term is zero outside segmentation updates; its expectation follows the same three-task cycle. The latent loss updates the predictor and source-state encoder, while the task loss updates the shared decoder, active task head, and its input pathways. There are no future-report or future-finding losses in this implementation. JEPA remains frozen. Temporal prediction and downstream task performance require separate held-out evaluations.
 
 \paragraph{Target updates and implementation choices.}
 At model initialization, the target encoder copies the online encoder, including all trainable state-construction parameters. The target forward pass uses evaluation mode and stop-gradient. After every joint optimizer update, its parameters follow an exponential moving average:
@@ -153,4 +136,4 @@ At model initialization, the target encoder copies the online encoder, including
 EMA covers all trainable state-encoder parameters, including LoRA, the JEPA adapter, slot queries, positional embeddings, and readouts; it excludes the predictor and task decoders. Immutable pretrained parameters remain frozen and can share storage, while target buffers are copied from the online encoder. Joint training uses AdamW with learning rates $5\times10^{-5}$ for LoRA and $10^{-4}$ for other trainable parameters, weight decay 0.01, and gradient clipping at norm 1. One optimizer is retained throughout the run. LoRA has rank 8 and scaling factor $16/8$, and is applied at the four selected language and vision depths. Distributed training synchronizes gradients across ranks before the optimizer and EMA updates.
 
 \paragraph{Data separation.}
-Current-task and temporal batches use fixed data manifests with a global patient-level holdout across current tasks and temporal pairs. Conflicting records are removed from lower-priority splits, preserving test over validation over training membership. Current-task supervision uses MIMIC-CXR reports and finding labels, fixed CXAS segmentation targets, and online $128\to512$ SR pairs; Montgomery supplies an external human-mask test set. Temporal inputs consist of source images and reports with signed actual time intervals. MIMIC-IV contributes the existing admission linkage, but laboratory results, medications, and vital signs are not model inputs. Evaluation predicts from source observations before accessing target references.
+Current-task and temporal batches use fixed data manifests with a global patient-level holdout across current tasks and temporal pairs. Conflicting records are removed from lower-priority splits, preserving test over validation over training membership. Current-task supervision uses MIMIC-CXR finding labels, fixed CXAS segmentation targets, and MIMIC-CXR-VQA question--answer pairs; Montgomery supplies an external human-mask test set. Temporal inputs consist of source images and reports with signed actual time intervals. MIMIC-IV contributes the existing admission linkage, but laboratory results, medications, and vital signs are not model inputs. Evaluation predicts from source observations before accessing target references.

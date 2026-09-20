@@ -1,25 +1,23 @@
 \subsection{Experimental setup}
 \label{sec:experiments}
 
-We report partial future-prediction and downstream results in
-\cref{tab:future_prediction,tab:downstream_tasks}. MIMIC-CXR~\citep{johnson2019mimiccxr}
-supplies images and reports, with source-available MIMIC-IV history for forecasting.
-Forecast training/validation/test sets contain 16,000/230/297 pairs; the test set
-contains 94 patients. Adapted representation models use 2,400 updates with
-batch size 32. The three legacy Qwen3.5-9B forecast conditions complete the same budget
-from a shared 9B Stage~1 initialization. Dense tasks use 4,096/249/447 images and
-20 training epochs; human lung Dice is evaluated separately on 138 Montgomery
-images. The tables distinguish zero-shot checkpoints, frozen-feature task heads,
-and trained forecast adaptations. The completed 9B slot adaptation uses final-layer
-language queries; it does not implement the proposed four fusion-layer plus four
-native-vision slots. The maintained unified implementation uses Qwen3.5-0.8B and one continuous
-joint-training budget, with current-task and temporal losses active from the
-first update. Its configured budget is eight hours on four GPUs, with per-rank
-batches of 16 current observations and 32 directed temporal pairs and no gradient
-accumulation. The resulting global batch sizes are 64 and 128, respectively;
-these settings require capacity checks before a full run. Forecasting uses
-source images and reports with signed elapsed time, without EHR inputs.
-Evaluation of this implementation and matched native supervised comparisons
-remain pending. Full six-task adaptation of that design, standard
-MIMIC-CXR-VQA, and MS-CXR phrase grounding remain pending. All reported numbers
-are point estimates; matched data and update counts do not imply matched GPU hours.
+MIMIC-CXR~\citep{johnson2019mimiccxr} supplies radiographs, finding labels,
+and longitudinal image--report pairs; MIMIC-CXR-VQA supplies questions and
+answer sets. A global patient holdout removes conflicting records from
+lower-priority splits. The resulting training pools contain 12,818 classification
+images, 3,825 segmentation images, 281,092 VQA questions, and 14,868 temporal
+pairs. Validation pools contain 160 images, 249 images, 72,821 questions, and
+227 pairs, respectively. Reversing temporal pairs produces 29,736 directed
+training examples. Reports are used for temporal representation learning but
+withheld from all current-task inputs; EHR variables are not model inputs.
+
+We compare native zero-shot checkpoints with independently trained Qwen3.5-0.8B
+models with and without slot conditioning. Both trained arms share task pools,
+effective batch sizes, losses, and optimizer-update counts. The current paired
+run allocates 1,350 updates per arm on two GPUs, with per-rank batches of 128
+for classification, segmentation, and temporal pairs, and 64 for VQA, without
+gradient accumulation. Training and evaluation are incomplete; matched updates
+do not imply matched GPU hours. Final testing selects 353 classification images
+and a fixed 300-question VQA subset, rather than the full VQA test split.
+Segmentation is trained but its final evaluation is currently disabled; its
+columns remain pending. Results are single-seed point estimates.
