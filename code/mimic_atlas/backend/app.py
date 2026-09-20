@@ -19,6 +19,7 @@ from ..data import ROOT, AtlasConfig, AtlasStore
 from ..patient_index import VERSION
 from .api import create_api_router
 from .frontend import DIST
+from .vqa import create_vqa_router
 
 
 def create_app(config=None, *, store=None):
@@ -44,6 +45,7 @@ def create_app(config=None, *, store=None):
     app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
     app.state.store = store
     app.include_router(create_api_router(store))
+    app.include_router(create_vqa_router())
     app.mount(
         "/assets",
         StaticFiles(directory=DIST / "assets", check_dir=False),

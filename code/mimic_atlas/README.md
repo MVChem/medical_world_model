@@ -230,3 +230,28 @@ mimic_atlas/
 概览页的检查间隔柱状图参考 [shadcn/ui Bar Charts](https://ui.shadcn.com/charts/bar) 的简洁卡片、直接数值标签与低对比网格。使用原生 CSS 绘制，从全库候选配对实时汇总六个时间段（左闭右开，末段含上限）；按配对计数，不按患者去重。
 
 概览底部使用三张紧凑条形图：全部配对间隔、1 ≤ 间隔 < 24 小时的六段分布、全部 CXR 患者的独立检查次数分布（同一 study 的多张图像只计一次）。前两图按配对计数，第三图按患者计数，百分比分母分别显示在卡片右上角。
+
+## MIMIC-CXR-VQA 问答浏览
+
+入口：<http://127.0.0.1:8767/#vqa>，或侧栏「VQA 问答」。读取本地
+`code/data/MIMIC_CXR_VQA/MIMIC-Ext-MIMIC-CXR-VQA/dataset/{train,valid,test}.json`，
+胸片通过原有 CXR 图像接口按精确 `image_id` 读取。
+
+- 展示三个官方集合的问题数、不同影像数、患者数、空答案比例和可点击题型分布。
+- 支持 split、verify / choose / query、7 种内容类型、空 / 非空答案筛选，以及问题、答案、idx、患者 / 检查 / 影像 ID 搜索；每页 25 题。
+- 点击「胸片与问答」查看原始问题、参考答案、可放大胸片与同图全部问答（跨官方 split、独立分页），可跳转对应患者时间线和临床记录。原始英文和答案数组不做改写；空集合显示 `[]`，不混同缺失数据。问答中的区域名称不是像素标注框。
+- 全量统计：377,391 题、142,797 张不同胸片、55,716 位去重患者；train / valid / test 分别为 290,031 / 73,567 / 13,793 题。train 与 valid 有 698 位患者重叠，test 与另外两集合无患者交集。官方 VQA split 与 Atlas CXR split 是不同字段。
+
+首次访问以 `ijson` 流式读取，后台构建仅驻留内存的精简问答目录，不复制原始 JSON、临床记录或影像到磁盘。目录保留至服务退出，不计入患者 LRU 预算；数据源更新后重启服务重新加载。缺失源文件明确报错，不发布部分集合。图片沿用原有有界缓存与清晰度选择。未打开 VQA 页面时不加载问答目录；此页面不包含在病例离线 HTML 中。
+
+API：`/api/vqa/summary`、`/api/vqa/questions`、`/api/vqa/questions/{split}/{position}`。
+`position` 是集合内零起始位置；响应保留源数据 `idx`，不假设不同 split 的 idx 全局唯一。
+
+验证（从 `code/` 运行）：
+
+```bash
+.venv/bin/python -m pytest mimic_atlas/tests -q
+.venv/bin/python -m mimic_atlas.browser_check_vqa
+```
+
+浏览器检查覆盖全量计数、患者交集、空答案筛选、分页、影像匹配、同图问答、放大、患者跳转、无结果搜索和 390px 布局；截图与检查结果保留在 `runs/vqa_browser_20260918/`。视觉沿用项目的 [shadcn/ui Dashboard 参考](https://ui.shadcn.com/examples/dashboard)，使用浅色统计卡片、条形图和筛选表格。

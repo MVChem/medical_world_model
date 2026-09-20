@@ -27,7 +27,7 @@ For super-resolution, the teacher sees only LR inputs; HR images are used only f
 ## Integration and controls
 
 The default `visual_consistency_weight=0` creates no auxiliary modules.
-`configs/qwen35_08b_vssc_4gpu.json` enables weight=0.1 and views=2 (three views including the original), with a four-GPU, eight-hour training preset.
+`configs/qwen35_08b_vssc_2gpu.json` enables weight=0.1 and views=2 (three views including the original), with a two-GPU, 4,800-step training preset with gradient accumulation of 2.
 This is an initial experimental weight, not a validated optimum. The SR task loss has a smaller scale, so monitor both raw and weighted auxiliary losses.
 
 `model.py` assembles the modules and combines losses. The downstream task dispatcher additionally returns the already-computed state and does not own auxiliary modules.

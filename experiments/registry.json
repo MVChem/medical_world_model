@@ -1,18 +1,10 @@
 [
   {
-    "id": "sr_area64_only_seed42_20260918",
-    "summary": "Six matched variants; tasks: sr; SR 64x64 to 512x512 (8x per axis, 64x pixels); seed(s) 42.",
-    "status": "running",
-    "status_observed_at": "2026-09-18T21:43:21+08:00",
-    "run_dir": "code/medworld_spatial/runs/sr_area64_only_seed42_20260918",
-    "live_status": "code/medworld_spatial/runs/sr_area64_only_seed42_20260918/status.json"
-  },
-  {
-    "id": "sr_area16_only_seed42_20260918",
-    "summary": "Six matched variants; tasks: sr; SR 128 to 512 (4x per axis, 16x pixels); seed(s) 42.",
-    "status": "running",
-    "status_observed_at": "2026-09-18T21:43:27+08:00",
-    "run_dir": "code/medworld_spatial/runs/sr_area16_only_seed42_20260918",
-    "live_status": "code/medworld_spatial/runs/sr_area16_only_seed42_20260918/status.json"
+    "id": "qwen35_08b_vssc_2gpu_3h_20260920",
+    "summary": "Two-GPU slots model, 3h training; classification and balanced 300-question VQA tests.",
+    "status": "training",
+    "observed_at": "2026-09-20T11:30:06.434206+08:00",
+    "run": "code/medworld/runs/qwen35_08b_vssc_2gpu_3h_20260920",
+    "live_status": "code/medworld/runs/qwen35_08b_vssc_2gpu_3h_20260920/pipeline_status.json"
   }
 ]

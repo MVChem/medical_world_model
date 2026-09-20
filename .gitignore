@@ -18,6 +18,7 @@ Thumbs.db
 *.bak
 *.tmp
 *.pid
+/experiments/.registry.lock
 
 # Environments, installed metadata, and build artifacts
 .venv

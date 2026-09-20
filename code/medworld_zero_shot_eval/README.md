@@ -16,7 +16,7 @@ From the repository root:
 
 ```bash
 PYTHONPATH=code /home/data2/chk/workspace/2026/.venv/bin/python -m medworld_zero_shot_eval.evaluate \
-  --config code/medworld/configs/qwen35_08b_vssc_4gpu.json \
+  --config code/medworld/configs/qwen35_08b_vssc_2gpu.json \
   --model qwen08b --tasks classification vqa --gpu auto \
   --out code/medworld_zero_shot_eval/runs/qwen08b_native_YYYYMMDD
 ```

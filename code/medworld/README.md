@@ -46,15 +46,15 @@ Use the local Python environment with `PYTHONPATH=code`, from the repository roo
 python -m medworld.train --smoke --gpu 1 --out code/medworld/runs/smoke_YYYYMMDD
 
 # One model; automatically runs the tests selected in its JSON.
-python -m medworld.launch_distributed --config code/medworld/configs/qwen35_08b_vssc_4gpu.json \
-  --gpus 1,2,3,6 --out code/medworld/runs/slots_YYYYMMDD
+python -m medworld.launch_distributed --config code/medworld/configs/qwen35_08b_vssc_2gpu.json \
+  --gpus 1,2 --out code/medworld/runs/slots_YYYYMMDD
 
 # Main experiment: separately train both arms, run configured tests, compare.
-python -m medworld.run_experiment --config code/medworld/configs/qwen35_08b_vssc_4gpu.json \
-  --gpus 1,2,3,6 --out code/medworld/runs/paired_YYYYMMDD
+python -m medworld.run_experiment --config code/medworld/configs/qwen35_08b_vssc_2gpu.json \
+  --gpus 1,2 --out code/medworld/runs/paired_YYYYMMDD
 
 # Run or reuse the tests currently selected in a completed run's JSON.
-python -m medworld.evaluate_run --run code/medworld/runs/slots_YYYYMMDD --gpus 1,2,3,6
+python -m medworld.evaluate_run --run code/medworld/runs/slots_YYYYMMDD --gpus 1,2
 
 python -m unittest discover -s code/medworld/tests -v
 ```
@@ -73,7 +73,7 @@ Checkpoint format 3 reflects the new task interfaces. Older weights require thei
 
 ## VQA test sampling
 
-`testing.vqa_per_type` selects this many questions from each of Verify, Choose and Query, using `testing.vqa_seed`. Zero retains the complete test set. The provided four-GPU training config now selects 100 per type with seed 42. Training data is unchanged. The native-model baseline uses the same selection helper; both save exact IDs and their hash. Balanced-subset metrics are distinct from full-test metrics.
+`testing.vqa_per_type` selects this many questions from each of Verify, Choose and Query, using `testing.vqa_seed`. Zero retains the complete test set. The provided two-GPU training config now selects 100 per type with seed 42. Training data is unchanged. The native-model baseline uses the same selection helper; both save exact IDs and their hash. Balanced-subset metrics are distinct from full-test metrics.
 
 ## Local assets
 

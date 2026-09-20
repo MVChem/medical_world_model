@@ -6,6 +6,7 @@ import Patient from "./components/Patient";
 import Exports from "./components/Exports";
 import DatasetIntro from "./components/DatasetIntro";
 import Overview from "./components/Overview";
+import VQA from "./components/VQA";
 
 const snapshot = window.MIMIC_SNAPSHOT;
 function currentRoute() {
@@ -30,7 +31,7 @@ function currentRoute() {
         transition: params.get("transition") || "",
       }
     : {
-        mode: ["overview", "patients", "pairs", "featured", "exports"].includes(page)
+        mode: ["overview", "patients", "pairs", "featured", "exports", "vqa"].includes(page)
           ? page
           : "overview",
         filters,
@@ -131,6 +132,7 @@ export default function App() {
             ],
             ["pairs", "⇄", "影像配对", counts.pairs],
             ["featured", "☆", "精选示例", catalog?.featured?.length],
+            ["vqa", "?", "VQA 问答", null],
             ["exports", "↓", "导出记录", null],
           ].map(([key, icon, title, n]) => (
             <button
@@ -211,7 +213,9 @@ export default function App() {
         {catalog?.state === "ready" && route.subject && (
           <DatasetIntro catalog={catalog} compact offline={Boolean(snapshot)} />
         )}
-        {catalog?.state !== "ready" ? (
+        {route.mode === "vqa" && !snapshot ? (
+          <VQA quality={quality} imagesReady={catalog?.state === "ready"} onOpen={(subject) => navigate({ subject })} />
+        ) : catalog?.state !== "ready" ? (
           <div id="startup" className="startup" role="status">
             <span className="spinner" />
             <h2>连接本地 MIMIC 数据</h2>
