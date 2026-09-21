@@ -8,25 +8,25 @@ All scores are percentages ($\uparrow$). ZS: zero-shot; TBD: pending;
 \fontsize{7.5}{8.7}\selectfont
 \setlength{\tabcolsep}{2pt}
 \renewcommand{\arraystretch}{1.12}
-\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lrrrrr@{}}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lrrrrrr@{}}
 \toprule
  & \multicolumn{2}{c}{Classification}
  & \multicolumn{2}{c}{VQA}
- & \multicolumn{1}{c}{Segmentation} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-6}
-Method & AUC & AP & EM & $\mu$F1 & Lung Dice \\
+ & \multicolumn{2}{c}{Segmentation} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+Method & AUC & AP & EM & $\mu$F1 & Dice & IoU \\
 \midrule
 % code/medworld_zero_shot_eval/runs/native_retest_vqa300_20260920/qwen08b/test/summary.json
-Qwen3.5-0.8B$^{\mathrm{ZS}}$ & 69.12 & 82.74 & 25.67 & 27.27 & \na \\
+Qwen3.5-0.8B$^{\mathrm{ZS}}$ & 69.12 & 82.74 & 25.67 & 27.27 & \na & \na \\
 % code/medworld_zero_shot_eval/runs/native_retest_vqa300_20260920/qwen4b/test/summary.json
-Qwen3.5-4B$^{\mathrm{ZS}}$ & 70.74 & 84.10 & 42.33 & 42.25 & \na \\
+Qwen3.5-4B$^{\mathrm{ZS}}$ & 70.74 & 84.10 & 42.33 & 42.25 & \na & \na \\
 % code/medworld_zero_shot_eval/runs/native_retest_vqa300_20260920/qwen9b/test/summary.json
-Qwen3.5-9B$^{\mathrm{ZS}}$ & 69.34 & 82.74 & 22.33 & 18.84 & \na \\
+Qwen3.5-9B$^{\mathrm{ZS}}$ & 69.34 & 82.74 & 22.33 & 18.84 & \na & \na \\
 % code/medworld_zero_shot_eval/runs/native_retest_vqa300_20260920/medgemma4b/test/summary.json
-MedGemma-1.5-4B$^{\mathrm{ZS}}$ & 71.54 & 85.30 & 12.33 & 5.19 & \na \\
+MedGemma-1.5-4B$^{\mathrm{ZS}}$ & 71.54 & 85.30 & 12.33 & 5.19 & \na & \na \\
 \midrule
-Qwen-0.8B no slots & \tbd & \tbd & \tbd & \tbd & \tbd \\
-\textbf{\method{}} & \tbd & \tbd & \tbd & \tbd & \tbd \\
+Qwen-0.8B no slots & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\textbf{\method{}} & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \bottomrule
 \end{tabular*}
 \endgroup\par
@@ -35,7 +35,7 @@ Qwen-0.8B no slots & \tbd & \tbd & \tbd & \tbd & \tbd \\
 Classification: 353 images, 13 labels; VQA: 300 questions
 (100 per type, seed 42), scored as answer sets under strict JSON parsing.
 Invalid answers: 52/40/147/206 in ZS row order.
-Lung Dice: 138 Montgomery images with human annotations.
+Lung Dice and mean IoU: 138 Montgomery images with human annotations.
 Both trained rows use Qwen3.5-0.8B with matched updates;
 segmentation testing is not enabled in the current run.
 \end{minipage}
