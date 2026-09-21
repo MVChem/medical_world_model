@@ -55,30 +55,34 @@ Matching independently encoded views encourages the slots to retain local inform
 \subsection{State Prediction}
 \label{sec:state_prediction}
 
-\paragraph{Horizon-conditioned latent dynamics.}
-The latent world model takes the current state tokens and an embedding of the requested horizon, and predicts a state with the same token shape:
+\paragraph{Horizon-conditioned state dynamics.}
+Building on the multimodal representation in Sec.~\ref{sec:state_representation}, we model patient evolution as a transition between observation states in latent space. Given the current state $S_t=E_\eta(O_t)$ and a requested time interval $h$, a predictor estimates the state of a follow-up examination:
 \begin{equation}
-    \widehat S_{t,h}=P_\psi(S_t,h)\in\mathbb R^{K\times d}.
+    \widehat S_{t,h}
+    =P_\psi(S_t,h)
+    \in\mathbb{R}^{8\times d}.
     \label{eq:state_transition}
 \end{equation}
-The predictor receives both slot groups, with no additional image or feature-map input. Latent prediction on pretrained features has precedent in DINO-WM~\citep{zhou2025dinowm}; our predictive space combines fusion and visual slots. Prediction is direct at $h$; multi-time-point records supply training pairs without requiring autoregressive rollout. Training uses the signed realized interval in hours, with both forward and reversed pairs. The predictor projects normalized slots to width 512 and adds slot positions and a time embedding before four Transformer layers. Its time features encode the sign and log-magnitude of the interval in days; a zero-initialized output projection adds a residual to the normalized input state. The encoder itself receives neither direction nor time interval.
+The predictor jointly processes all eight slots, allowing temporal modeling to incorporate both vision--language and visual information. A learned time embedding encodes the sign and log-magnitude of the interval, accommodating irregular examination times and directed observation pairs. A Transformer combines this embedding with the state slots and predicts a residual update to the normalized source state. Slot ordering is preserved throughout prediction, maintaining correspondence between feature sources and representation depths. Each requested horizon is predicted directly from the current state; the observation encoder remains independent of the time condition.
 
-\paragraph{Observed future states as targets.}
-Let $E_{\bar\eta}$ denote the target instance of the same encoding design. The actual follow-up provides the target for latent prediction:
+\paragraph{Joint-embedding predictive learning.}
+We adopt a JEPA-style objective that learns temporal dynamics by predicting the representation of an actual follow-up examination. The follow-up image and report are encoded by a target encoder with the same state-construction architecture:
 \begin{equation}
-    \begin{aligned}
-        S^*_{t^+}&=E_{\bar\eta}(O_{t^+})\in\mathbb R^{K\times d},\\
-        \mathcal L_{\mathrm{future}}
-        &=\ell_S\!\left(\widehat S_{t,h},\operatorname{sg}(S^*_{t^+})\right),
-    \end{aligned}
+    S_{t^+}^{*}=E_{\bar\eta}(O_{t^+}),
+    \qquad h=t^+-t.
+    \label{eq:followup_target}
+\end{equation}
+The target encoder follows an exponential moving average of the online encoder. We align the predicted and target states using a normalized latent prediction loss:
+\begin{equation}
+    \mathcal L_{\mathrm{future}}
+    =\frac{1}{8d}
+    \left\|
+    \mathcal N(\widehat S_{t,h})
+    -\operatorname{sg}\!\left[\mathcal N(S_{t^+}^{*})\right]
+    \right\|_F^2,
     \label{eq:future_latent_loss}
 \end{equation}
-where $\operatorname{sg}$ stops target-branch gradients. The follow-up image supplies both feature pathways, and its report contributes to the fusion slots. This latent objective supervises the eight future slots, with no separate dense feature-map loss. Future observations and their modality indicators are not predictor inputs.
-
-The fixed source and depth ordering establishes correspondence between predicted and target slots. We use elementwise mean squared distance after independently applying non-affine LayerNorm over each predicted and target slot's 1024 channels. Current spatial decoders also require the corresponding input image and therefore do not directly define dense future outputs.
-
-\paragraph{Scope of temporal prediction.}
-The current joint model does not decode future reports or findings during training or evaluation. Its classification, VQA, and segmentation heads require current image tokens, so they cannot be applied to predicted slots alone. Decoding clinical outcomes from $\widehat S_{t,h}$ requires separately trained and evaluated forecast readouts. Table~\ref{tab:future_prediction} specifies the planned clinical forecast evaluation; no such scores are currently available for this implementation.
+where $\mathcal N$ applies non-affine LayerNorm independently to each slot and $\operatorname{sg}$ denotes stop-gradient. The objective updates both the predictor and the trainable current-state encoder, allowing the demands of longitudinal prediction to shape the medical representation itself. Follow-up images and reports enter only the target branch during training. At inference, the current observation and requested interval determine the predicted follow-up state.
 
 % Place the compact slot detail near the training discussion, after the
 % state construction and dynamics text, to separate it from Figure 1.
