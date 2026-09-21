@@ -1,8 +1,5 @@
 \begin{table*}[t]
-\caption{Planned future-state evaluation on 297 held-out pairs (94 patients).
-All entries await evaluation under the current protocol.
-All scores are multiplied by 100 and shown to two decimals; arrows indicate the preferred direction.
-$\mathrm{ZS}$ denotes public-checkpoint zero-shot inference.}
+\caption{Future-state evaluation. Arrows indicate the preferred direction; $\mathrm{ZS}$ denotes zero-shot inference.}
 \label{tab:future_prediction}
 \centering
 \begingroup
@@ -21,21 +18,12 @@ Method & \shortstack{AP\\$\uparrow$} & \shortstack{AUROC\\$\uparrow$}
  & \shortstack{RadGraph\\F1$\uparrow$} & \shortstack{GREEN\\$\uparrow$}
  & \shortstack{Brier\\$\downarrow$} & \shortstack{ECE\\$\downarrow$} \\
 \midrule
-Qwen3.5-0.8B$^{\mathrm{ZS}}$ & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
-Qwen3.5-0.8B (native adapted) & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
-Copy Current & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
-Finding-transition prior & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
-\method{} + forecast readouts & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+Qwen3.5-0.8B$^{\mathrm{ZS}}$ & & & & & & & & \\
+Qwen3.5-0.8B (native adapted) & & & & & & & & \\
+Copy Current & & & & & & & & \\
+Finding-transition prior & & & & & & & & \\
+\method{} + forecast readouts & & & & & & & & \\
 \bottomrule
 \end{tabular}
 \endgroup\par
-\vspace{3pt}
-\begin{minipage}{\linewidth}\fontsize{8}{9.5}\selectfont
-AP is non-interpolated average precision; AP/AUROC/Brier/ECE are macro-averaged
-with common reference masks. RadGraph uses partial F1. Forecast readouts,
-matched native adaptation, and direction-label review remain pending.
-The current three-task model optimizes latent temporal prediction only;
-these columns require separate clinical forecast readouts and evaluation.
-TBD marks planned evaluation, not an available score.
-\end{minipage}
 \end{table*}
