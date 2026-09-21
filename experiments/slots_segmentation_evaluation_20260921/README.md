@@ -7,6 +7,18 @@
 - Original run directory: [paired_vssc_2gpu_12h_fast_20260920](../../code/medworld/runs/paired_vssc_2gpu_12h_fast_20260920/).
 - Local evaluation snapshot: [evaluation_results.json](evaluation_results.json), containing full-precision results, configurations, source-file SHA-256 hashes, and the conversation ID.
 
+## Git Commit Traceability
+
+- Repository: [MVChem/medical_world_model](https://github.com/MVChem/medical_world_model).
+- Code and evaluation archive commit: [`59879c56b6ad170ceed74dc07bfe96754d3c8b2b`](https://github.com/MVChem/medical_world_model/commit/59879c56b6ad170ceed74dc07bfe96754d3c8b2b).
+- Commit subject: `Optimize MedWorld training and archive complete slots evaluations`.
+- Branch: `main`.
+- Validation at this commit: `PYTHONPATH=code /home/data2/chk/workspace/2026/.venv/bin/python -m pytest code/medworld/tests -q` — 54 tests and 26 subtests passed; 16 dependency deprecation warnings. `git diff --cached --check` passed before commit.
+
+This commit archives the repository after the recorded 0.8B experiment and includes subsequent 9B configuration and native-backbone comparison support. It is not a claim that every file in this commit was used during the original training. The run's frozen training source, supplemental evaluation source, manifests, and checkpoint/data fingerprints remain the authoritative execution record.
+
+This traceability section is saved in a following documentation commit so it can reference the complete code/archive commit ID. Both commits are published together. To inspect the archived implementation, use `git show 59879c56b6ad170ceed74dc07bfe96754d3c8b2b` or browse the commit link above.
+
 ## Experiment Setup
 
 The model with 8 slots and the model without slots were trained independently for 1,350 optimizer updates each, using matching training settings and effective batch sizes on GPUs 2 and 3. The 12-hour budget covered both training arms combined. Calibration determined an equal update count with 10% headroom. Actual training took approximately 5 hours 29 minutes and 4 hours 59 minutes, respectively. Both evaluations used `final.pt`; checkpoints were not selected using test results. Native Qwen 0.8B was not trained and served as a classification and VQA reference.
