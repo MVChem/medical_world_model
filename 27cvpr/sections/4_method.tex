@@ -12,9 +12,6 @@
 
 \input{sections/3_problem_formulation}
 
-\paragraph{Overview.}
-\method{} couples a multimodal state encoder with a horizon-conditioned latent world model (\cref{fig:medworld_jepa_overview}). Four vision--language slots and four visual slots form the state. A shared task decoder combines native image tokens with these eight slots for classification, visual question answering (VQA), and segmentation. Longitudinal supervision trains the predictor to map a source state to a detached follow-up state. The current implementation uses Qwen3.5-0.8B and a frozen V-JEPA encoder; its temporal objective is latent prediction only. Clinical forecast readouts and their evaluation in Table~\ref{tab:future_prediction} remain pending.
-
 \subsection{State Representation}
 \label{sec:state_representation}
 
