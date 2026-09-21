@@ -15,21 +15,25 @@
 \subsection{State Representation}
 \label{sec:state_representation}
 
-\paragraph{Eight-slot multimodal state.}
-We encode each observation as four vision--language slots and four visual slots (\cref{fig:task_supervised_slots}). The vision--language branch fuses adapted frozen JEPA features with the available report; the visual branch uses the VLM's pre-fusion vision features. Learned readouts extract one slot from each of four depths per branch:
+\paragraph{Slot-based multimodal representation.}
+We encode each medical observation as a compact set of state slots that combines vision--language and visual information across multiple network depths. This representation brings clinical semantics and spatial evidence into a common latent space for downstream understanding and temporal prediction.
+
+Given an observation $O_\tau$, the vision--language branch integrates adapted features from a frozen JEPA encoder with the available report, while the VLM's native vision encoder provides visual features before language fusion. We select four approximately evenly spaced depths from each branch to capture information at different levels of abstraction. Four learned query tokens summarize the vision--language sequence, with each query read out at its corresponding selected depth. In the visual branch, a learned query pools the projected patch features at each selected depth. The resulting slots are projected to a common width and concatenated:
 \begin{equation}
     \begin{aligned}
-        s_{\tau,j}^{\mathrm{f}} &= r_j^{\mathrm{f}}(H_\tau^{(\ell_j)}),\quad
-        s_{\tau,j}^{\mathrm{v}} = r_j^{\mathrm{v}}(F_\tau^{(k_j)}),\\
-        S_\tau &= E_\eta(O_\tau)=[S_\tau^{\mathrm{f}};S_\tau^{\mathrm{v}}]
-        \in\mathbb R^{8\times d},
+        s_{\tau,j}^{f}
+        &=r_j^{f}\!\left(H_\tau^{(\ell_j)}\right),\qquad
+        s_{\tau,j}^{v}
+        =r_j^{v}\!\left(F_\tau^{(k_j)}\right),\\
+        S_\tau
+        &=\left[S_\tau^{f};S_\tau^{v}\right]
+        \in\mathbb{R}^{8\times d},
     \end{aligned}
     \label{eq:vlm_state}
 \end{equation}
-where $j=1,\ldots,4$ and $d=1024$. The selected depths span early, intermediate, and final layers. All eight slots support task decoding and temporal prediction; state construction is independent of the task query and forecast horizon.
+where $j=1,\ldots,4$, $d=1024$, and $r_j^{f}$ and $r_j^{v}$ denote the source-specific readouts. The four vision--language slots and four visual slots retain a fixed ordering by source and depth, yielding a structured representation of the observation.
 
-\paragraph{Visual Slot Spatial Consistency (VSSC).}
-To preserve spatial information in the four visual slots, an auxiliary decoder reconstructs a dense feature field solely from $S_\tau^{\mathrm{v}}$. We align this field with frozen native-vision teacher features from the original image and two independently encoded crops. Matching spatial transformations and channel normalization precede a squared-error loss over valid regions, denoted $\mathcal L_{\mathrm{VSSC}}$. This training-only objective supervises the visual-slot encoder during segmentation updates.
+The state is constructed independently of the downstream query and prediction horizon, allowing the same observation representation to support different tasks and temporal predictions. For downstream understanding, a shared Transformer decoder combines all eight slots with native image tokens, and its image-token outputs feed the classification, VQA, and segmentation heads. The slots contribute observation-level context alongside direct spatial evidence from the image. Task supervision jointly optimizes the slot readouts and adapted feature sources, encouraging the learned representation to retain information relevant to clinical and spatial understanding.
 
 \subsection{State Prediction}
 \label{sec:state_prediction}
