@@ -1,23 +1,8 @@
-\subsection{Experimental setup}
+\subsection{Experimental Setup}
 \label{sec:experiments}
 
-MIMIC-CXR~\citep{johnson2019mimiccxr} supplies radiographs, finding labels,
-and longitudinal image--report pairs; MIMIC-CXR-VQA supplies questions and
-answer sets. A global patient holdout removes conflicting records from
-lower-priority splits. The resulting training pools contain 12,818 classification
-images, 3,825 segmentation images, 281,092 VQA questions, and 14,868 temporal
-pairs. Validation pools contain 160 images, 249 images, 72,821 questions, and
-227 pairs, respectively. Reversing temporal pairs produces 29,736 directed
-training examples. Reports are used for temporal representation learning but
-withheld from all current-task inputs; EHR variables are not model inputs.
+\paragraph{Datasets.}
+We conduct experiments on the MIMIC datasets and two longitudinal glioma MRI cohorts. MIMIC-CXR provides chest radiographs and associated reports, with repeated examinations supporting temporal state prediction. MIMIC-CXR-VQA supplies question--answer annotations for evaluating clinical image understanding, while MIMIC-IV provides linked hospital admission records and clinical information. We additionally include MU-Glioma-Post and UCSF-ALPTDG, which contain longitudinal multi-sequence brain MRI, tumor segmentation annotations, and clinical metadata. These cohorts extend the evaluation of state representations and temporal evolution to a complementary imaging modality and disease setting. All observations from the same patient are assigned to the same data split. Dataset statistics, cohort construction, and preprocessing details are provided in the appendix.
 
-We compare native zero-shot checkpoints with independently trained Qwen3.5-0.8B
-models with and without slot conditioning. Both trained arms share task pools,
-effective batch sizes, losses, and optimizer-update counts. The current paired
-run allocates 1,350 updates per arm on two GPUs, with per-rank batches of 128
-for classification, segmentation, and temporal pairs, and 64 for VQA, without
-gradient accumulation. Training and evaluation are incomplete; matched updates
-do not imply matched GPU hours. Final testing selects 353 classification images
-and a fixed 300-question VQA subset, rather than the full VQA test split.
-Segmentation is trained but its final evaluation is currently disabled; its
-columns remain pending. Results are single-seed point estimates.
+\paragraph{Compared Methods.}
+We compare MedWorld-JEPA with representative visual representation models (DINOv2, RAD-DINO, and CheXWorld) and vision--language models (Qwen3.5-9B and MedGemma-1.5-4B). For downstream adaptation, we extract intermediate features and attach task-specific decoders. Adapted models use the same training splits and number of optimization steps for a controlled comparison. For future-state prediction, visual models are equipped with horizon-conditioned predictors. We additionally include direct Qwen-based forecasting and a persistence baseline that assumes no change from the current state.
