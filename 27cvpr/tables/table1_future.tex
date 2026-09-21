@@ -1,29 +1,27 @@
 \begin{table*}[t]
-\caption{Future-state evaluation. Arrows indicate the preferred direction; $\mathrm{ZS}$ denotes zero-shot inference.}
+\caption{Future-state prediction on MIMIC-CXR and linked MIMIC-IV records. Visual representation models are adapted with temporal predictors and task-specific readouts. Acc., BAcc., and LOS denote accuracy, balanced accuracy, and length of stay, respectively. Arrows indicate the preferred direction.}
 \label{tab:future_prediction}
 \centering
 \begingroup
 \small
-\setlength{\tabcolsep}{2pt}
+\setlength{\tabcolsep}{4pt}
 \renewcommand{\arraystretch}{1.14}
-\begin{tabular}{@{}L{0.30\linewidth}*{4}{C{0.075\linewidth}}C{0.095\linewidth}*{3}{C{0.075\linewidth}}@{}}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lrrrrr@{}}
 \toprule
- & \multicolumn{2}{c}{\shortstack{Future clinical\\status}}
- & \multicolumn{2}{c}{\shortstack{Disease\\progression}}
- & \multicolumn{2}{c}{\shortstack{Future report\\fidelity}}
- & \multicolumn{2}{c}{\shortstack{Probabilistic\\reliability}} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
-Method & \shortstack{AP\\$\uparrow$} & \shortstack{AUROC\\$\uparrow$}
- & \shortstack{Trans.\\F1$\uparrow$} & \shortstack{Dir.\\F1$\uparrow$}
- & \shortstack{RadGraph\\F1$\uparrow$} & \shortstack{GREEN\\$\uparrow$}
- & \shortstack{Brier\\$\downarrow$} & \shortstack{ECE\\$\downarrow$} \\
+Method & \shortstack[r]{Future VQA\\Acc. $\uparrow$}
+ & \shortstack[r]{Progression\\BAcc. $\uparrow$}
+ & \shortstack[r]{Report\\RadGraph F1 $\uparrow$}
+ & \shortstack[r]{30-day Mortality\\AUROC $\uparrow$}
+ & \shortstack[r]{Remaining LOS\\MAE (days) $\downarrow$} \\
 \midrule
-Qwen3.5-0.8B$^{\mathrm{ZS}}$ & & & & & & & & \\
-Qwen3.5-0.8B (native adapted) & & & & & & & & \\
-Copy Current & & & & & & & & \\
-Finding-transition prior & & & & & & & & \\
-\method{} + forecast readouts & & & & & & & & \\
+Persistence / Copy Current & --- & --- & --- & N/A & N/A \\
+DINOv2 + predictor & --- & --- & --- & --- & --- \\
+RAD-DINO + predictor & --- & --- & --- & --- & --- \\
+CheXWorld + predictor & --- & --- & --- & --- & --- \\
+Qwen3.5-9B & --- & --- & --- & --- & --- \\
+MedGemma-1.5-4B & --- & --- & --- & --- & --- \\
+MedWorld-JEPA & --- & --- & --- & --- & --- \\
 \bottomrule
-\end{tabular}
-\endgroup\par
+\end{tabular*}
+\endgroup
 \end{table*}

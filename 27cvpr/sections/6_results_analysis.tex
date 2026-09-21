@@ -9,15 +9,13 @@
 
 \input{sections/5_experiments}
 
-\subsection{Future prediction}
+\subsection{Future-State Prediction}
 
-\Cref{tab:future_prediction} reserves four dimensions of clinical forecasting:
-future finding AP/AUROC, progression Transition/Direction F1, report
-RadGraph/GREEN, and probability Brier/ECE. The held-out cohort contains 297
-pairs from 94 patients. Clinical forecast readouts and their evaluation for the
-current model remain pending; the latent prediction objective alone does not
-supply these scores. Direction labels also require review. We therefore make
-no quantitative forecasting claim for the current implementation.
+We evaluate whether predicted patient states support clinically meaningful forecasts across five tasks: future clinical VQA, disease progression prediction, report generation, mortality prediction, and remaining length-of-stay estimation. Given a source examination and its available report, MedWorld-JEPA predicts latent states at specified horizons, which are interpreted through task-specific readouts. All forecasts use information available at the source time, with subsequent examinations and clinical outcomes providing evaluation targets.
+
+For future clinical VQA, the model answers questions about findings in a subsequent examination. We use questions with categorical answers and report accuracy after answer normalization. Disease progression prediction assesses whether individual findings improve, remain stable, or worsen between the source and target examinations. We report balanced accuracy to account for differences in class frequency. For future report generation, we decode the predicted state into a report and evaluate its agreement with the observed follow-up report using RadGraph F1, which measures the correspondence of extracted clinical entities and relations. The prediction horizon for these tasks is the elapsed time between examinations.
+
+We further assess clinical outcomes using linked MIMIC-IV records. Mortality prediction estimates the risk of death within 30 days of the source examination and is evaluated using AUROC. Remaining length-of-stay estimation predicts the time from the source examination to the end of the corresponding hospitalization, measured by mean absolute error in days. Outcome evaluation includes eligible patients regardless of whether they undergo subsequent imaging. We additionally compare current-state-only readouts with those using predicted states to assess the contribution of temporal prediction.
 
 \subsection{Downstream tasks}
 
