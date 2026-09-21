@@ -125,6 +125,15 @@ def native_tasks(cfg):
     return [task for task in cfg['testing']['tasks'] if task in ('classification', 'vqa')]
 
 
+def native_spec(cfg):
+    from medworld_zero_shot_eval.models import models
+    matches = [s for s in models() if s['family'] == 'qwen'
+               and Path(s['path']).resolve() == Path(cfg['qwen']).resolve()]
+    if len(matches) != 1 or matches[0]['id'] not in ('qwen08b', 'qwen4b', 'qwen9b'):
+        raise ValueError('Native Qwen must match a supported pretrained backbone path')
+    return matches[0]
+
+
 def freeze_experiment(run, with_qwen):
     from .launch_distributed import snapshot
     from .datasets.protocol import _sha256
@@ -144,7 +153,7 @@ def write_report(run, cfg, budgets, no_slots_rows, qwen_rows, skipped):
     rows = []
     for folder, summary in summaries.items():
         task = 'segmentation' if folder == 'segmentation_human' else folder
-        keys = {'classification': ('macro_auroc', 'macro_ap'), 'segmentation': ('mean_dice',),
+        keys = {'classification': ('macro_auroc', 'macro_ap'), 'segmentation': ('mean_dice', 'mean_iou'),
                 'vqa': ('exact_match', 'micro_f1')}[task]
         metrics = summary['tasks'][task]
         for metric in keys:
@@ -157,7 +166,8 @@ def write_report(run, cfg, budgets, no_slots_rows, qwen_rows, skipped):
     atomic(run / 'comparison.json', {'training': budgets, 'baselines': cfg['baselines'],
                                     'skipped': skipped, 'qwen_training_steps': 0, 'rows': rows})
     columns = ['slots'] + (['no_slots'] if no_slots_rows else []) + (['qwen'] if qwen_rows else [])
-    names = {'slots': 'With 8 slots', 'no_slots': 'No slots', 'qwen': 'Native Qwen 0.8B'}
+    names = {'slots': 'With 8 slots', 'no_slots': 'No slots',
+             'qwen': 'Native ' + native_spec(cfg)['label'] if qwen_rows else 'Native Qwen'}
     lines = ['# MedWorld experiment', '',
              'Both trained arms must finish exactly the same optimizer updates with matching batches. Time is an estimate; native Qwen is not trained.', '',
              '| Model | Target updates | Actual training (seconds) | Optimizer updates |',
@@ -188,6 +198,7 @@ def run_experiment(cfg, run, gpus):
     cfg['slot_conditioning'] = True
     qwen_tasks = native_tasks(cfg)
     qwen_enabled = cfg['baselines']['qwen'] and cfg['testing']['enabled'] and bool(qwen_tasks)
+    spec = native_spec(cfg) if qwen_enabled else None
     # Freeze all arms before training so later workspace edits cannot alter the comparison.
     freeze_experiment(run, qwen_enabled)
     atomic(run / 'config.json', cfg)
@@ -260,12 +271,8 @@ def run_experiment(cfg, run, gpus):
         else:
             skipped['no_slots'] = 'disabled by baselines.no_slots'
         if qwen_enabled:
-            from medworld_zero_shot_eval.models import models
-            spec = next(s for s in models() if s['id'] == 'qwen08b')
-            if Path(spec['path']).resolve() != Path(cfg['qwen']).resolve():
-                raise ValueError('Native Qwen 0.8B must use the same pretrained backbone path')
             jobs = [{'id': 'qwen', 'module': 'medworld_zero_shot_eval.evaluate', 'log': 'qwen.log',
-                     'args': ['--config', str(run / 'slots/config.json'), '--model', 'qwen08b',
+                     'args': ['--config', str(run / 'slots/config.json'), '--model', spec['id'],
                               '--tasks', *qwen_tasks, '--out', str(run / 'qwen')]}]
             registry(run, 'evaluating', summary='Native Qwen on matching selected tests after trained arms.')
             schedule(jobs, selectors, run, env)

@@ -140,6 +140,26 @@ class DistributedTests(unittest.TestCase):
             for stream in streams:
                 stream.close()
 
+    def test_preprocessing_runs_in_prefetch_worker_without_advancing_cursor(self):
+        import threading
+        cfg = load_config(overrides={"batch_size": 2, "accumulation": 1})
+        progress = {"step": 0, "offsets": {t: 0 for t in
+                    ("classification", "segmentation", "vqa", "temporal")}}
+        def prepare(task, batch):
+            return {**batch, "prepared_task": task, "worker": threading.current_thread().name}
+        stream = BatchPrefetch(IndexData(), cfg, progress, 1, 2, prepare=prepare)
+        try:
+            task, batches, marker = stream.next()
+            current, temporal = batches[0]
+            self.assertEqual(current["indices"], [2, 3])
+            self.assertEqual(current["prepared_task"], task)
+            self.assertEqual(temporal["prepared_task"], "temporal")
+            self.assertTrue(current["worker"].startswith("data-rank1"))
+            self.assertEqual(marker["offsets"]["classification"], 4)
+            self.assertTrue(all(v == 0 for v in progress["offsets"].values()))
+        finally:
+            stream.close()
+
     def test_one_time_or_step_budget(self):
         cfg = load_config(overrides={"total_hours": 8})
         progress = {"step": 3, "deadline_unix": 240}

@@ -1,5 +1,6 @@
 """Global patient holdouts for the joint Table 1 / Table 2 training protocol."""
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 import hashlib
 import json
 
@@ -17,6 +18,13 @@ class UnifiedData:
     def __init__(self, cfg, root=None):
         self.current = MultiTaskData(root=root, cfg=cfg)
         self.temporal = TemporalData(cfg["temporal_data"], cfg["bidirectional"], cfg.get("image_workers", 1))
+        # These are immutable source pixels, not learned features. Bound memory
+        # independently per source stream; nothing is written to disk.
+        capacity = cfg.get("decoded_image_cache", 0)
+        if capacity:
+            self.current._pixels = lru_cache(maxsize=capacity)(self.current._pixels)
+            self.current._vqa_image = lru_cache(maxsize=capacity)(self.current._vqa_image)
+            self.temporal._observation = lru_cache(maxsize=capacity)(self.temporal._observation)
         holdouts = patient_holdouts(self.current._records, self.temporal.observations)
         dropped = {}
         for task, splits in self.current._records.items():

@@ -27,12 +27,17 @@ class FrozenJEPA(nn.Module):
     def train(self, mode=True):
         return super().train(False)
 
-    @torch.no_grad()
-    def forward(self, images):
-        device = next(self.parameters()).device
+    @staticmethod
+    def prepare_pixels(images):
         arrays = [np.array(ImageOps.pad(im.convert("RGB"), (384, 384),
                           method=Image.Resampling.BICUBIC, color="black"), copy=True) for im in images]
-        pixels = torch.stack([torch.from_numpy(x).permute(2, 0, 1) for x in arrays]).to(device).float() / 255
+        return torch.stack([torch.from_numpy(x).permute(2, 0, 1) for x in arrays])
+
+    @torch.no_grad()
+    def forward(self, images, prepared_pixels=None):
+        device = next(self.parameters()).device
+        pixels = self.prepare_pixels(images) if prepared_pixels is None else prepared_pixels
+        pixels = pixels.to(device).float() / 255
         mean = pixels.new_tensor([.485, .456, .406])[None, :, None, None]
         std = pixels.new_tensor([.229, .224, .225])[None, :, None, None]
         # V-JEPA RoPE computes q/k in FP32 internally; autocast makes the SDPA

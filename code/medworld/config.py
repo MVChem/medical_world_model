@@ -36,6 +36,12 @@ DEFAULTS = {
     "ce_chunk_tokens": 32, "amp": False, "task_batch_sizes": {}, "prefetch_batches": 2, "image_workers": 1,
     "visual_consistency_weight": 0.0, "visual_consistency_views": 2,
     "total_hours": 0.0,
+    "require_fast_kernels": False,
+    "cpu_threads": 8,
+    "cpu_cores_per_rank": 8,
+    "prefetch_preprocessing": False,
+    "batched_vision_attention": False,
+    "decoded_image_cache": 0,
 }
 
 
@@ -71,7 +77,7 @@ def load_config(path=None, overrides=None, root=None):
     integers = ("decoder_width", "decoder_depth", "lora_rank", "lora_alpha", "vision_pixels", "answer_tokens", "context_tokens",
                 "generation_tokens", "predictor_width", "predictor_depth", "batch_size",
                 "accumulation", "steps",
-                "save_every", "validate_every", "validation_samples", "ce_chunk_tokens", "prefetch_batches", "image_workers", "visual_consistency_views")
+                "save_every", "validate_every", "validation_samples", "ce_chunk_tokens", "prefetch_batches", "image_workers", "visual_consistency_views", "cpu_threads", "cpu_cores_per_rank")
     for key in integers:
         if type(cfg[key]) is not int or cfg[key] <= 0:
             raise ValueError(f"{key} must be a positive integer")
@@ -87,6 +93,14 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError("slot_conditioning must be boolean")
     if type(cfg["amp"]) is not bool:
         raise ValueError("amp must be boolean")
+    if type(cfg["require_fast_kernels"]) is not bool:
+        raise ValueError("require_fast_kernels must be boolean")
+    if type(cfg["prefetch_preprocessing"]) is not bool:
+        raise ValueError("prefetch_preprocessing must be boolean")
+    if type(cfg["batched_vision_attention"]) is not bool:
+        raise ValueError("batched_vision_attention must be boolean")
+    if type(cfg["decoded_image_cache"]) is not int or cfg["decoded_image_cache"] < 0:
+        raise ValueError("decoded_image_cache must be a nonnegative integer")
     sizes = cfg["task_batch_sizes"]
     if (not isinstance(sizes, dict)
             or set(sizes) - (set(TASKS) | {"temporal"})

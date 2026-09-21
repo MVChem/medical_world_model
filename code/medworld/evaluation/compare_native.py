@@ -10,9 +10,14 @@ def compare_native(conditioned, native, out, tasks):
     conditioned, native, out = map(Path, (conditioned, native, out))
     raw = json.loads((native / 'summary.json').read_text())
     status = json.loads((native / 'status.json').read_text())
+    from ..run_experiment import native_spec
+    cfg = json.loads((conditioned / 'config.json').read_text())
+    spec = native_spec(cfg)
     if (status.get('status') != 'complete' or raw.get('partial') or raw.get('limit') is not None
-            or raw.get('split') != 'test' or raw.get('model_id') != 'qwen08b'):
-        raise ValueError('Expected complete native Qwen 0.8B test results')
+            or raw.get('split') != 'test' or raw.get('model_id') != spec['id']):
+        raise ValueError('Expected complete native ' + spec['label'] + ' test results')
+    if Path(raw.get('model', '')).resolve() != Path(cfg['qwen']).resolve():
+        raise ValueError('Native Qwen pretrained backbone path differs')
     checkpoint_hash = _sha256(conditioned / 'final.pt')
     protocol = json.loads((conditioned / 'data_protocol.json').read_text())
     import hashlib

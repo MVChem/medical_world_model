@@ -75,6 +75,11 @@ def main():
                     metrics = classification_metrics([r['labels'] for r in records], [r['probabilities'] for r in records], FINDINGS)
                 elif task == 'segmentation':
                     metrics = {'mean_dice': float(np.mean([r['mean_dice'] for r in records])),
+                               'mean_iou': float(np.mean([r['mean_iou'] for r in records])),
+                               'dice_per_organ': np.mean([r['dice_per_organ'] for r in records], axis=0).tolist(),
+                               'iou_per_organ': np.mean([r['iou_per_organ'] for r in records], axis=0).tolist(),
+                               'aggregation': 'equal-weight mean over organs within each image, then over images',
+                               'threshold': 0.5, 'empty_union_score': 1.0,
                                'target_kind': 'human two-lung masks' if a.split == 'human_test' else 'CXAS pseudo three-organ masks'}
                 else:
                     metrics = vqa_metrics(records)

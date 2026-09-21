@@ -19,10 +19,11 @@ def training_finished(progress, cfg, now):
 
 class BatchPrefetch:
     """Plan ahead without advancing the committed checkpoint cursor."""
-    def __init__(self, data, cfg, progress, rank, world_size):
+    def __init__(self, data, cfg, progress, rank, world_size, prepare=None):
         self.data, self.cfg, self.rank, self.world_size = data, cfg, rank, world_size
         self.planned = dict(progress["offsets"])
         self.step = progress["step"]
+        self.prepare = prepare
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"data-rank{rank}")
         self.queue = deque()
         for _ in range(cfg.get("prefetch_batches", 2)):
@@ -41,7 +42,10 @@ class BatchPrefetch:
         marker = {"offsets": dict(self.planned)}
         def load():
             def batch(request):
-                return self.data.training_batch(*request, self.cfg["seed"]) if request is not None else None
+                if request is None:
+                    return None
+                value = self.data.training_batch(*request, self.cfg["seed"])
+                return self.prepare(request[0], value) if self.prepare is not None else value
             return task, [(batch(current), batch(temporal)) for current, temporal in requests], marker
         self.queue.append(self.pool.submit(load))
         self.step += 1

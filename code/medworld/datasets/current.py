@@ -204,11 +204,15 @@ class MultiTaskData:
         from .pixels import human_target
         return human_target(self._dense_sources[row["index"]]).numpy()
 
-    def _example(self, task, split, row):
+    @staticmethod
+    def _vqa_image(path):
         from PIL import ImageOps
+        with Image.open(path) as image:
+            return ImageOps.pad(image.convert("RGB"), (512, 512), method=Image.Resampling.BICUBIC, color="black")
+
+    def _example(self, task, split, row):
         if task == "vqa":
-            with Image.open(row["image"]) as image:
-                image = ImageOps.pad(image.convert("RGB"), (512, 512), method=Image.Resampling.BICUBIC, color="black")
+            image = self._vqa_image(row["image"])
             return {"task": task, "split": split, "id": row["id"], "subject_id": str(row["subject_id"]),
                     "image": image, "question": row["question"], "answer": row["answer"],
                     "semantic_type": row.get("semantic_type", "diagnosis")}

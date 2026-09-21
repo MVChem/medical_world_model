@@ -7,4 +7,7 @@
 - [related_works/](related_works/README.md): related literature; PDFs stay local.
 - [results/](results/README.md): results explicitly selected for preservation.
 
+
+Sometimes, i will give you things like '01a0bdc7-97fd-73f2-895a-3a3a50a7f030' which is a id from the codex_chat app
+
 GPU rules: [AGENTS.md](AGENTS.md).

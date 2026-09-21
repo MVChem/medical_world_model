@@ -22,9 +22,16 @@ class MedWorld(nn.Module):
         super().__init__()
         from transformers import AutoProcessor, Qwen3_5ForConditionalGeneration
         self.cfg = dict(cfg)
+        from transformers.models.qwen3_5 import modeling_qwen3_5
+        fast_kernels = modeling_qwen3_5.is_fast_path_available
+        if cfg.get("require_fast_kernels") and not fast_kernels:
+            raise RuntimeError("Fast Qwen kernels required: install flash-linear-attention and causal-conv1d")
         base = Qwen3_5ForConditionalGeneration.from_pretrained(
             cfg["qwen"], local_files_only=True, dtype=torch.bfloat16, attn_implementation="sdpa")
         base.requires_grad_(False)
+        if cfg.get("batched_vision_attention"):
+            from .vision_attention import batch_vision_attention
+            batch_vision_attention(base.model.visual)
         # Clone the module tree before adding LoRA. Immutable pretrained tensors
         # remain shared, while encoder and decoder adapters are independent.
         decoder_language = shared_frozen_copy(base.model.language_model)
@@ -54,6 +61,8 @@ class MedWorld(nn.Module):
                 self.visual_reconstruction = SlotSpatialReconstruction()
         self.register_buffer("pos_weight", torch.ones(13))
         self.metadata = {
+            "qwen_fast_kernels": fast_kernels,
+            "batched_vision_attention": cfg.get("batched_vision_attention", False),
             "representation_objective": "visual_slot_spatial_consistency" if hasattr(self, "visual_reconstruction") else None,
             "training": "joint current-task and temporal loss from the first update",
             "architecture": "medworld_image_conditioned_v3", "slot_conditioning": cfg["slot_conditioning"], "state_shape": [8, 1024],
@@ -89,13 +98,28 @@ class MedWorld(nn.Module):
                 parts.update({"temporal_" + key: value for key, value in temporal_parts.items()})
         return loss, parts
 
-    def encode(self, images, texts=None, *, spatial=False, target=False, return_image_features=False):
+    def prepare_observation(self, images):
+        """CPU-only, exact preprocessing for the bounded batch prefetch worker."""
+        pixels = self.cfg["vision_pixels"]
+        return {"vision": self.processor.image_processor(
+                    images=images, return_tensors="pt", min_pixels=pixels**2, max_pixels=pixels**2),
+                "jepa": self.jepa.prepare_pixels(images)}
+
+    def prepare_batch(self, task, batch):
+        if task == "temporal":
+            for side in ("source", "target"):
+                batch[side]["prepared"] = self.prepare_observation(batch[side]["images"])
+        else:
+            batch["prepared"] = self.prepare_observation(batch["images"])
+        return batch
+
+    def encode(self, images, texts=None, *, spatial=False, target=False, return_image_features=False, prepared=None):
         if not images:
             raise ValueError("At least one observation image is required")
         encoder = self.target if target else self.encoder
         pixels = self.cfg["vision_pixels"]
-        inputs = self.processor.image_processor(images=images, return_tensors="pt",
-                                                min_pixels=pixels**2, max_pixels=pixels**2)
+        inputs = prepared["vision"] if prepared is not None else self.processor.image_processor(
+            images=images, return_tensors="pt", min_pixels=pixels**2, max_pixels=pixels**2)
         inputs = {k: v.to(self.device) for k, v in inputs.items() if torch.is_tensor(v)}
         if spatial:
             return encoder(inputs, spatial=True)
@@ -108,18 +132,18 @@ class MedWorld(nn.Module):
         texts = ["Chest radiograph observation." + ("\nReport:\n" + t if t else "") for t in texts]
         tokens = self.tokenizer(texts, padding=True, truncation=True,
                                 max_length=self.cfg["context_tokens"], return_tensors="pt")
-        features = self.jepa(images)
+        features = self.jepa(images, prepared_pixels=prepared["jepa"]) if prepared is not None else self.jepa(images)
         return encoder(inputs, tokens["input_ids"].to(self.device),
                        tokens["attention_mask"].to(self.device), features, return_image_features=return_image_features)
 
-    def task_inputs(self, images):
+    def task_inputs(self, images, prepared=None):
         """Image features are always present; slots are optional extra evidence."""
         if self.cfg["slot_conditioning"] or (self.training and hasattr(self, "visual_reconstruction")):
-            slots, features = self.encode(images, return_image_features=True)
+            slots, features = self.encode(images, return_image_features=True, prepared=prepared)
             return self.task_decoder(features, slots if self.cfg["slot_conditioning"] else None), slots
         pixels = self.cfg["vision_pixels"]
-        inputs = self.processor.image_processor(images=images, return_tensors="pt",
-                                                min_pixels=pixels**2, max_pixels=pixels**2)
+        inputs = prepared["vision"] if prepared is not None else self.processor.image_processor(
+            images=images, return_tensors="pt", min_pixels=pixels**2, max_pixels=pixels**2)
         inputs = {k: v.to(self.device) for k, v in inputs.items() if torch.is_tensor(v)}
         output = self.encoder.vision(hidden_states=inputs["pixel_values"].to(next(self.encoder.vision.parameters()).dtype),
                                      grid_thw=inputs["image_grid_thw"])

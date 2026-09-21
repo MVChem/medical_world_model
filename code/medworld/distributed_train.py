@@ -145,7 +145,8 @@ class DistributedTrainer:
         if self.progress["complete"]:
             return True
         self.model.train()
-        stream = BatchPrefetch(self.data, self.cfg, self.progress, self.rank, self.world_size)
+        prepare = self.model.prepare_batch if self.cfg.get("prefetch_preprocessing") else None
+        stream = BatchPrefetch(self.data, self.cfg, self.progress, self.rank, self.world_size, prepare=prepare)
         try:
             while True:
                 flags = torch.tensor([int(self.stop), int(training_finished(self.progress, self.cfg, time.time()))],
@@ -157,6 +158,11 @@ class DistributedTrainer:
                     self.progress["complete"] = bool(finished)
                     break
                 torch.cuda.reset_peak_memory_stats(self.device)
+                profiler = None
+                if self.progress["step"] + 1 == int(os.environ.get("MEDWORLD_PROFILE_STEP", "0")):
+                    import cProfile
+                    profiler = cProfile.Profile()
+                    profiler.enable()
                 start = time.monotonic()
                 task, batches, marker = stream.next()
                 data_seconds = time.monotonic() - start
@@ -186,6 +192,9 @@ class DistributedTrainer:
                 values /= self.world_size
                 torch.cuda.synchronize(self.device)
                 seconds = time.monotonic() - start
+                if profiler is not None:
+                    profiler.disable()
+                    profiler.dump_stats(str(self.out / f"rank{self.rank}_step{self.progress['step']}.prof"))
                 rank_stats = torch.tensor([seconds, data_seconds, torch.cuda.max_memory_allocated(self.device) / 1024**3,
                                            torch.cuda.max_memory_reserved(self.device) / 1024**3], device=self.device)
                 statistics = [torch.empty_like(rank_stats) for _ in range(self.world_size)]
@@ -240,7 +249,10 @@ def main():
         parser.error("Launch with torchrun on at least two GPUs")
     allowed = sorted(os.sched_getaffinity(0))
     threads = int(os.environ.get("OMP_NUM_THREADS", "8"))
-    selection = allowed[local_rank * threads:(local_rank + 1) * threads]
+    # Keep CPU cores available to image workers independently of the
+    # intra-op thread count; small tensor operations suffer from oversubscription.
+    cores = int(os.environ.get("MEDWORLD_CPU_CORES_PER_RANK", "8"))
+    selection = allowed[local_rank * cores:(local_rank + 1) * cores]
     if selection:
         os.sched_setaffinity(0, selection)
     torch.set_num_threads(threads)

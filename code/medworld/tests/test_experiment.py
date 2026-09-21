@@ -40,9 +40,11 @@ class ExperimentTests(unittest.TestCase):
             self.assertEqual(a, b)
             self.assertEqual(cfg['total_hours'], 3)
 
-    def run_fake(self, root, *, no_slots=True, qwen=True, hours=0, testing=True, mismatch=False):
+    def run_fake(self, root, *, no_slots=True, qwen=True, hours=0, testing=True, mismatch=False, model_id="qwen08b"):
         run = root / 'experiment'
-        cfg = load_config(overrides={'steps': 6, 'total_hours': hours,
+        from medworld_zero_shot_eval.models import models
+        spec = next(s for s in models() if s['id'] == model_id)
+        cfg = load_config(overrides={'steps': 6, 'total_hours': hours, 'qwen': spec['path'],
                           'baselines': {'no_slots': no_slots, 'qwen': qwen},
                           'testing': {'enabled': testing, 'tasks': ['classification', 'vqa'],
                                       'vqa_per_type': 100}})
@@ -65,7 +67,7 @@ class ExperimentTests(unittest.TestCase):
         def native(jobs, gpus, path, env):
             calls.append('qwen')
             args = jobs[0]['args']
-            self.assertEqual(args[args.index('--model') + 1], 'qwen08b')
+            self.assertEqual(args[args.index('--model') + 1], model_id)
             self.assertNotIn('--limit', args)
             self.assertIn(str(run / 'slots/config.json'), args)
 
@@ -90,6 +92,13 @@ class ExperimentTests(unittest.TestCase):
                         self.assertFalse(settings['baseline']['slot_conditioning'])
                     self.assertTrue(settings['slots']['slot_conditioning'])
                     self.assertEqual(json.loads((run / 'pipeline_status.json').read_text())['phase'], 'complete')
+
+    def test_9b_schedules_matching_native_backbone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            calls, settings, _ = self.run_fake(Path(tmp), model_id='qwen9b')
+            self.assertEqual(calls, ['slots', 'baseline', 'qwen'])
+            self.assertEqual(settings['slots']['qwen'], settings['baseline']['qwen'])
+            self.assertEqual(experiment.native_spec(settings['slots'])['id'], 'qwen9b')
 
     def test_time_budget_calibrates_both_then_trains_equal_steps_from_scratch(self):
         with tempfile.TemporaryDirectory() as tmp:

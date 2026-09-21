@@ -6,7 +6,8 @@ from ..datasets.vqa import INSTRUCTION
 
 
 def current_loss(model, task, batch, *, return_state=False):
-    features, slots = model.task_inputs(batch["images"])
+    prepared = {"prepared": batch["prepared"]} if "prepared" in batch else {}
+    features, slots = model.task_inputs(batch["images"], **prepared)
     if task == "classification":
         loss = finding_loss(model.classification(features), batch["labels"], batch["label_mask"], model.pos_weight)
     elif task == "segmentation":

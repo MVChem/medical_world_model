@@ -3,6 +3,7 @@ import argparse
 from datetime import datetime
 import fcntl
 import hashlib
+from importlib.metadata import PackageNotFoundError, version
 import json
 import os
 from pathlib import Path
@@ -127,16 +128,27 @@ def main():
         atomic(out / "requested_config.json", cfg)
     launch = {"launcher_pid": os.getpid(), "started_unix": time.time(), "started_local": datetime.now().isoformat(),
               "gpus": devices, "world_size": len(devices), "resume": args.resume, "project_root": str(PROJECT)}
+    packages = {}
+    for name in ("torch", "transformers", "triton", "flash-linear-attention", "fla-core", "causal-conv1d"):
+        try:
+            packages[name] = version(name)
+        except PackageNotFoundError:
+            packages[name] = None
+    launch["packages"] = packages
     atomic(out / "launch.json", launch)
+    runtime_cfg = cfg or json.loads((out / "requested_config.json").read_text())
+    cpu_threads = str(runtime_cfg.get("cpu_threads", 8))
+    cpu_cores = runtime_cfg.get("cpu_cores_per_rank", 8)
     environment = dict(os.environ, CUDA_VISIBLE_DEVICES=",".join(d["uuid"] for d in devices),
                        MEDWORLD_PROJECT_ROOT=str(PROJECT), PYTHONPATH=str(out / "source"),
-                       OMP_NUM_THREADS="8", MKL_NUM_THREADS="8", TOKENIZERS_PARALLELISM="false",
+                       OMP_NUM_THREADS=cpu_threads, MKL_NUM_THREADS=cpu_threads, TOKENIZERS_PARALLELISM="false",
+                       MEDWORLD_CPU_CORES_PER_RANK=str(cpu_cores),
                        HF_HUB_OFFLINE="1", TORCH_NCCL_ASYNC_ERROR_HANDLING="1", NCCL_DEBUG="WARN",
                        PYTHONUNBUFFERED="1")
     if args.cpu_base is not None:
         allowed = set(os.sched_getaffinity(0))
-        selected = allowed & set(range(args.cpu_base, args.cpu_base + len(devices) * 8))
-        if len(selected) != len(devices) * 8:
+        selected = allowed & set(range(args.cpu_base, args.cpu_base + len(devices) * cpu_cores))
+        if len(selected) != len(devices) * cpu_cores:
             raise ValueError("Requested CPU affinity is unavailable")
         os.sched_setaffinity(0, selected)
         launch["cpu_affinity"] = sorted(selected)

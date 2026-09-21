@@ -12,3 +12,7 @@
 - Keep experiment indexes brief and in English. Store detailed configurations, logs, and results in the original run directories; do not create per-experiment folders under `experiments/`.
 - Register ongoing experiments in `experiments/registry.json` with an ID, short summary, status, observation timestamp, and links to the run and live status. Use repository-relative paths.
 - When an experiment completes, fails, or is interrupted, move its entry to the history in `experiments/README.md`, recording the date, outcome, and run link.
+
+# Evaluation Policy
+
+- Every completed MedWorld training experiment must evaluate segmentation on both the held-out CXAS pseudo-mask test set and the human lung-mask test set, alongside classification and VQA. Report mean IoU and Dice for both trained arms. Calibration/smoke runs may disable evaluation. Native Qwen has no segmentation head; report its segmentation results as N/A.

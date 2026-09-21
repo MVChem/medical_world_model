@@ -32,8 +32,8 @@ def compare(baseline, conditioned, out):
         raise ValueError('Both runs must select the same enabled tests')
     rows = []
     for task, folder, keys in [('classification', 'classification', ('macro_auroc', 'macro_ap')),
-                               ('segmentation', 'segmentation', ('mean_dice',)),
-                               ('segmentation', 'segmentation_human', ('mean_dice',)),
+                               ('segmentation', 'segmentation', ('mean_dice', 'mean_iou')),
+                               ('segmentation', 'segmentation_human', ('mean_dice', 'mean_iou')),
                                ('vqa', 'vqa', ('exact_match', 'micro_f1'))]:
         if task not in testing['tasks'] or (folder == 'segmentation_human' and not testing['human_segmentation']):
             continue

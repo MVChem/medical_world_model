@@ -1,5 +1,9 @@
 # Experiments
 
+## Evaluation archives
+
+- [Slots vs no-slots evaluation · 20260921](slots_segmentation_evaluation_20260921/README.md): Codex Chat ID, segmentation Dice/IoU, classification and VQA results, and source links.
+
 ## Demos
 
 | Demo | Description | Open | Source and setup |
@@ -38,6 +42,13 @@ Details remain in the linked run directories. When a run ends, move its entry he
 | 2026-09-20 | `native_four_models_20260920` | Interrupted at user request; replaced by serial test-only evaluation. | Original run `code/medworld_zero_shot_eval/runs/native_four_models_20260920/` deleted at user request. |
 | 2026-09-20 | `native_serial_test_20260920` | Interrupted: replaced by balanced 300-question VQA protocol. | Superseded run deleted per requested run cleanup. |
 | 2026-09-20 | `native_serial_vqa300_20260920` | Failed or partial; see per-model status and logs. | [Run](../code/medworld_zero_shot_eval/runs/native_serial_vqa300_20260920/) |
-| 2026-09-20 | `throughput_probe_20260920` | Completed: batch scaling 1x/2x/4x, three tasks with temporal supervision. | [Run](../code/medworld/runs/throughput_probe_20260920/) |
+| 2026-09-20 | `throughput_probe_20260920` | Completed: batch scaling 1x/2x/4x, three tasks with temporal supervision. | Deleted at user request on 2026-09-20; former run: `code/medworld/runs/throughput_probe_20260920/` |
 | 2026-09-20 | `native_retest_vqa300_20260920` | Completed: all four native models evaluated. | [Run](../code/medworld_zero_shot_eval/runs/native_retest_vqa300_20260920/) |
-| 2026-09-20 | `qwen35_08b_vssc_2gpu_3h_20260920` | Completed configured tests: classification, vqa. | [Run](../code/medworld/runs/qwen35_08b_vssc_2gpu_3h_20260920/) |
+| 2026-09-20 | `qwen35_08b_vssc_2gpu_3h_20260920` | Completed configured tests: classification, vqa. | Deleted at user request on 2026-09-20; former run: `code/medworld/runs/qwen35_08b_vssc_2gpu_3h_20260920/` |
+| 2026-09-20 | `paired_vssc_2gpu_16h_20260920` | Failed; see pipeline_status.json and original run logs. | Deleted at user request on 2026-09-20; former run: `code/medworld/runs/paired_vssc_2gpu_16h_20260920/` |
+| 2026-09-20 | `throughput_tuning_20260920` | Completed: 49 tests, preprocessing/attention checks and two-GPU throughput probes; fresh 12-hour run launched. | [Run](../code/medworld/runs/throughput_tuning_20260920/) |
+| 2026-09-20 | `paired_vssc_2gpu_12h_fast_20260920_slots` | Completed configured tests: classification, vqa. | [Run](../code/medworld/runs/paired_vssc_2gpu_12h_fast_20260920/slots/) |
+| 2026-09-21 | `paired_vssc_2gpu_12h_fast_20260920_baseline` | Completed configured tests: classification, vqa. | [Run](../code/medworld/runs/paired_vssc_2gpu_12h_fast_20260920/baseline/) |
+| 2026-09-21 | `paired_vssc_2gpu_12h_fast_20260920` | Completed: slots and no-slots training; selected tests and native Qwen comparison. | [Run](../code/medworld/runs/paired_vssc_2gpu_12h_fast_20260920/) |
+| 2026-09-21 | `segmentation_backfill_20260921` | Completed full pseudo-mask (447) and human-mask (138) segmentation tests for both trained arms; Dice and IoU merged into parent comparison. | [Run](../code/medworld/runs/paired_vssc_2gpu_12h_fast_20260920/segmentation_backfill_20260921/) |
+| 2026-09-21 | `qwen35_9b_preflight_20260921` | Passed: 51 tests, real-data capacity, two-GPU three-task training, reload and native 9B inference; both mask evaluations checked. | [Run](../code/medworld/runs/qwen35_9b_preflight_20260921/) |
