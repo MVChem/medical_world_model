@@ -18,46 +18,21 @@
 \subsection{State Representation}
 \label{sec:state_representation}
 
-\paragraph{Shared multimodal state encoding.}
-Current and follow-up observations share an encoding design with $K=8$ slots of width $d=1024$. We use image--report pairs for longitudinal prediction; image-based downstream evaluation withholds the same-exam report. State construction precedes both the task query and horizon. The two slot groups retain distinct feature sources throughout their readout and alignment.
-
-\paragraph{Visual and vision--language feature sources.}
-A frozen JEPA encoder $f_\theta$ provides spatial features~\citep{assran2023ijepa,bardes2024vjepa,murlabadia2026vjepa21}, mapped by a trainable visual adapter $a_\rho$ into the VLM embedding space of width $d_L$:
+\paragraph{Eight-slot multimodal state.}
+We encode each observation as four vision--language slots and four visual slots (\cref{fig:task_supervised_slots}). The vision--language branch fuses adapted frozen JEPA features with the available report; the visual branch uses the VLM's pre-fusion vision features. Learned readouts extract one slot from each of four depths per branch:
 \begin{equation}
     \begin{aligned}
-        D_\tau&=f_\theta(X_\tau)\in\mathbb R^{N_D\times d_D},\\
-        V_\tau&=a_\rho(D_\tau)\in\mathbb R^{N_V\times d_L}.
-    \end{aligned}
-    \label{eq:visual_evidence}
-\end{equation}
-The JEPA features are pooled to an $8\times8$ grid and mapped to 64 language-width tokens with learned positional embeddings. The VLM fuses these tokens with available text embeddings, yielding layerwise hidden states $H_\tau^{(\ell)}$. In parallel, the VLM's own vision encoder processes $X_\tau$ to produce visual features $F_\tau^{(k)}$ before language fusion. These native visual features supply the last four slots; the JEPA-to-VLM adapter and the slot readouts below have separate roles.
-
-\paragraph{Multi-scale slot construction.}
-As shown in Figure~\ref{fig:task_supervised_slots}, we select four depths from each source: one early layer, two intermediate layers, and the final layer. Let $\ell_j$ and $k_j$, $j=1,\ldots,4$, index the selected fusion and visual layers. Multi-scale refers to this hierarchy of representation depths. The lightweight adapter aggregates each selected feature sequence and projects it to one $d$-dimensional slot using source-specific learned readouts $r_j^{\mathrm{f}}$ and $r_j^{\mathrm{v}}$:
-\begin{equation}
-    \begin{aligned}
-        s_{\tau,j}^{\mathrm{f}}&=r_j^{\mathrm{f}}(H_\tau^{(\ell_j)})\in\mathbb R^d,\\
-        s_{\tau,j}^{\mathrm{v}}&=r_j^{\mathrm{v}}(F_\tau^{(k_j)})\in\mathbb R^d,\\
-        S_\tau&=E_\eta(O_\tau)=[S_\tau^{\mathrm{f}};S_\tau^{\mathrm{v}}]
-        \in\mathbb R^{8\times d}.
+        s_{\tau,j}^{\mathrm{f}} &= r_j^{\mathrm{f}}(H_\tau^{(\ell_j)}),\quad
+        s_{\tau,j}^{\mathrm{v}} = r_j^{\mathrm{v}}(F_\tau^{(k_j)}),\\
+        S_\tau &= E_\eta(O_\tau)=[S_\tau^{\mathrm{f}};S_\tau^{\mathrm{v}}]
+        \in\mathbb R^{8\times d},
     \end{aligned}
     \label{eq:vlm_state}
 \end{equation}
-For Qwen3.5-0.8B, the selected language layers are 6, 12, 18, and 24, and the vision layers are 3, 6, 9, and 12 (one-based). Four learned query tokens follow the visual prefix and observation text; fusion readout $j$ projects query token $j$ at language layer $\ell_j$. Each visual readout projects its layer's patch tokens, applies learned-query attention pooling, and normalizes the pooled vector plus its query. Each group stacks its four slots in depth order: $S_\tau^{\mathrm{f}}=S_{\tau,1:4}$ and $S_\tau^{\mathrm{v}}=S_{\tau,5:8}$. Alignment gives them a common width while preserving their sources; visual readouts do not receive fused or report features. Slots vary with the observation, with no fixed assignment to diseases, organs, or image regions. All eight enter the world model without further pooling. The encoder parameters $\eta$ comprise the adapters, slot readouts, and selected VLM parameters.
+where $j=1,\ldots,4$ and $d=1024$. The selected depths span early, intermediate, and final layers. All eight slots support task decoding and temporal prediction; state construction is independent of the task query and forecast horizon.
 
-\paragraph{Image-conditioned task readout.}
-Let $I_\tau$ denote the final native Qwen image tokens after its vision merger. The shared task decoder projects these tokens and the eight state slots to width 256, adds spatial positions to image tokens and learned type embeddings to slots, and applies two eight-head Transformer layers. Only its image-token outputs are retained:
-\begin{equation}
-    \begin{aligned}
-        Z_\tau &= T_\omega\bigl([\pi_I(I_\tau);\pi_S(S_\tau)]\bigr)_{1:N_I},\\
-        \widehat y_\tau^{(q)} &= H_{\omega_q}(Z_\tau,Q_q).
-    \end{aligned}
-    \label{eq:task_interface}
-\end{equation}
-Positions and type embeddings are implicit in this notation. Classification uses finding-specific attention queries over $Z_\tau$ and predicts 13 labels. For VQA, projected $Z_\tau$ tokens precede the question and a fixed answer-format instruction in a Qwen language decoder; token cross-entropy supervises a serialized JSON answer list. Segmentation reshapes $Z_\tau$ into a spatial grid and uses a convolutional upsampling head for the two lungs and heart. All three tasks retain image evidence and can use all eight slots, including during segmentation. The same-exam report and VQA question are absent from state construction; the question enters only the VQA readout.
-
-\paragraph{Matched no-slots control.}
-The control uses the same image encoder, Transformer task decoder, and task heads, but omits $\pi_S(S_\tau)$ from the decoder input. It is trained independently with matched data, effective batches, and optimizer updates. Both arms retain the temporal objective and, when enabled, visual consistency supervision. Thus this control tests the contribution of slot conditioning to task decoding, rather than removing state learning from the entire training system. A native zero-shot Qwen checkpoint is a separate reference; neither comparison substitutes for direct task fine-tuning of Qwen through its pretrained interface.
+\paragraph{Visual Slot Spatial Consistency (VSSC).}
+To preserve spatial information in the four visual slots, an auxiliary decoder reconstructs a dense feature field solely from $S_\tau^{\mathrm{v}}$. We align this field with frozen native-vision teacher features from the original image and two independently encoded crops. Matching spatial transformations and channel normalization precede a squared-error loss over valid regions, denoted $\mathcal L_{\mathrm{VSSC}}$. This training-only objective supervises the visual-slot encoder during segmentation updates.
 
 \subsection{State Prediction}
 \label{sec:state_prediction}
@@ -110,19 +85,24 @@ Starting from pretrained JEPA and VLM weights, we jointly train the adapters, mu
       \left[\ell_q\!\left(\widehat y_i^{(q)},y_i^{(q)}\right)\right],
     \label{eq:task_loss}
 \end{equation}
-where $\mathcal Q$ contains the three tasks and $\mathcal D_q$ is the corresponding training pool. Each prediction uses the shared image-conditioned decoder in \cref{eq:task_interface}. Classification uses class-weighted binary cross-entropy with unknown and uncertain labels masked, VQA uses token cross-entropy, and segmentation uses Dice and pixelwise binary cross-entropy.
+where $\mathcal Q$ contains the three tasks and $\mathcal D_q$ is the corresponding training pool. Each task combines native image tokens $I_\tau$ with the state through a shared Transformer decoder:
+\begin{equation}
+    \begin{aligned}
+        Z_\tau &= T_\omega\bigl([\pi_I(I_\tau);\pi_S(S_\tau)]\bigr)_{1:N_I},\\
+        \widehat y_\tau^{(q)} &= H_{\omega_q}(Z_\tau,Q_q).
+    \end{aligned}
+    \label{eq:task_interface}
+\end{equation}
+Here $\pi_I$ and $\pi_S$ project image tokens and slots to a common width; $H_{\omega_q}$ is the task-specific head. The VQA question enters only the task readout. Classification uses class-weighted binary cross-entropy with unknown and uncertain labels masked, VQA uses token cross-entropy, and segmentation uses Dice and pixelwise binary cross-entropy.
 
 There is no stop-gradient between the task decoders and slot readouts. Task gradients flow through $S$ into the learned aggregation/projection modules and any adapted source layers, jointly with decoder updates. All three tasks supervise both slot groups through the shared task decoder. Thus training updates the shared parameters that produce observation-dependent slots, rather than treating each sample's slots as independent optimization variables. Current-task inputs withhold the same-exam report. Encoder and VQA-decoder LoRA parameters are independent, while immutable pretrained language weights share storage.
-
-\paragraph{Optional visual slot spatial consistency.}
-During segmentation updates, an auxiliary reconstruction module maps the four visual slots to a spatial feature field without reading image pixels. A frozen, unadapted Qwen vision teacher supplies feature targets for the original input and two independently encoded deterministic crops. The reconstructed field undergoes matching spatial transformations and is compared with channel-normalized teacher features over valid image regions. The maintained training configuration adds this loss with weight 0.1; the base configuration disables it. This objective updates the visual-slot encoder and auxiliary reconstruction module whenever the current-task component is segmentation; it is inactive during evaluation.
 
 \paragraph{Joint objective.}
 Every optimizer update combines a current-task batch with directed same-patient observation pairs, primarily from MIMIC-CXR~\citep{johnson2019mimiccxr}. The expected objective is
 \begin{equation}
     \mathcal L_{\mathrm{joint}}
     =\lambda_S\mathcal L_{\mathrm{future}}+\mathcal L_{\mathrm{task}}
-     +\lambda_V\mathcal L_{\mathrm{VSC}},
+     +\lambda_V\mathcal L_{\mathrm{VSSC}},
     \label{eq:joint_loss}
 \end{equation}
 where $\lambda_S=1$ and $\lambda_V=0.1$ when visual consistency is enabled. The consistency term is zero outside segmentation updates; its expectation follows the same three-task cycle. The latent loss updates the predictor and source-state encoder, while the task loss updates the shared decoder, active task head, and its input pathways. There are no future-report or future-finding losses in this implementation. JEPA remains frozen. Temporal prediction and downstream task performance require separate held-out evaluations.
