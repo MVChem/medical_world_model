@@ -1,27 +1,32 @@
-\begin{table*}[t]
-\caption{Future-state prediction on MIMIC-CXR and linked MIMIC-IV records. Visual representation models are adapted with temporal predictors and task-specific readouts. Acc., BAcc., and LOS denote accuracy, balanced accuracy, and length of stay, respectively. Arrows indicate the preferred direction.}
-\label{tab:future_prediction}
+\begin{table*}[!t]
 \centering
+\caption{Future-state prediction on MIMIC-CXR and linked MIMIC-IV records. Acc.: future VQA accuracy; BAcc.: progression balanced accuracy; F1: RadGraph F1 for future reports; AUROC: 30-day mortality prediction; MAE: remaining length-of-stay error in days. Visual representation models use temporal predictors and task-specific readouts. Arrows indicate the preferred direction.}
+\label{tab:future_prediction}
 \begingroup
 \small
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.14}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lrrrrr@{}}
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{@{}L{0.34\textwidth}*{5}{C{\dimexpr0.132\textwidth-2\tabcolsep\relax}}@{}}
 \toprule
-Method & \shortstack[r]{Future VQA\\Acc. $\uparrow$}
- & \shortstack[r]{Progression\\BAcc. $\uparrow$}
- & \shortstack[r]{Report\\RadGraph F1 $\uparrow$}
- & \shortstack[r]{30-day Mortality\\AUROC $\uparrow$}
- & \shortstack[r]{Remaining LOS\\MAE (days) $\downarrow$} \\
+\rowcolor{gray!25}
+\textbf{Method} & \textbf{Acc.} $\uparrow$ & \textbf{BAcc.} $\uparrow$ & \textbf{F1} $\uparrow$ & \textbf{AUROC} $\uparrow$ & \textbf{MAE} $\downarrow$ \\
 \midrule
+\rowcolor{gray!10}
 Persistence / Copy Current & --- & --- & --- & N/A & N/A \\
+\midrule
+MedGemma-1.5-4B & --- & --- & --- & --- & --- \\
+\rowcolor{gray!10}
+Qwen3.5-9B & --- & --- & --- & --- & --- \\
+\midrule
 DINOv2 + predictor & --- & --- & --- & --- & --- \\
+\rowcolor{gray!10}
 RAD-DINO + predictor & --- & --- & --- & --- & --- \\
 CheXWorld + predictor & --- & --- & --- & --- & --- \\
-Qwen3.5-9B & --- & --- & --- & --- & --- \\
-MedGemma-1.5-4B & --- & --- & --- & --- & --- \\
+\midrule
+\rowcolor{gray!10}
 MedWorld-JEPA & --- & --- & --- & --- & --- \\
 \bottomrule
-\end{tabular*}
+\end{tabular}
 \endgroup
+\vspace{-2mm}
 \end{table*}
