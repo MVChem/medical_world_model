@@ -17,39 +17,11 @@ For future clinical VQA, the model answers questions about findings in a subsequ
 
 We further assess clinical outcomes using linked MIMIC-IV records. Mortality prediction estimates the risk of death within 30 days of the source examination and is evaluated using AUROC. Remaining length-of-stay estimation predicts the time from the source examination to the end of the corresponding hospitalization, measured by mean absolute error in days. Outcome evaluation includes eligible patients regardless of whether they undergo subsequent imaging. We additionally compare current-state-only readouts with those using predicted states to assess the contribution of temporal prediction.
 
-\subsection{Downstream tasks}
+\subsection{Downstream Task Evaluation}
 
-\Cref{tab:downstream_tasks} covers classification, VQA, and segmentation,
-without invoking the future predictor at inference. All tasks use image-only
-observations; VQA additionally supplies the question to its readout. The shared
-task decoder always receives native image tokens, with all eight slots added
-in \method{} and omitted in the independently trained no-slots control.
+We evaluate the utility of learned state slots for image classification, visual question answering (VQA), and segmentation. The baseline uses image features with task-specific decoders. We augment this baseline with auxiliary features from DINOv2, RAD-DINO, and X-WIN, or with our learned state slots. These variants share the same task-decoder architectures, training splits, and number of optimization steps. We additionally evaluate Qwen3.5-9B through zero-shot prompting for classification and VQA.
 
-Classification reports macro AUROC and non-interpolated AP over supported
-labels among 13 MIMIC finding/device categories, with uncertain and missing
-labels masked. The 353-image test set supports both classes for 11 labels.
-Native checkpoints use Yes/No answer likelihoods; adapted models use a
-supervised classification head. VQA samples 100 Verify, 100 Choose, and 100
-Query questions from the official MIMIC-CXR-VQA test split using seed 42,
-covering 225 distinct images. We report exact answer-set match (EM) and micro
-F1 under the same JSON parsing and answer vocabulary for all models.
-This is a fixed subset protocol, not a full-benchmark result.
-
-Among the evaluated native checkpoints, MedGemma-1.5-4B reaches the highest
-classification AUROC/AP (71.54/85.30), while Qwen3.5-4B reaches the highest
-VQA EM/micro F1 (42.33/42.25). Strict parsing yields 52, 40, 147, and 206
-invalid answers for Qwen3.5-0.8B, 4B, 9B, and MedGemma, respectively.
-These scores reflect both answer content and compliance with the output
-format; they do not establish a general ordering of model capabilities.
-
-Segmentation will report lung Dice and mean IoU on 138 Montgomery images with human
-annotations. Agreement with CXAS pseudo-labels is reserved for supplementary
-analysis. Final segmentation testing is not enabled in the current paired
-run, so neither trained row has a segmentation score yet. The matched
-with/without-slots comparison also remains pending for classification and VQA.
-Gains over native zero-shot checkpoints would measure the entire adapted
-system; isolating slot conditioning requires the matched control, and assessing
-its value beyond task adaptation additionally requires native Qwen fine-tuning.
+\Cref{tab:downstream_tasks} compares performance across the three tasks. Classification is evaluated using macro-averaged AUROC (AUC) and average precision (AP). For VQA, we report exact match (EM) and micro-averaged F1 ($\mu$F1). Segmentation is evaluated using Dice and intersection over union (IoU). All tasks concern the current examination, with the question provided as an additional input for VQA.
 
 \subsection{Patient trajectory}
 \label{sec:patient_trajectory}

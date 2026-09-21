@@ -1,27 +1,31 @@
 \begin{table}[t]
-\caption{Three downstream tasks with image-only observations. All scores are percentages ($\uparrow$); ZS: zero-shot.}
-\label{tab:downstream_tasks}
 \centering
+\caption{Downstream task evaluation with different auxiliary representations. Each ``+'' row independently augments the baseline. ZS denotes zero-shot inference. Higher is better for all metrics.}
+\label{tab:downstream_tasks}
 \begingroup
 \fontsize{7.5}{8.7}\selectfont
 \setlength{\tabcolsep}{2pt}
 \renewcommand{\arraystretch}{1.12}
-\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lrrrrrr@{}}
+\begin{tabular}{L{\dimexpr0.40\columnwidth-2\tabcolsep\relax}*{6}{C{\dimexpr0.10\columnwidth-2\tabcolsep\relax}}}
 \toprule
  & \multicolumn{2}{c}{Classification}
  & \multicolumn{2}{c}{VQA}
  & \multicolumn{2}{c}{Segmentation} \\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
-Method & AUC & AP & EM & $\mu$F1 & Dice & IoU \\
+\rowcolor{gray!25}
+\textbf{Method} & \textbf{AUC} & \textbf{AP} & \textbf{EM} & $\boldsymbol{\mu}$\textbf{F1} & \textbf{Dice} & \textbf{IoU} \\
 \midrule
-Qwen3.5-0.8B$^{\mathrm{ZS}}$ & & & & & & \\
-Qwen3.5-4B$^{\mathrm{ZS}}$ & & & & & & \\
-Qwen3.5-9B$^{\mathrm{ZS}}$ & & & & & & \\
-MedGemma-1.5-4B$^{\mathrm{ZS}}$ & & & & & & \\
+Baseline & --- & --- & --- & --- & --- & --- \\
+\rowcolor{gray!10}
+Qwen3.5-9B$^{\mathrm{ZS}}$ & --- & --- & --- & --- & N/A & N/A \\
 \midrule
-Qwen-0.8B no slots & & & & & & \\
-\textbf{\method{}} & & & & & & \\
++ DINOv2 features & --- & --- & --- & --- & --- & --- \\
+\rowcolor{gray!10}
++ RAD-DINO features & --- & --- & --- & --- & --- & --- \\
++ X-WIN features & --- & --- & --- & --- & --- & --- \\
+\rowcolor{gray!10}
++ MedWorld-JEPA slots & --- & --- & --- & --- & --- & --- \\
 \bottomrule
-\end{tabular*}
-\endgroup\par
+\end{tabular}
+\endgroup
 \end{table}
