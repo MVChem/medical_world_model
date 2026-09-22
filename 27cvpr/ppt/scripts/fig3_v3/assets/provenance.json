@@ -1,0 +1,22 @@
+{
+  "source_image": "code/data/MIMIC_CXR/files/p10/p10000032/s50414267/02aa804e-bde0afdd-112c0b34-7bc16630-4e384014.jpg",
+  "source_report": "code/data/MIMIC_CXR/files/p10/p10000032/s50414267.txt",
+  "view": "PA",
+  "original_size": [
+    2544,
+    3056
+  ],
+  "crop_box": [
+    330,
+    152,
+    2480,
+    2674
+  ],
+  "saved_size": [
+    873,
+    1024
+  ],
+  "report_excerpt": "There is no focal consolidation, pleural effusion or pneumothorax. No acute cardiopulmonary process.",
+  "report_on_slide": "Findings:\nNo focal\nconsolidation.\nNo acute ...",
+  "feature_map_note": "Deterministic illustrative fields generated from CXR texture and analytic spatial functions. Not learned model attention, segmentation, or measured reconstruction."
+}
