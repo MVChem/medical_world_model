@@ -11,4 +11,5 @@ Keep PowerPoint sources and images in Git; PDFs stay local and can be rebuilt wi
 
 Use the `image-to-ppt` skill to recreate reference images as editable PowerPoint figures.
 
+- [Figure 1 — patient state concept](ppt/fig1_v1.pptx): [preview](ppt/fig1_v1.png), [rebuild script and notes](scripts/fig1_v1/README.md).
 - [Figure 3 — editable CXR version](ppt/fig3_v3.pptx): [preview](ppt/fig3_v3.png), [rebuild script and notes](scripts/fig3_v3/README.md). Feature fields are illustrative, not model results.

@@ -1,4 +1,4 @@
-# Introduction concept figure
+# Figure 1 — patient state concept
 
 Recreates the supplied reference as a single editable slide, keeping its 2048:762 aspect ratio. Used by `sections/1_introduction.tex`.
 
@@ -7,8 +7,8 @@ From this directory:
 ```sh
 python -m pip install python-pptx Pillow
 python build.py
-libreoffice --headless --convert-to pdf --outdir ../../ppt ../../ppt/intro_concept.pptx
-pdftoppm -scale-to 2048 -png -singlefile ../../ppt/intro_concept.pdf ../../ppt/intro_concept
+libreoffice --headless --convert-to pdf --outdir ../../ppt ../../ppt/fig1_v1.pptx
+pdftoppm -scale-to 2048 -png -singlefile ../../ppt/fig1_v1.pdf ../../ppt/fig1_v1
 ```
 
 Paths are relative to this script; assets are included. The manuscript build can regenerate the local PDF from the tracked PPTX. PDFs are not committed.
