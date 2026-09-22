@@ -1,0 +1,25 @@
+% Replace these panels only after retrieval and longitudinal records are verified.
+\begin{figure*}[t]
+    \centering
+    \begin{minipage}[t]{0.38\textwidth}
+        \candidatefigureplaceholder{(a) Patient state space}
+        \par\smallskip
+        {\footnotesize UMAP colored by clinical labels; star-shaped query
+        and circled Top-3 retrieved cases.}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.59\textwidth}
+        \candidatefigureplaceholder{(b) Similar-patient retrieval}
+        \par\smallskip
+        {\footnotesize Query MRI and findings; three retrieved-case rows:\\
+        State at retrieval $\rightarrow$ Observed treatment (if documented)
+        $\rightarrow$ Follow-up outcome and interval.}
+    \end{minipage}
+    \caption{\textbf{Patient state space and similar-case retrieval.}
+    Planned visualization: (a) examination-level patient states with a query
+    and its Top-3 matches, retrieved in the original representation space
+    before projection; (b) the query and three distinct retrieved patients,
+    showing current states and observed subsequent records. All examinations
+    from the query patient are excluded. Follow-up information is used only
+    for display; treatment entries require verified records.}
+    \label{fig:candidate_patient_retrieval}
+\end{figure*}

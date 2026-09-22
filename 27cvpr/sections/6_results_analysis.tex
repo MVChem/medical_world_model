@@ -49,3 +49,27 @@ and the maps do not establish future lesion locations or forecasting accuracy.
 Weight export and verification of the token-to-image mapping remain pending.
 
 \input{sections/candidate_slot_attention}
+
+\subsection{Patient Similarity and Retrieval}
+\label{sec:patient_similarity}
+
+\Cref{fig:candidate_patient_retrieval} reserves a qualitative analysis of
+whether patient states support cross-patient retrieval in longitudinal brain
+MRI. We plan to retrieve the three nearest cases in the original patient-state
+space using only information available at the current examination, excluding
+all examinations from the query patient and selecting distinct retrieved
+patients. A two-dimensional UMAP projection will display examination-level
+states colored by observed clinical labels, with the query and retrieved cases
+highlighted. Retrieval is performed before projection; the projected layout
+serves only as a visualization.
+
+The accompanying case panel will show the query MRI and brief findings,
+followed by each retrieved patient's state at retrieval and observed follow-up
+findings with elapsed times. Treatment records will be included only where
+reliable documentation is available. Subsequent treatments and outcomes are
+displayed for context and do not enter the retrieval representation. This
+analysis illustrates the histories of similar patients without establishing
+treatment effects or a preferred treatment for the query. Case selection,
+record verification, and retrieval results remain pending.
+
+\input{sections/candidate_patient_retrieval}
