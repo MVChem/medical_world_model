@@ -1,6 +1,6 @@
 LATEXMK := latexmk -pdf -interaction=nonstopmode -halt-on-error
 PYTHON ?= python3
-MAIN_FIGURES := ppt/ppt/fig1_v8.pdf ppt/source/fig2_v4.png
+MAIN_FIGURES := ppt/ppt/intro_concept.pdf ppt/ppt/fig1_v8.pdf ppt/source/fig2_v4.png
 APPENDIX_FIGURE := ppt/ppt/appendix_fig1_v1.pdf
 
 .PHONY: all paper supplementary figures clean
@@ -16,6 +16,9 @@ supplementary: paper $(APPENDIX_FIGURE)
 	$(LATEXMK) supplementary.tex
 
 figures: $(MAIN_FIGURES) $(APPENDIX_FIGURE)
+
+ppt/ppt/intro_concept.pdf: ppt/ppt/intro_concept.pptx
+	libreoffice --headless --convert-to pdf --outdir ppt/ppt $<
 
 ppt/ppt/%.pdf: ppt/ppt/%.pptx ppt/scripts/export_pdf/build.py
 	$(PYTHON) ppt/scripts/export_pdf/build.py $<
