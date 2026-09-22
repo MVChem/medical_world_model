@@ -20,15 +20,11 @@ We further assess clinical outcomes using linked MIMIC-IV records. Mortality pre
 \paragraph{Patient trajectory.}
 \label{sec:patient_trajectory}
 
-\Cref{fig:candidate_longitudinal_forecasting} reserves a longitudinal case study
-with four to five observations from one test patient. The planned analysis
-predicts each follow-up independently from the same Day~0 radiograph and report,
-conditioned on the actual elapsed time. Observed follow-up images and reports
-provide references only. Predicted reports and finding probabilities will be
-compared with Copy Current and a matched forecaster at the irregular observation
-times. This is fixed-origin, multi-horizon forecasting; connecting the predictions
-does not constitute an autoregressive rollout. Case selection and predictions
-remain pending.
+\Cref{fig:candidate_longitudinal_forecasting} shows a held-out case using frozen
+MedWorld checkpoints with trained finding probes. Each forecast uses only the
+initial radiograph, its report, and elapsed time; follow-ups serve as references.
+The green-box text displays probabilities through a fixed template.
+Further experiments will assess forecasting accuracy.
 
 \subsection{Downstream Task Evaluation}
 

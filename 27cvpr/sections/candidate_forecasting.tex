@@ -1,15 +1,13 @@
-% Selected plan: research_notes/0917_trajectory_and_slot_attention_plan.md at Git commit 31c98ca.
-% Replace the placeholder only with verified fixed-origin test-case outputs.
+% Interim empirical figure; further forecasting experiments are pending.
+% Source: code/fig4_v1/runs/forecast_9b_2048_20260922/figure/figure/fig4_v1.pdf.
 \begin{figure*}[t]
     \centering
-    % Exclude the caption embedded in the source image; retain the TeX caption.
-    \includegraphics[width=\textwidth,trim=0 132bp 0 0,clip]{ppt/source/fig4_v1.png}
-    \caption{Planned patient trajectory: an observed chest-radiograph timeline,
-    reference report excerpts, and predicted reports above one or two finding
-    probability curves. All forecasts start from the same Day~0 observation;
-    follow-up images and reports are references only. Comparisons include
-    Copy Current and a matched forecaster. Curves use actual elapsed times,
-    with separate reference markers for positive, negative, and uncertain or
-    unmentioned findings. Predicted probabilities indicate presence, not severity.}
+    % Hide the embedded caption/footer while retaining both panels and labels.
+    \includegraphics[width=\textwidth,trim=0 96bp 0 0,clip]{ppt/ppt/fig4_v1.pdf}
+    \caption{Preliminary patient-trajectory forecasting on MIMIC-CXR.
+    (A) Observed radiographs and report excerpts, with 9B probe probabilities
+    in green. (B) Edema and effusion forecasts from 9B and 0.8B models and
+    the 9B Copy Current baseline. Bars show report-derived labels, including
+    missing annotations.}
     \label{fig:candidate_longitudinal_forecasting}
 \end{figure*}
