@@ -3,12 +3,12 @@
 
 Medical world models aim to represent patient states and predict their evolution from clinical observations. Longitudinal medical imaging provides a natural setting for learning such models: successive examinations record findings that may persist, resolve, or progress, while accompanying reports describe their clinical significance. As illustrated in \cref{fig:patient_state_concept}, images and reports provide complementary evidence for a latent patient state that connects current-examination understanding with future-state prediction. Learning this shared space requires preserving clinical and spatial information while capturing temporal relationships across patient histories.
 
-\begin{figure*}[t]
+\begin{figure}[t]
     \centering
-    \includegraphics[width=\textwidth]{ppt/ppt/intro_concept.pdf}
-    \caption{Conceptual view of medical world modeling. Visual and clinical observations define a patient state $S_t$ in a shared latent space. The state supports recognition, visual question answering, and spatial understanding, while a horizon $h$ specifies the transition toward a future state $S_{t+h}$. The right-hand branches illustrate potential uses of future states, including anticipating findings, assessing progression, and generating reports. \method{} instantiates state learning and latent temporal prediction; the illustrated future outputs are applications of the broader framework. Trajectories are schematic.}
+    \includegraphics[width=\columnwidth]{ppt/ppt/intro_concept.pdf}
+    \caption{Medical world modeling: a shared patient state supports clinical and spatial understanding and prediction over horizon $h$. Future outputs illustrate potential applications; trajectories are schematic.}
     \label{fig:patient_state_concept}
-\end{figure*}
+\end{figure}
 
 Recent work has begun to explore this direction. MeWM combines treatment planning with generative simulation of tumor evolution, linking anticipated disease changes to the evaluation of clinical actions~\citep{yang2025medicalworldmodel}. CLARITY models treatment-conditioned disease trajectories in latent space, incorporating temporal and clinical context to support treatment decisions~\citep{ding2025clarity}. These approaches demonstrate the relevance of modeling patient evolution to medical decision support. Building on this direction, we focus on learning a shared representation of medical observations whose content supports clinical and spatial understanding and whose dynamics can be learned from actual follow-up examinations. This perspective places the definition of the medical state at the center of world modeling.
 
