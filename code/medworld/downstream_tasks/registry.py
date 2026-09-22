@@ -8,3 +8,7 @@ FINDINGS = (
     "Support Devices",
 )
 PENDING_TASKS = {}
+
+# Manual CXR organs and reviewed brain-tumor regions share a padded target
+# tensor; per-example masks select only the channels annotated in that dataset.
+MANUAL_SEGMENTATION_LAYOUT = ("lungs", "heart", "NETC", "SNFH", "ET", "RC")

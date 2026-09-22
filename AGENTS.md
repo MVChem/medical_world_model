@@ -15,4 +15,4 @@
 
 # Evaluation Policy
 
-- Every completed MedWorld training experiment must evaluate segmentation on both the held-out CXAS pseudo-mask test set and the human lung-mask test set, alongside classification and VQA. Report mean IoU and Dice for both trained arms. Calibration/smoke runs may disable evaluation. Native Qwen has no segmentation head; report its segmentation results as N/A.
+- For new MedWorld experiments, use human-reviewed segmentation only: the 200-image MIMIC heart/lung set, UCSF-ALPTDG and MU-Glioma-Post MRI, plus the external Montgomery human lung test. Do not use CXAS pseudo masks for training or evaluation unless explicitly requested again. Completed experiments must report classification/VQA and per-dataset segmentation mean IoU and Dice for both trained arms; aggregate MRI slices by volume. Preserve historical protocols only for reproducing old runs. Calibration/smoke runs may disable evaluation. Native Qwen has no segmentation head; report its segmentation results as N/A.

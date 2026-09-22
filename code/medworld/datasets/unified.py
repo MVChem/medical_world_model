@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 import hashlib
 import json
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -16,8 +17,19 @@ from .protocol import patient_holdouts
 
 class UnifiedData:
     def __init__(self, cfg, root=None):
-        self.current = MultiTaskData(root=root, cfg=cfg)
+        if cfg.get("prepared_data"):
+            expected_temporal = Path(cfg["prepared_data"]) / "temporal"
+            if Path(cfg["temporal_data"]).resolve() != expected_temporal.resolve():
+                raise ValueError("Prepared temporal_data must point to prepared_data/temporal")
+            from .prepared import PreparedData
+            self.current = PreparedData(cfg, root=root)
+        else:
+            self.current = MultiTaskData(root=root, cfg=cfg)
         self.temporal = TemporalData(cfg["temporal_data"], cfg["bidirectional"], cfg.get("image_workers", 1))
+        if cfg.get("prepared_data"):
+            for name, digest in self.temporal.source_hashes.items():
+                if self.current._file_sha256.get(f"temporal/{name}") != digest:
+                    raise ValueError(f"Prepared manifest fingerprint mismatch: temporal/{name}")
         # These are immutable source pixels, not learned features. Bound memory
         # independently per source stream; nothing is written to disk.
         capacity = cfg.get("decoded_image_cache", 0)
@@ -66,6 +78,15 @@ class UnifiedData:
             "globally_patient_disjoint": True, "bidirectional": cfg["bidirectional"],
             "time_condition": "signed realized_gap_hours", "ehr": False,
         }
+        self._segmentation_groups = {}
+        self._segmentation_sampling = cfg.get("segmentation_sampling", "uniform")
+        if getattr(self.current, "manual_only", False):
+            self.segmentation_layout = list(self.current.segmentation_layout)
+            self.metadata.update(segmentation_layout=self.segmentation_layout,
+                                 segmentation_training_sampling=self._segmentation_sampling,
+                                 segmentation_mri_order="Seeded volume blocks with shuffled slices within each volume")
+            for index, row in enumerate(self.current._records["segmentation"]["train"]):
+                self._segmentation_groups.setdefault(row["dataset"], []).append(index)
         self.fingerprint = hashlib.sha256(json.dumps(self.metadata, sort_keys=True).encode()).hexdigest()
         self._permutations = {}
         self._image_workers = cfg.get("image_workers", 1)
@@ -95,6 +116,8 @@ class UnifiedData:
         size = len(self.rows(task, "train"))
         if size == 0:
             raise ValueError(f"Empty {task} training pool")
+        if task == "segmentation" and self._segmentation_groups and self._segmentation_sampling == "balanced_dataset":
+            return self._balanced_segmentation_batch(offset, batch_size, seed)
         indices = []
         for position in range(offset, offset + batch_size):
             epoch, index = divmod(position, size)
@@ -107,3 +130,31 @@ class UnifiedData:
                 self._permutations[key] = rng.permutation(size)
             indices.append(int(self._permutations[key][index]))
         return self.batch(task, "train", indices)
+
+    def _balanced_segmentation_batch(self, offset, batch_size, seed):
+        """Equal dataset exposure without materializing an oversampled cohort."""
+        groups = sorted(self._segmentation_groups)
+        indices = []
+        for position in range(offset, offset + batch_size):
+            cycle, group_index = divmod(position, len(groups))
+            dataset = groups[group_index]
+            pool = self._segmentation_groups[dataset]
+            epoch, index = divmod(cycle, len(pool))
+            key = ("segmentation", dataset, seed, epoch, len(pool))
+            if key not in self._permutations:
+                digest = hashlib.sha256(f"segmentation:{dataset}:{seed}:{epoch}".encode()).digest()
+                rng = np.random.default_rng(int.from_bytes(digest[:8], "little"))
+                self._permutations = {k: v for k, v in self._permutations.items()
+                                      if not (k[0] == "segmentation" and k[1] == dataset)}
+                rows = self.current._records["segmentation"]["train"]
+                if rows[pool[0]].get("kind") == "mri":
+                    volumes = {}
+                    for local_index, row_index in enumerate(pool):
+                        volumes.setdefault(rows[row_index]["volume_id"], []).append(local_index)
+                    names = sorted(volumes)
+                    self._permutations[key] = np.concatenate([
+                        rng.permutation(volumes[names[i]]) for i in rng.permutation(len(names))])
+                else:
+                    self._permutations[key] = rng.permutation(len(pool))
+            indices.append(pool[int(self._permutations[key][index])])
+        return self.batch("segmentation", "train", indices)

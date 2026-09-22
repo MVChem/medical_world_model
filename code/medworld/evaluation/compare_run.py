@@ -62,6 +62,18 @@ def compare(baseline, conditioned, out):
             x, y = [s[key] for s in summaries]
             rows.append({'task': folder, 'metric': key, 'n': len(records[0]), 'baseline': x, 'slots': y,
                          'delta': y - x if x is not None and y is not None else None})
+        if task == 'segmentation':
+            groups = [s.get('by_dataset', {}) for s in summaries]
+            if set(groups[0]) != set(groups[1]):
+                raise ValueError('Segmentation source datasets differ')
+            for dataset in sorted(groups[0]):
+                left, right = groups[0][dataset], groups[1][dataset]
+                if any(left[k] != right[k] for k in ('n_images', 'n_volumes', 'active_channels', 'target_names')):
+                    raise ValueError('Segmentation dataset denominators or channel semantics differ')
+                for key in keys:
+                    x, y = left[key], right[key]
+                    rows.append({'task': f'{folder}/{dataset}', 'metric': key, 'n': left['n_volumes'],
+                                 'unit': 'MRI volumes or CXR images', 'baseline': x, 'slots': y, 'delta': y - x})
     out.mkdir(parents=True, exist_ok=True)
     updates = {'baseline': a['progress']['step'], 'slots': b['progress']['step']}
     atomic_json(out / 'comparison.json', {'baseline': str(baseline), 'conditioned': str(conditioned),

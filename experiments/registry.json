@@ -1,10 +1,1 @@
-[
-  {
-    "id": "paired_qwen35_9b_2gpu_48h_20260921",
-    "summary": "Slots first; optional equal-step no-slots training and native Qwen tests.",
-    "status": "training",
-    "observed_at": "2026-09-21T08:19:49.411023+08:00",
-    "run": "code/medworld/runs/paired_qwen35_9b_2gpu_48h_20260921",
-    "live_status": "code/medworld/runs/paired_qwen35_9b_2gpu_48h_20260921/pipeline_status.json"
-  }
-]
+[]

@@ -9,6 +9,9 @@ from .asset_paths import relocate_asset
 
 PROJECT = Path(os.environ.get("MEDWORLD_PROJECT_ROOT", Path(__file__).resolve().parents[2])).resolve()
 DEFAULTS = {
+    # Empty preserves frozen historical configurations; use the September 22
+    # configuration for the expanded Atlas cohort.
+    "prepared_data": "",
     "current_data": "code/data/medworld/current",
     "dense_data": "code/data/medworld/dense",
     "baseline_data": "code/data/medworld/baseline",
@@ -20,6 +23,9 @@ DEFAULTS = {
     "testing": {"enabled": True, "tasks": list(TASKS), "human_segmentation": True, "reuse_completed": True, "vqa_per_type": 0, "vqa_seed": 42},
     "baselines": {"no_slots": True, "qwen": True},
     "decoder_width": 256, "decoder_depth": 2,
+    "segmentation_channels": 3,
+    "segmentation_sampling": "uniform",
+    "observation_prompt": "Chest radiograph observation.",
 
     "qwen": "code/data/medworld/weights/Qwen3.5-0.8B",
     "jepa": "code/vjepa2/checkpoints/vjepa2_1_vitb_dist_vitG_384.pt",
@@ -54,6 +60,14 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError(f"Unknown configuration keys: {sorted(unknown)}")
     cfg = deepcopy(DEFAULTS)
     cfg.update(supplied)
+    if not isinstance(cfg["prepared_data"], str):
+        raise ValueError("prepared_data must be a directory path or an empty string")
+    if cfg["segmentation_channels"] not in (3, 6) or type(cfg["segmentation_channels"]) is not int:
+        raise ValueError("segmentation_channels must be 3 (legacy) or 6 (reviewed CXR/MRI)")
+    if cfg["segmentation_sampling"] not in ("uniform", "balanced_dataset"):
+        raise ValueError("segmentation_sampling must be uniform or balanced_dataset")
+    if not isinstance(cfg["observation_prompt"], str) or not cfg["observation_prompt"].strip():
+        raise ValueError("observation_prompt must be nonempty text")
     baselines = supplied.get("baselines", {})
     if (not isinstance(baselines, dict) or set(baselines) - set(DEFAULTS["baselines"])
             or any(type(value) is not bool for value in baselines.values())):
@@ -120,4 +134,6 @@ def load_config(path=None, overrides=None, root=None):
         p = relocate_asset(p, root)
         # Preserve manifest aliases: their logical paths are part of the existing protocol hash.
         cfg[key] = str(p.resolve() if key in ("qwen", "jepa", "temporal_data") else p.absolute())
+    if cfg["prepared_data"]:
+        cfg["prepared_data"] = str(relocate_asset(Path(cfg["prepared_data"]).expanduser(), root).absolute())
     return cfg

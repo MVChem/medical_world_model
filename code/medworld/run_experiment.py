@@ -163,6 +163,15 @@ def write_report(run, cfg, budgets, no_slots_rows, qwen_rows, skipped):
             if (folder, metric) in qwen:
                 row['qwen'] = qwen[(folder, metric)]
             rows.append(row)
+        if task == 'segmentation':
+            for dataset, entry in metrics.get('by_dataset', {}).items():
+                label = f'{folder}/{dataset}'
+                for metric in keys:
+                    row = {'task': label, 'metric': metric, 'n': entry['n_volumes'],
+                           'unit': 'MRI volumes or CXR images', 'slots': entry[metric]}
+                    if (label, metric) in no_slots:
+                        row['no_slots'] = no_slots[(label, metric)]
+                    rows.append(row)
     atomic(run / 'comparison.json', {'training': budgets, 'baselines': cfg['baselines'],
                                     'skipped': skipped, 'qwen_training_steps': 0, 'rows': rows})
     columns = ['slots'] + (['no_slots'] if no_slots_rows else []) + (['qwen'] if qwen_rows else [])

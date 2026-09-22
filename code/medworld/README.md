@@ -1,5 +1,16 @@
 # MedWorld: three image-conditioned tasks
 
+New runs should use [`configs/medworld_0922.json`](configs/medworld_0922.json).
+Its expanded CXR/IV cohort is built under `code/data/medworld_0922` by
+[`mimic_atlas/data_processing`](../mimic_atlas/data_processing/README.md), with
+all eligible adjacent pairs plus seeded nonadjacent combinations and source-image
+symlinks. Classification and temporal data are rebuilt from the full source tables;
+segmentation uses the **manual-only `medworld-prepared-v2` protocol**: 200 annotated
+MIMIC chest radiographs, 596 UCSF-ALPTDG MRI volumes, 594 MU-Glioma-Post MRI volumes,
+and 138 Montgomery images reserved for the external human lung test. New training
+and evaluation use no CXAS pseudo masks. The historical adapter remains available
+only for reproducing frozen old runs.
+
 The supported downstream tasks are **classification, segmentation and VQA**. Diagnosis is the same disease-label recognition problem and is not counted again. Super-resolution, report generation and temporal task evaluation have been removed from active code. Historical source is retained in Git; obsolete local experiment artifacts were removed in the [September 20 cleanup](https://github.com/MVChem/medical_world_model/blob/e17f2b9d442763b1ac411a519671143a73b9264c/code/CLEANUP_20260920.md).
 
 Every task retains the image as its primary input. VQA also receives the question. The same Qwen visual encoder and shared two-layer Transformer task decoder serve all three tasks:
@@ -10,17 +21,21 @@ image → Qwen visual tokens ──→ shared Transformer task decoder → class
                   optional 8 slots                          → Qwen language decoder → VQA answer
 ```
 
-`slot_conditioning=false` removes the slots from the task decoder's inputs, leaving a complete image-driven model. `true` adds all eight slots as extra tokens. Segmentation reshapes spatial output tokens, upsamples, and predicts three organ masks; the human test scores only the two lungs. VQA generates a JSON answer array. Its autoregressive language decoder is additional to the common Transformer trunk; Qwen3.5's language backbone is a hybrid architecture, not a claim of identical pure-Transformer output heads.
+`slot_conditioning=false` removes the slots from the task decoder's inputs, leaving a complete image-driven model. `true` adds all eight slots as extra tokens. The recommended segmentation head predicts six channels: `lungs`, `heart`, `NETC`, `SNFH`, `ET`, and `RC`. Each image contributes loss and metrics only for its annotated channels. CXR uses a union lung mask and heart mask; MRI uses the four tumor-region channels; Montgomery uses the union of its two lung masks. VQA generates a JSON answer array. Its autoregressive language decoder is additional to the common Transformer trunk; Qwen3.5's language backbone is a hybrid architecture, not a claim of identical pure-Transformer output heads.
 
 Both arms use identical model initialization, task heads, input data, update counts and loss definitions. Temporal latent prediction/EMA remain **representation-learning objectives**, not downstream tasks. Both arms receive the same temporal auxiliary supervision; optional visual consistency is also retained in both arms, so adding the slot condition is the controlled change. No report/target answer enters a current-task image representation. No pixel or feature caches are written.
 
 ## Configuration
 
-The training JSON sets `slot_conditioning`, model/training parameters and testing:
+Edit the recommended JSON to set model/training parameters and testing. Its manual
+segmentation settings include:
 
 ```json
 {
   "slot_conditioning": true,
+  "segmentation_channels": 6,
+  "segmentation_sampling": "balanced_dataset",
+  "observation_prompt": "Medical image observation.",
   "total_hours": 3,
   "baselines": {
     "no_slots": true,
@@ -35,12 +50,12 @@ The training JSON sets `slot_conditioning`, model/training parameters and testin
 }
 ```
 
-- `enabled=false`: training only; no test workers start.
-- `tasks`: only these tasks are tested; for example `["classification", "vqa"]` skips segmentation.
+- `enabled=false`: disables test workers for calibration/smoke runs.
+- `tasks`: selects evaluation tasks. Completed new experiments must include classification, segmentation and VQA.
 - `human_segmentation`: additionally tests Montgomery when segmentation is selected.
 - `reuse_completed`: reuses complete outputs only when the final-checkpoint hash, data fingerprint, split, prediction hash and counts match. Partial/incompatible outputs fail rather than being silently overwritten. `false` requires empty selected task output folders.
 
-Defaults test all three tasks and human segmentation. Edit only the `testing` section in a completed run's `config.json` to choose subsequent tests; its trained model and task parameters are restored from the checkpoint. CLI `--skip-evaluation` remains an explicit launcher override for preflights. `--smoke` performs bounded checks instead of full testing.
+The recommended config tests all three tasks and external human segmentation. Edit only the `testing` section in a completed run's `config.json` to choose subsequent tests; its trained model and task parameters are restored from the checkpoint. A completed comparison must retain all required evaluations. CLI `--skip-evaluation` remains an explicit launcher override for preflights. `--smoke` performs bounded checks instead of full testing.
 
 ## Run
 
@@ -48,14 +63,15 @@ Use the local Python environment with `PYTHONPATH=code`, from the repository roo
 
 ```bash
 # Three updates, gradient and checkpoint-reload audit; no full test suite.
-python -m medworld.train --smoke --gpu 1 --out code/medworld/runs/smoke_YYYYMMDD
+python -m medworld.train --config code/medworld/configs/medworld_0922.json \
+  --smoke --gpu 1 --out code/medworld/runs/smoke_YYYYMMDD
 
 # One model; automatically runs the tests selected in its JSON.
-python -m medworld.launch_distributed --config code/medworld/configs/qwen35_08b_vssc_2gpu.json \
+python -m medworld.launch_distributed --config code/medworld/configs/medworld_0922.json \
   --gpus 1,2 --out code/medworld/runs/slots_YYYYMMDD
 
 # Recommended: train/test slots, optionally train/test no-slots, then test native Qwen.
-python -m medworld.run_experiment --config code/medworld/configs/qwen35_08b_vssc_2gpu.json \
+python -m medworld.run_experiment --config code/medworld/configs/medworld_0922.json \
   --gpus 1,2 --out code/medworld/runs/paired_YYYYMMDD
 
 # Run or reuse the tests currently selected in a completed run's JSON.
@@ -98,15 +114,31 @@ entries per cache, the two training ranks use at most about 56 GiB for cached pi
 payloads, plus Python overhead; the local machine has 251 GiB RAM. This amortizes
 JPEG decoding as training revisits images. Set it to zero on smaller hosts.
 
+`segmentation_sampling="balanced_dataset"` gives equal training exposure to the
+available segmentation datasets. Within each MRI dataset, seeded volume blocks
+keep slices from one volume together, with shuffled volume order and shuffled
+slices inside each volume. This reduces repeated gzip decompression. The stream
+is deterministic from seed and offset, including after resume. MRI decoding uses
+a separate bounded RAM cache; no decoded volumes are stored on disk.
+
 ## Data and metrics
 
 - Classification: the existing 13 CheXpert-derived labels (12 disease/finding labels plus Support Devices); masked uncertain/missing labels, AUROC/AP. These report-derived labels are not independent clinical diagnostic ground truth.
-- Segmentation: CXAS pseudo three-organ supervision, Dice; Montgomery two-lung human test separately.
+- Segmentation: human-reviewed MIMIC lung/heart masks and UCSF-ALPTDG/MU-Glioma-Post tumor masks; Montgomery human lung masks are an external test. Report IoU and Dice separately for each dataset.
 - VQA: official local MIMIC-CXR-VQA image/question pairs; full test has 13,793 questions. Strict JSON label-set exact match and micro-F1, with Verify/Choose/Query breakdown. Invalid responses count as errors; this local scorer is not claimed to be the official evaluator.
 
 Global patient holdouts cover all tasks and temporal representation learning. Higher-priority held-out membership removes conflicting training/validation rows; it never moves rows into evaluation. The public 110-answer vocabulary is stored in `datasets/vqa_vocabulary.json`, copied from the previously frozen official `ans2idx.json` metadata, not inferred from test answers.
 
-Checkpoint format 3 reflects the new task interfaces. Older weights require their original frozen source and cannot resume into this architecture. The code still reads local Qwen and V-JEPA weights; no external services are required.
+MRI currently supplies **2D axial T1ce slices** after canonical RAS orientation and
+image-derived intensity normalization. T1, T2 and FLAIR paths remain in the source
+inventory; these three sequences are not inputs to the current training adapter.
+The 596 and 594 counts describe annotated volumes, not independent slice
+annotations or unique patients. Repeated visits remain in the same patient split.
+
+The manual configuration's six-channel segmentation head cannot directly resume
+an old three-channel checkpoint. Reproducing historical weights requires their
+original configuration and data protocol. The code reads local Qwen and V-JEPA
+weights; no external services are required.
 
 ## VQA test sampling
 
@@ -114,21 +146,43 @@ Checkpoint format 3 reflects the new task interfaces. Older weights require thei
 
 ## Local assets
 
-Required manifests, labels and the Qwen 0.8B checkpoint are stored under
-`code/data/medworld/`, a local symlink to `/home/data2/chk/data/medworld`.
-The V-JEPA checkpoint remains under `code/vjepa2/checkpoints/`.
-Historical configs are translated by `asset_paths.py`; unchanged manifests keep
-their historical provenance keys so relocation does not change data fingerprints.
+The prepared manifests are accessed through `code/data/medworld_0922`. Original
+images, manual masks and other dataset assets under `code/data/` use symbolic
+links to the central data store. Preparation records their actual source paths
+and fingerprints; generated pixel or feature caches are not written.
+
+Local model weights remain at the paths specified in the training JSON.
+Historical configs are translated by `asset_paths.py`; unchanged historical
+manifests keep their provenance keys for reproduction.
 
 ### Required segmentation evaluation
 
-The experiment config enables segmentation on both `test` (CXAS pseudo three-organ masks) and `human_test` (human two-lung masks). Every completed training experiment must run both, for the slots and no-slots arms. Report `mean_iou` and `mean_dice`, plus per-organ scores. Predictions use sigmoid > 0.5 and targets > 0.5 inside the valid mask. Scores average equally over organs per image, then equally over images; two empty masks score 1. Native Qwen has no segmentation interface and is N/A.
+Every completed new experiment must evaluate classification/VQA and segmentation
+for both trained arms. Segmentation `test` reports the held-out MIMIC human CXR,
+UCSF-ALPTDG and MU-Glioma-Post datasets separately; `human_test` evaluates the 138
+external Montgomery images. CXAS pseudo masks are excluded from both training
+and evaluation.
 
-## Qwen3.5-9B paired run
+Predictions use sigmoid > 0.5 and targets > 0.5 inside each annotated channel's
+valid ROI. MRI evaluation sums intersection, predicted-positive and target-positive
+counts across the selected axial slices of each volume on their **256 × 256
+evaluation grids**, then computes that volume's IoU and Dice. Scores average
+equally over annotated channels and volumes within each dataset; CXR uses each
+image as its evaluation unit. Report per-dataset `mean_iou`, `mean_dice`, and
+per-channel scores. Summary scores are an equal-weight macro average over the
+datasets included in that evaluation split. Two empty masks score 1. Native Qwen
+has no segmentation head and is N/A.
 
-`configs/qwen35_9b_vssc_2gpu_48h.json` uses the local Qwen3.5-9B weights and a
-48-hour combined training estimate, with equal optimizer updates for slots and
-no-slots. Native Qwen is selected by the same pretrained checkpoint path before
-training starts. Both trained arms test classification, CXAS segmentation, human
-lung segmentation and the same balanced 300-question VQA subset used previously.
-Evaluation time is additional. The 9B batch sizes are smaller to fit 24-GiB GPUs.
+## Historical configurations and Qwen3.5-9B run
+
+`configs/qwen35_08b_vssc_2gpu.json` and
+`configs/qwen35_9b_vssc_2gpu_48h.json` preserve the historical three-channel,
+CXAS-based protocol. They are for reproducing old runs and are not the recommended
+configuration for new experiments. Historical experiment records retain their
+original protocol and results.
+
+The historical 9B configuration used a 48-hour combined training estimate, equal
+optimizer updates for slots/no-slots, smaller batches for 24-GiB GPUs, and the
+matched 300-question VQA subset. Evaluation time was additional. A new 9B manual
+experiment must start from the manual v2 configuration and choose suitable model
+and batch settings; it cannot resume the old three-channel head directly.

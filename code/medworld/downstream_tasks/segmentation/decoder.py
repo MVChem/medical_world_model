@@ -5,10 +5,10 @@ from ..common import block
 
 
 class SegmentationHead(nn.Module):
-    def __init__(self, width=256):
+    def __init__(self, width=256, channels=3):
         super().__init__()
         self.decode = nn.Sequential(block(width, 64), nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
-                                    block(64, 32), nn.Conv2d(32, 3, 1))
+                                    block(64, 32), nn.Conv2d(32, channels, 1))
 
     def forward(self, image_features):
         size = int(image_features.shape[1] ** .5)

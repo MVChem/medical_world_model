@@ -34,6 +34,7 @@ def main():
         from ..downstream_tasks.registry import FINDINGS
         from ..downstream_tasks.classification import classification_metrics
         from ..downstream_tasks.segmentation import segmentation_metrics
+        from ..downstream_tasks.segmentation.metrics import aggregate_segmentation
         from ..downstream_tasks.text.metrics import vqa_metrics
         model, saved = load_model(a.checkpoint, device)
         data = UnifiedData(model.cfg)
@@ -64,6 +65,10 @@ def main():
                             row.update(labels=batch['labels'][0].tolist(), probabilities=prediction[0].float().cpu().tolist())
                         elif task == 'segmentation':
                             row.update(segmentation_metrics(prediction.cpu(), batch['targets'], batch['mask']))
+                            for key, batch_key in [('dataset', 'segmentation_dataset'), ('volume_id', 'volume_id'),
+                                                   ('target_names', 'target_names')]:
+                                if batch_key in batch:
+                                    row[key] = batch[batch_key][0]
                         else:
                             row.update(question=batch['questions'][0], answer=batch['answers'][0],
                                        semantic_type=batch['semantic_types'][0], prediction=prediction[0])
@@ -74,13 +79,9 @@ def main():
                 if task == 'classification':
                     metrics = classification_metrics([r['labels'] for r in records], [r['probabilities'] for r in records], FINDINGS)
                 elif task == 'segmentation':
-                    metrics = {'mean_dice': float(np.mean([r['mean_dice'] for r in records])),
-                               'mean_iou': float(np.mean([r['mean_iou'] for r in records])),
-                               'dice_per_organ': np.mean([r['dice_per_organ'] for r in records], axis=0).tolist(),
-                               'iou_per_organ': np.mean([r['iou_per_organ'] for r in records], axis=0).tolist(),
-                               'aggregation': 'equal-weight mean over organs within each image, then over images',
-                               'threshold': 0.5, 'empty_union_score': 1.0,
-                               'target_kind': 'human two-lung masks' if a.split == 'human_test' else 'CXAS pseudo three-organ masks'}
+                    metrics = aggregate_segmentation(records)
+                    metrics['target_kind'] = ('human-reviewed CXR and MRI masks' if model.cfg.get('segmentation_channels') == 6
+                        else 'human two-lung masks' if a.split == 'human_test' else 'legacy CXAS pseudo three-organ masks')
                 else:
                     metrics = vqa_metrics(records)
                 summary['predictions_sha256'][task] = _sha256(out / f'{task}.jsonl')

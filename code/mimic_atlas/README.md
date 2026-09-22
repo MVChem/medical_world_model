@@ -2,6 +2,12 @@
 
 MIMIC-CXR × MIMIC-IV 的本地数据浏览项目：**React + Vite 前端、FastAPI 后端、原始 CSV 位置索引**。白色简洁界面，支持全量患者目录、完整检查时间线、影像对比、报告、临床原始记录、趋势图和离线 HTML。
 
+新版 MedWorld 数据集由 [`data_processing`](data_processing/README.md) 构建到
+`code/data/medworld_0922`：复用全库 CXR/IV 匹配规则，支持随机非相邻时间点组合，
+并通过符号链接接入原始图像、200 张人工审核心肺分割和 1,190 个脑 MRI 标注体积，
+新数据不使用 CXAS 伪标签。在仓库根目录执行
+`PYTHONPATH=code python -m mimic_atlas.data_processing`。
+
 ## 启动与开发
 
 首次安装并构建前端：

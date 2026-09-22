@@ -48,8 +48,8 @@ class TemporalData:
                     obs = self.lookup[row[side]]
                     if obs["split"] != split or str(obs["patient"]) != str(row["patient"]):
                         raise ValueError("Temporal pair crosses patient or split")
-                    if len(obs["labels"]) != 6 or not obs["report"].strip():
-                        raise ValueError("Temporal supervision requires report and six finding labels")
+                    if len(obs["labels"]) not in (6, 13) or not obs["report"].strip():
+                        raise ValueError("Temporal observations require a report and six legacy or 13 finding labels")
                 directed_pair(row)  # validate actual time independently of the old horizon bucket
         self.source_hashes = {name: _sha256(self.root / name) for name in
                               ("observations.jsonl", "train.jsonl", "validate.jsonl", "test.jsonl")}

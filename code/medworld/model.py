@@ -52,7 +52,7 @@ class MedWorld(nn.Module):
         self.world = WorldModel(cfg)
         self.task_decoder = TaskDecoder(base.lm_head.weight.shape[1], cfg["decoder_width"], cfg["decoder_depth"])
         self.classification = ClassificationHead(width=cfg["decoder_width"])
-        self.segmentation = SegmentationHead(width=cfg["decoder_width"])
+        self.segmentation = SegmentationHead(width=cfg["decoder_width"], channels=cfg.get("segmentation_channels", 3))
         if cfg.get("visual_consistency_weight", 0) > 0:
             from .representation import SlotSpatialReconstruction
             # Do not perturb decoder initialization or the training RNG stream.
@@ -72,6 +72,7 @@ class MedWorld(nn.Module):
             "text_decoder_inputs": ["image_features", "question", "optional_eight_slots"],
             "time_condition": "signed realized_gap_hours; direction is a predictor input only",
             "current_tasks": list(TASKS),
+            "segmentation_channels": cfg.get("segmentation_channels", 3),
             "temporal_inputs": ["source image", "source report", "signed delta_hours"],
             "report_only_input": False, "ehr_input": False,
             "frozen_backbone_shared": True, "encoder_decoder_lora_shared": False,
@@ -129,7 +130,8 @@ class MedWorld(nn.Module):
             raise ValueError("Expected one observation text per image")
         # Identical instruction at every time point. The encoder never sees the
         # requested direction, time gap, or the other observation's evidence.
-        texts = ["Chest radiograph observation." + ("\nReport:\n" + t if t else "") for t in texts]
+        texts = [self.cfg.get("observation_prompt", "Chest radiograph observation.") +
+                 ("\nReport:\n" + t if t else "") for t in texts]
         tokens = self.tokenizer(texts, padding=True, truncation=True,
                                 max_length=self.cfg["context_tokens"], return_tensors="pt")
         features = self.jepa(images, prepared_pixels=prepared["jepa"]) if prepared is not None else self.jepa(images)
@@ -155,7 +157,7 @@ class MedWorld(nn.Module):
         if (self.training and task == "segmentation" and state is not None
                 and hasattr(self, "visual_reconstruction")):
             auxiliary = self.visual_reconstruction.loss(
-                state[:, 4:], batch["pixels"].to(self.device), batch["mask"].to(self.device),
+                state[:, 4:], batch["pixels"].to(self.device), batch["mask"].amax(dim=1, keepdim=True).to(self.device),
                 batch["ids"], self.visual_teacher, self.processor, self.cfg)
             weighted = self.cfg["visual_consistency_weight"] * auxiliary
             parts.update(visual_consistency=auxiliary.detach(), visual_consistency_weighted=weighted.detach())
