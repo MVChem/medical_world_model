@@ -17,13 +17,7 @@ For future clinical VQA, the model answers questions about findings in a subsequ
 
 We further assess clinical outcomes using linked MIMIC-IV records. Mortality prediction estimates the risk of death within 30 days of the source examination and is evaluated using AUROC. Remaining length-of-stay estimation predicts the time from the source examination to the end of the corresponding hospitalization, measured by mean absolute error in days. Outcome evaluation includes eligible patients regardless of whether they undergo subsequent imaging. We additionally compare current-state-only readouts with those using predicted states to assess the contribution of temporal prediction.
 
-\subsection{Downstream Task Evaluation}
-
-We evaluate the utility of learned state slots for image classification, visual question answering (VQA), and segmentation. The baseline uses image features with task-specific decoders. We augment this baseline with auxiliary features from DINOv2, RAD-DINO, and X-WIN, or with our learned state slots. These variants share the same task-decoder architectures, training splits, and number of optimization steps. We additionally evaluate Qwen3.5-9B through zero-shot prompting for classification and VQA.
-
-\Cref{tab:downstream_tasks} compares performance across the three tasks. Classification is evaluated using macro-averaged AUROC (AUC) and average precision (AP). For VQA, we report exact match (EM) and micro-averaged F1 ($\mu$F1). Segmentation is evaluated using Dice and intersection over union (IoU). All tasks concern the current examination, with the question provided as an additional input for VQA.
-
-\subsection{Patient trajectory}
+\paragraph{Patient trajectory.}
 \label{sec:patient_trajectory}
 
 \Cref{fig:candidate_longitudinal_forecasting} reserves a longitudinal case study
@@ -36,7 +30,13 @@ times. This is fixed-origin, multi-horizon forecasting; connecting the predictio
 does not constitute an autoregressive rollout. Case selection and predictions
 remain pending.
 
-\subsection{Attention visualization}
+\subsection{Downstream Task Evaluation}
+
+We evaluate the utility of learned state slots for image classification, visual question answering (VQA), and segmentation. The baseline uses image features with task-specific decoders. We augment this baseline with auxiliary features from DINOv2, RAD-DINO, and X-WIN, or with our learned state slots. These variants share the same task-decoder architectures, training splits, and number of optimization steps. We additionally evaluate Qwen3.5-9B through zero-shot prompting for classification and VQA.
+
+\Cref{tab:downstream_tasks} compares performance across the three tasks. Classification is evaluated using macro-averaged AUROC (AUC) and average precision (AP). For VQA, we report exact match (EM) and micro-averaged F1 ($\mu$F1). Segmentation is evaluated using Dice and intersection over union (IoU). All tasks concern the current examination, with the question provided as an additional input for VQA.
+
+\subsection{Slot Attention Visualization}
 \label{sec:attention_visualization}
 
 \Cref{fig:candidate_slot_attention} reserves a view of how the four visual slots
