@@ -1,6 +1,7 @@
 LATEXMK := latexmk -pdf -interaction=nonstopmode -halt-on-error
 PYTHON ?= python3
-MAIN_FIGURES := ppt/ppt/intro_concept.pdf ppt/ppt/fig1_v8.pdf ppt/source/fig2_v4.png
+MAIN_FIGURES := ppt/ppt/intro_concept.pdf ppt/ppt/fig1_v8.pdf ppt/source/fig2_v4.png \
+                ppt/source/fig4_v1.png ppt/source/fig5_v1.png ppt/source/fig6_v1.png
 APPENDIX_FIGURE := ppt/ppt/appendix_fig1_v1.pdf
 
 .PHONY: all paper supplementary figures clean
