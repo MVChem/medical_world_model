@@ -1,136 +1,184 @@
-# MedWorld 人工审核数据处理
+# MedWorld Human-Reviewed Data Preparation
 
-从 Atlas 的全量 MIMIC-CXR / MIMIC-IV 表构建分类和时序清单，接入人工审核的
-CXR 心肺与脑 MRI 分割。活动入口为 `code/data/medworld_0922`，只保存最终清单和
-原始数据链接，不生成像素、掩膜或特征缓存。修改前的 MedWorld 已保存至 GitHub
-提交 `b1cad08`。
+Build classification and temporal manifests from Atlas's full MIMIC-CXR / MIMIC-IV
+tables, with human-reviewed CXR heart/lung and brain MRI segmentation. The active
+entry point is `code/data/medworld_0922`. It contains final manifests and links to
+the original data, without pixel, mask, or feature caches. The preceding MedWorld
+implementation was preserved in GitHub commit `b1cad08`.
 
-## 数据与存储
+This document describes the prepared v2 dataset. The newer patient-level
+medication selection has separate rules; see [Medication-linked CXR pairs](#medication-linked-cxr-pairs).
 
-| 分割来源 | 患者 | 有标注影像/体积 | 实际监督区域 |
+## Data and Storage
+
+| Segmentation source | Patients | Annotated images/volumes | Supervised regions |
 | --- | ---: | ---: | --- |
-| MIMIC 人工审核心肺 | 196 | 200 张 CXR | 双肺合并、心脏 |
-| UCSF-ALPTDG | 298 | 596 个三维体积 | NETC、SNFH、ET、RC |
-| MU-Glioma-Post | 203 | 594 个三维体积 | NETC、SNFH、ET、RC |
-| Montgomery 人工肺掩膜 | 138 | 138 张 CXR | 双肺合并，仅外部测试 |
+| MIMIC human-reviewed heart/lung | 196 | 200 CXR images | Combined lungs, heart |
+| UCSF-ALPTDG | 298 | 596 3D volumes | NETC, SNFH, ET, RC |
+| MU-Glioma-Post | 203 | 594 3D volumes | NETC, SNFH, ET, RC |
+| Montgomery human lung masks | 138 | 138 CXR images | Combined lungs; external test only |
 
-MU 共 596 次检查，其中 2 次缺少标准分割掩膜，保留在体积清单但不进入分割监督。
-UCSF 的纵向差分掩膜不作为额外独立分割样本。MRI 共 1,190 个有标注体积，
-不是 1,190 张二维图片。三个训练来源都按患者划分；同一患者的全部 MRI 时间点在同一划分。
+MU has 596 visits. Two lack a standard segmentation mask and remain in the volume
+inventory, but are excluded from segmentation supervision. UCSF longitudinal
+difference masks are not counted as additional independent segmentation samples.
+MRI contributes 1,190 annotated volumes, not 1,190 2D images. All three training
+sources use patient-level splits; every MRI time point from the same patient stays
+in the same split.
 
-这里的“人工审核”包括模型或半自动初稿经专家检查、修改的标注。活动 v2 数据
-不读取 CXAS 伪标签，也不读取旧分类选集、旧时序配对或旧图像数组。
-Montgomery 只复用原始人工掩膜和原始图像。历史 v1 加载接口保留用于旧实验。
+"Human-reviewed" includes model-generated or semiautomatic drafts that experts
+checked and corrected. The active v2 dataset does not read CXAS pseudo labels,
+old classification selections, old temporal pairs, or old image arrays.
+Montgomery reuses only the original human masks and images. The current code
+supports v2 only; the old loaders, CXAS exporter, and legacy path remapping have
+been removed. Historical experiment results and data remain in their original
+directories.
 
-原始数据统一放在 `/home/data2/chk/data`。新增公开标注实际目录为
-`/home/data2/chk/data/heart-lung-segmentations-data/1.0.0`，项目入口
-`code/data/heart_lung_human` 为符号链接。MRI 沿用该中央目录下的
-`UCSF-ALPTDG` 和 `MU-Glioma-Post`。生成的数据集也通过 `code/data/medworld_0922`
-链接到中央目录 `medical_world_model/medworld_0922`。
+Raw datasets are stored under `/home/data2/chk/data`. The newly added public
+annotations reside at `/home/data2/chk/data/heart-lung-segmentations-data/1.0.0`,
+exposed through the project symlink `code/data/heart_lung_human`. MRI uses the
+existing `UCSF-ALPTDG` and `MU-Glioma-Post` directories under the same central data
+root. The prepared dataset is also exposed through `code/data/medworld_0922`,
+which links to the central `medical_world_model/medworld_0922` directory.
 
-公开心肺标注下载后逐项验证发布者的 540 个 SHA256 校验值，原始 PNG 不修改。
-每个 MRI 输入 T1ce 和目标掩膜均记录 SHA256，按需加载时校验。
-来源说明：[心肺标注](https://physionet.org/content/heart-lung-segmentations-data/1.0.0/)、
-[UCSF 论文](https://pubs.rsna.org/doi/pdf/10.1148/ryai.230182)、
-[MU 论文](https://www.nature.com/articles/s41597-025-06011-7)。原始数据仍遵守各自许可和访问条件。
+All 540 publisher-provided SHA256 checksums were verified after downloading the
+public heart/lung annotations. Original PNG files are unchanged. Every MRI T1ce
+input and target mask has a recorded SHA256 checksum, verified when loaded.
+Sources: [heart/lung annotations](https://physionet.org/content/heart-lung-segmentations-data/1.0.0/),
+[UCSF paper](https://pubs.rsna.org/doi/pdf/10.1148/ryai.230182), and
+[MU paper](https://www.nature.com/articles/s41597-025-06011-7). Each source's
+license and access conditions continue to apply.
 
-## 构建和检查
+## Build and Validate
 
-在仓库根目录使用已有 Python 环境；依赖见 `requirements.txt`，加载验证还需 PyTorch。
+Run from the repository root using the existing Python environment. Dependencies
+are listed in `requirements.txt`; loader validation also requires PyTorch.
 
 ```bash
 export PYTHONPATH=code
 PYTHON=/home/data2/chk/workspace/2026/.venv/bin/python
 
-# 已有数据集：构建成功后归档旧清单，再发布新清单。
+# Existing dataset: archive the old manifests after a successful build, then publish.
 $PYTHON -m mimic_atlas.data_processing --replace
 
-# 实际 MedWorld 加载、患者隔离、图像/掩膜解码及 CPU 分割头前后向检查。
+# Check the actual MedWorld loader, patient isolation, image/mask decoding,
+# and a CPU segmentation-head forward/backward pass.
 $PYTHON -m mimic_atlas.data_processing.validate
 
-# 单独校验公开人工心肺标注，不重复下载。
+# Verify the public human heart/lung annotations without downloading them again.
 $PYTHON -m mimic_atlas.data_processing.human_cxr --verify-only
 ```
 
-构建先写临时目录。默认拒绝覆盖；`--replace` 只接受有 `.medworld-prepared`
-标记的数据目录，并归档为 `medworld_0922_previous_时间戳`。项目入口为软链接时，
-在其中央目标目录旁构建、归档，保留软链接。发布使用两次目录重命名，异常会回滚，
-但两次重命名之间不是原子交换；重建应避开训练加载时段。
+The builder first writes to a temporary directory. Overwriting is rejected by
+default. `--replace` accepts only a data directory containing the
+`.medworld-prepared` marker and archives it as
+`medworld_0922_previous_<timestamp>`. If the project entry point is a symlink, the
+build and archive are created alongside its central target, preserving the
+symlink. Publication uses two directory renames with rollback on failure. These
+renames are not an atomic exchange, so rebuild outside training data-loading
+periods.
 
-其他方案指定中央目录中的新输出，再建立项目软链接，并同步修改配置的数据入口。
-`--pair-mode all` 导出全部合格时间组合；默认 `adjacent_random` 保留全部相邻对，
-每患者再选最多 8 个非相邻对。`--max-patients 100` 只限制 CXR/IV 匹配规模，
-分割和 VQA 仍完整处理。日志在 `runs/build_YYYYMMDD`，验证结果在
-`runs/validate_YYYYMMDD/validation.json`，均不进入 Git。
+For other configurations, choose a new output under the central data directory,
+create a project symlink, and update the data entry point in the configuration.
+`--pair-mode all` exports every eligible chronological combination. The default,
+`adjacent_random`, retains all adjacent pairs and selects up to 8 nonadjacent
+pairs per patient. `--max-patients 100` limits only CXR/IV matching; segmentation
+and VQA are still processed in full. Logs go to `runs/build_YYYYMMDD`, and
+validation results to `runs/validate_YYYYMMDD/validation.json`. Neither is tracked
+in Git.
 
-## 匹配与采样规则
+## Matching and Sampling Rules
 
-- 用精确 `subject_id` 连接 CXR 和 IV。默认要求被选图像的采集时间各自唯一落在
-  同一住院区间，起点取 `min(edregtime, admittime)`，终点取 `dischtime`，边界包含。
-  这比旧的“唯一共同住院”规则更保守：任一端本身存在住院歧义也会拒绝。
-- 保留完整病人时间线；相邻配对不会跳过不可用的中间检查。按检查最早采集时间排序，
-  拒绝并列时间和重叠的采集窗口。时间差使用实际选中图像的时间。
-- 两端必须有相同 AP/PA 投照方向；共同 PA 优先。每个方向使用 Atlas 原有的
-  最大尺寸图像选择规则，DICOM ID 用于打破并列。
-- 默认间隔为 1 小时至 365 天；通过 `--min-gap-hours`、`--max-gap-days` 调整。
-  `adjacent` 仅相邻；`random` 仅随机非相邻；`adjacent_random` 合并两者；
-  `all` 导出全部合格的时间顺序组合。
-- 随机子集在全部合格非相邻组合中按固定种子和标识的散列选择，无重复、可复现，
-  内存中只保留每病人的有限候选。随机选择不依赖未来标签值或报告内容。
-  时序监督要求两端存在非空报告和标签记录；标签缺失/不确定状态仍保留。
-- `--linkage patient` 可显式允许同 IV 病人的跨住院/未匹配住院配对；默认不开启。
-  所有检查的匹配状态和候选住院/ICU ID 保存在 `study_links.jsonl` 中。
-- 使用官方 CXR 病人划分。VQA/分割的既有留出病人优先级为
-  `human_test > test > validate > train`，冲突的分类/时序行被删除而不移动到测试集。
-  MedWorld 再对所有任务做全局隔离检查。清单统计是导出数；验证结果是最终可用数。
+- Join CXR and IV by exact `subject_id`. By default, each selected image's
+  acquisition time must map unambiguously to the same admission interval, with
+  inclusive bounds from `min(edregtime, admittime)` to `dischtime`. This is more
+  conservative than the earlier "unique shared admission" rule: ambiguity at
+  either endpoint also rejects the pair.
+- Preserve the full patient timeline. Adjacent pairing does not skip an unusable
+  intermediate study. Sort studies by their earliest acquisition time and reject
+  tied times or overlapping acquisition windows. Compute the gap from the actual
+  selected images' acquisition times.
+- Both endpoints must share an AP or PA view; prefer a shared PA view. For each
+  view, use Atlas's existing largest-image selection rule, breaking ties by
+  DICOM ID.
+- The default interval is 1 hour to 365 days, adjustable with `--min-gap-hours`
+  and `--max-gap-days`. `adjacent` selects adjacent pairs only; `random` selects
+  random nonadjacent pairs only; `adjacent_random` combines them; `all` exports
+  every eligible chronological combination.
+- Select the random subset from all eligible nonadjacent combinations using a
+  hash of the fixed seed and identifiers. Selection is reproducible and has no
+  duplicates; memory retains only a bounded set of candidates per patient.
+  Sampling does not depend on future label values or report content. Temporal
+  supervision requires nonempty reports and label records at both endpoints;
+  missing and uncertain label states are preserved.
+- `--linkage patient` explicitly allows pairs across admissions or without a
+  matched admission for the same IV patient. It is not enabled by default. Match
+  status and candidate admission/ICU IDs for every study are recorded in
+  `study_links.jsonl`.
+- Use the official CXR patient splits. Existing VQA/segmentation holdouts take
+  precedence in the order `human_test > test > validate > train`. Conflicting
+  classification/temporal rows are removed, not moved into the test set.
+  MedWorld then checks global patient isolation across all tasks. Manifest
+  statistics describe exported rows; validation statistics describe the final
+  usable rows.
 
-## 清单与 MRI 解码
+## Manifests and MRI Decoding
 
 ```text
 medworld_0922/
-  manifest.json                 # 规则、来源、计数、文件散列
-  classification.jsonl          # 13 项分类标签
-  segmentation.jsonl            # 所有人工分割：CXR 图像行 + MRI 切片行
-  mri_volumes.jsonl              # 1,192 次 MRI 检查，保留四序列与缺标注状态
-  mri_segmentation.jsonl         # 1,190 个体积的轴位切片引用
-  study_links.jsonl             # CXR/IV 回溯审计
+  manifest.json                 # Rules, sources, counts, and file hashes
+  classification.jsonl          # 13 classification labels
+  segmentation.jsonl            # All reviewed segmentation: CXR image rows + MRI slice rows
+  mri_volumes.jsonl              # 1,192 MRI visits; four sequences and missing-mask status
+  mri_segmentation.jsonl         # Axial slice references for 1,190 annotated volumes
+  study_links.jsonl             # CXR/IV provenance and linkage audit
   temporal/
     observations.jsonl
     train.jsonl
     validate.jsonl
     test.jsonl
-  images -> 原始 MIMIC-CXR/files
-  iv -> 原始 mimic-iv-3.1
-  vqa -> 官方 CXR-VQA/dataset
+  images -> original MIMIC-CXR/files
+  iv -> original mimic-iv-3.1
+  vqa -> official CXR-VQA/dataset
   segmentation/
-    heart_lung_human -> 中央目录中的公开人工心肺标注
-    montgomery -> 原始人工肺掩膜和图像
+    heart_lung_human -> public human heart/lung annotations in the central directory
+    montgomery -> original human lung masks and images
   mri/
-    ucsf -> 中央 UCSF-ALPTDG
-    mu -> 中央 MU-Glioma-Post
+    ucsf -> central UCSF-ALPTDG
+    mu -> central MU-Glioma-Post
 ```
 
-当前 MRI 模型输入为 **T1ce 二维轴位切片**；T1/T2/FLAIR 的原始文件引用保留在
-体积清单，尚未作为四序列联合输入。图像和掩膜统一到 RAS 方向，保留物理像素比例，
-放入 512×512 图像画布，掩膜最近邻缩放至 256×256。强度窗由输入图像的正值体素
-1%/99.5% 分位数决定。切片范围只依赖图像，并检查没有遗漏范围外的标注前景；
-范围内的无肿瘤切片也保留。默认 `--mri-axial-stride 1` 使用该范围内全部轴位平面。
+The current MRI model input is a **T1ce 2D axial slice**. Original T1/T2/FLAIR
+file references remain in the volume inventory but are not yet used as a joint
+four-sequence input. Images and masks are reoriented to RAS while preserving
+physical aspect ratio. Images are placed on a 512 x 512 canvas; masks are resized
+to 256 x 256 with nearest-neighbor interpolation. The intensity window uses the
+1st and 99.5th percentiles of positive input-image voxels. Slice bounds depend
+only on the image, with a check that no annotated foreground falls outside them.
+Tumor-free slices within those bounds are retained. The default
+`--mri-axial-stride 1` uses every axial plane in that range.
 
-六个输出通道固定为 `lungs, heart, NETC, SNFH, ET, RC`。CXR 仅监督前两通道，
-MRI 仅监督后四通道，Montgomery 仅监督合并肺通道；未标注通道及填充区不进入损失。
-新配置按三个训练数据集均衡抽样，MRI 在随机体积块内遍历切片，避免 CXR 被大量
-MRI 切片淹没，也避免每张切片都重新解压体积。解码只用有限内存缓存。
+The six output channels are fixed as `lungs, heart, NETC, SNFH, ET, RC`. CXR
+supervises only the first two channels, MRI only the last four, and Montgomery
+only the combined-lung channel. Unannotated channels and padding are excluded
+from the loss. The new configuration samples the three training datasets evenly.
+MRI slices are traversed within randomly ordered volume blocks, preventing the
+large MRI slice count from overwhelming CXR and avoiding decompression for every
+slice. Decoding uses only a bounded in-memory cache.
 
-分类保留 13 项 CheXpert 标签（去除 `No Finding`），值为 `-2/-1/0/1`，
-缺失和不确定标签在损失中屏蔽。时序配对用真实时间差，支持反向负时间差样本。
-IV 关联用于回溯，目前不作为 EHR 模型输入。分类与分割只接收图像，VQA 接收图像和
-问题；时序 source-only 接口不读取目标图像或报告。
+Classification retains 13 CheXpert labels, excluding `No Finding`, with values
+`-2/-1/0/1`. Missing and uncertain labels are masked in the loss. Temporal pairs
+use the actual time difference and support reversed examples with negative time
+differences. IV linkage provides provenance and is not currently an EHR model
+input. Classification and segmentation receive images only; VQA receives an
+image and a question. The temporal source-only interface does not read the
+target image or report.
 
-## MedWorld 配置与评估
+## MedWorld Configuration and Evaluation
 
-新训练使用 `code/medworld/configs/medworld_0922.json`，配置了 `segmentation_channels=6`、
-`segmentation_sampling=balanced_dataset` 和通用影像提示词。
-六通道分割头不能直接续训旧三通道分割头检查点。
+The prepared-v2 configuration is `code/medworld/configs/medworld_0922.json`, with
+`segmentation_channels=6`, `segmentation_sampling=balanced_dataset`, and generic
+imaging prompts. A six-channel segmentation head cannot directly resume from
+an old three-channel segmentation-head checkpoint.
 
 ```bash
 $PYTHON -m medworld.run_experiment \
@@ -138,34 +186,52 @@ $PYTHON -m medworld.run_experiment \
   --gpus 1,2 --out code/medworld/runs/paired_YYYYMMDD
 ```
 
-本次仅构建和验证数据，没有启动正式训练。完成训练后，slots 与 no-slots 两分支均须
-评估分类、VQA、人工 CXR 心肺、UCSF/MU MRI 和 Montgomery 人工肺分割。
-按数据集分别报告 mean IoU、Dice：MRI 在 256×256 评估网格上先跨切片汇总每个
-体积的交并计数，再按体积平均；CXR 按图像平均。总体指标按数据集宏平均。
-Native Qwen 没有分割头，分割结果为 N/A。
+This preparation run built and validated the dataset without starting formal
+training. After training, both slots and no-slots arms must be evaluated on
+classification, VQA, human CXR heart/lung segmentation, UCSF/MU MRI segmentation,
+and Montgomery human lung segmentation. Report mean IoU and Dice separately
+for each dataset. For MRI, first aggregate intersection/union counts across
+slices within each volume on the 256 x 256 evaluation grid, then average across
+volumes. For CXR, average across images. Overall metrics are macro-averaged
+across datasets. Native Qwen has no segmentation head, so its segmentation
+results are N/A.
 
-## 2026-09-23 本机生成与验证结果
+## Local Build and Validation Results: 2026-09-23
 
-全量构建和 MedWorld 实际加载检查已完成。全局患者隔离成立；200 张人工 CXR、
-1,190 个 MRI 标注体积和 138 张 Montgomery 均保留，没有分割行因跨任务冲突被移除。
+The full build and actual MedWorld loader checks completed. Global patient
+isolation holds. All 200 human CXR images, 1,190 annotated MRI volumes, and 138
+Montgomery images were retained; no segmentation rows were removed because of
+cross-task conflicts.
 
-| 数据（计数单位） | Train | Validate | Test | Human test |
+| Dataset (counting unit) | Train | Validate | Test | Human test |
 | --- | ---: | ---: | ---: | ---: |
-| 分类（图像） | 143,592 | 1,255 | 2,475 | — |
-| VQA（问题） | 280,441 | 72,825 | 13,793 | — |
-| 时序（正向配对） | 104,967 | 930 | 1,848 | — |
-| 人工心肺（CXR 图像） | 142 | 29 | 29 | — |
-| UCSF（标注体积） | 416 | 88 | 92 | — |
-| MU（标注体积） | 433 | 80 | 81 | — |
-| Montgomery（CXR 图像） | — | — | — | 138 |
+| Classification (images) | 143,592 | 1,255 | 2,475 | — |
+| VQA (questions) | 280,441 | 72,825 | 13,793 | — |
+| Temporal (forward pairs) | 104,967 | 930 | 1,848 | — |
+| Human heart/lung (CXR images) | 142 | 29 | 29 | — |
+| UCSF (annotated volumes) | 416 | 88 | 92 | — |
+| MU (annotated volumes) | 433 | 80 | 81 | — |
+| Montgomery (CXR images) | — | — | — | 138 |
 
-MRI 共引用 165,417 个二维轴位平面；没有把这些切片数当成独立标注体积数。
-107,745 个正向配对由 64,800 个相邻对和 42,945 个随机非相邻对组成。
-患者隔离移除了 9,590 条 VQA 训练问题和 742 条验证问题，测试问题保持 13,793 条。
+MRI references 165,417 2D axial planes; these slices are not counted as independent
+annotated volumes. The 107,745 forward pairs consist of 64,800 adjacent pairs and
+42,945 random nonadjacent pairs. Patient isolation removed 9,590 VQA training
+questions and 742 validation questions; the test set remains at 13,793 questions.
 
-验证遍历全部时序配对，抽查每个分割来源和划分的实际解码，并完成混合 CXR/MRI
-六通道分割头的 CPU 前后向检查。没有载入基础模型或启动正式训练。完整结果见
-[validation.json](runs/validate_20260923/validation.json)。
+Validation traversed every temporal pair, sampled actual decoding from each
+segmentation source and split, and completed a CPU forward/backward pass through
+the six-channel segmentation head using mixed CXR/MRI inputs. It did not load
+foundation models or start formal training. Full results are in
+[validation.json](runs/validate_20260923/validation.json).
 
-源代码测试：完整测试集 128 项和 35 项子测试通过；随后增加的两项软链接发布/回滚
-测试及修改后的适配器测试均通过。
+Source tests: the full suite passed 128 tests and 35 subtests. Two subsequently
+added symlink publication/rollback tests and the updated adapter tests also
+passed.
+
+## Medication-linked CXR pairs
+
+[`data_preprocessing`](../../data_preprocessing/README.md) selects same-patient chronological CXR pairs with their
+own reports and an observed administration between images. It does not require
+a common admission or limit the time gap. Commands, rules, results, and the
+proposed treatment encoder are kept in its [2026-09-23 run](../../data_preprocessing/runs/medication_filter_20260923/README.md).
+This selection export requires a new event-aware loader before MedWorld training.

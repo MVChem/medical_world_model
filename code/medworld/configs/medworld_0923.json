@@ -1,18 +1,14 @@
 {
-  "current_data": "code/data/medworld/current",
-  "dense_data": "code/data/medworld/dense",
-  "baseline_data": "code/data/medworld/baseline",
-  "selection_file": "code/data/medworld/selection/selection.json",
-  "classification_data": "code/data/medworld/classification",
+  "architecture": "raw_input_v1",
   "qwen": "code/data/medworld/weights/Qwen3.5-0.8B",
   "jepa": "code/vjepa2/checkpoints/vjepa2_1_vitb_dist_vitG_384.pt",
-  "temporal_data": "code/data/medworld/temporal",
+  "temporal_data": "code/data/medworld_0923",
   "seed": 42,
   "lora_rank": 8,
   "lora_alpha": 16,
   "vision_pixels": 256,
   "context_tokens": 384,
-  "generation_tokens": 64,
+  "generation_tokens": 384,
   "predictor_width": 512,
   "predictor_depth": 4,
   "ema_momentum": 0.99,
@@ -25,7 +21,6 @@
   "save_every": 100,
   "validate_every": 200,
   "validation_samples": 16,
-  "ce_chunk_tokens": 128,
   "amp": true,
   "task_batch_sizes": {
     "classification": 128,
@@ -65,5 +60,11 @@
   "cpu_cores_per_rank": 16,
   "prefetch_preprocessing": true,
   "batched_vision_attention": true,
-  "require_fast_kernels": true
+  "require_fast_kernels": true,
+  "prepared_data": "code/data/medworld_0922",
+  "segmentation_channels": 6,
+  "segmentation_sampling": "balanced_dataset",
+  "observation_prompt": "Medical image observation.",
+  "vqa_data": "code/data/medworld_0922/vqa",
+  "image_root": "code/data/medworld_0922/images"
 }

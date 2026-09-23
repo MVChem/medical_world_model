@@ -1,4 +1,5 @@
 {
+  "architecture": "raw_input_v1",
   "qwen": "code/data/medworld/weights/Qwen3.5-0.8B",
   "jepa": "code/vjepa2/checkpoints/vjepa2_1_vitb_dist_vitG_384.pt",
   "temporal_data": "code/data/medworld_0922/temporal",
@@ -7,7 +8,7 @@
   "lora_alpha": 16,
   "vision_pixels": 256,
   "context_tokens": 384,
-  "generation_tokens": 64,
+  "generation_tokens": 384,
   "predictor_width": 512,
   "predictor_depth": 4,
   "ema_momentum": 0.99,
@@ -20,7 +21,6 @@
   "save_every": 100,
   "validate_every": 200,
   "validation_samples": 16,
-  "ce_chunk_tokens": 128,
   "amp": true,
   "task_batch_sizes": {
     "classification": 128,

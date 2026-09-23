@@ -1,16 +1,30 @@
 # MIMIC Atlas
 
-MIMIC-CXR × MIMIC-IV 的本地数据浏览项目：**React + Vite 前端、FastAPI 后端、原始 CSV 位置索引**。白色简洁界面，支持全量患者目录、完整检查时间线、影像对比、报告、临床原始记录、趋势图和离线 HTML。
+A local browser for MIMIC-CXR × MIMIC-IV, built with a **React + Vite frontend, FastAPI backend, and byte-offset indexes into the original CSV files**. The clean, light interface provides a full patient directory, complete study timelines, image comparisons, reports, original clinical records, trend charts, and offline HTML exports.
 
-新版 MedWorld 数据集由 [`data_processing`](data_processing/README.md) 构建到
-`code/data/medworld_0922`：复用全库 CXR/IV 匹配规则，支持随机非相邻时间点组合，
-并通过符号链接接入原始图像、200 张人工审核心肺分割和 1,190 个脑 MRI 标注体积，
-新数据不使用 CXAS 伪标签。在仓库根目录执行
-`PYTHONPATH=code python -m mimic_atlas.data_processing`。
+The reviewed MedWorld task dataset is built by [`data_processing`](data_processing/README.md) at
+`code/data/medworld_0922`. It reuses the full-cohort CXR/IV matching rules, supports
+random nonadjacent timepoint pairs, and links to the original images, 200 chest
+X-rays with human-reviewed heart/lung segmentation, and 1,190 annotated brain MRI
+volumes. The new dataset does not use CXAS pseudo labels. Run
+`PYTHONPATH=code python -m mimic_atlas.data_processing` from the repository root.
 
-## 启动与开发
+For the newer medication-positive CXR pair selection, see
+[`data_preprocessing`](../data_preprocessing/README.md). It requires two
+chronological images from the same patient, a nonempty report for each endpoint,
+and an actual administration between them or an overlapping active infusion.
+It has no common-admission requirement or time-gap limit. This is separate from
+the prepared-v2 builder above and the Atlas pair-view rules documented below.
+Its current data directory is `code/data/medworld_0923`. MedWorld can use these
+pairs for time-conditioned latent prediction without loading medication records;
+the evidence remains available here for visual inspection.
+Open [Medication pairs](http://127.0.0.1:8767/#medications) to inspect this selection
+in Atlas, including both original images, their reports, and interval medication
+records. See [Medication-pair review](#medication-pair-review) for its scope.
 
-首次安装并构建前端：
+## Setup and development
+
+Install dependencies and build the frontend:
 
 ```bash
 cd /home/data2/chk/workspace/2026/08/04/medical_world_model/code/mimic_atlas/frontend
@@ -18,28 +32,28 @@ npm ci --include=dev
 npm run build
 ```
 
-从 `code/` 启动后端；FastAPI 同时提供构建好的页面：
+Start the backend from `code/`; FastAPI also serves the built frontend:
 
 ```bash
 cd /home/data2/chk/workspace/2026/08/04/medical_world_model/code
-# 新 Python 环境才需要安装；本机使用共享 .venv
+# Install only for a new Python environment; this machine uses the shared .venv.
 .venv/bin/python -m pip install -r mimic_atlas/requirements.txt
 .venv/bin/python mimic_atlas/setup_data.py --source /home/data2/chk/data/MIMIC
 .venv/bin/python -m mimic_atlas --host 127.0.0.1 --port 8767
 ```
 
-页面：<http://127.0.0.1:8767>；API 文档：<http://127.0.0.1:8767/api/docs>。开发前端时另开终端，在 `frontend/` 运行 `npm run dev`，访问 Vite 输出的地址；`/api` 自动代理到后端 8767。生产构建和离线 HTML 都不需要 Node 服务，浏览页面无需 CDN。
+App: <http://127.0.0.1:8767>; API documentation: <http://127.0.0.1:8767/api/docs>. For frontend development, run `npm run dev` in `frontend/` in another terminal and open the URL printed by Vite. Requests to `/api` are automatically proxied to backend port 8767. The production build and offline HTML do not need a Node server or CDN access.
 
-远程查看可使用 `ssh -L 8767:127.0.0.1:8767 your-server`。本机生产实例由用户服务 `mimic-atlas.service` 管理；状态、重启分别使用 `systemctl --user status mimic-atlas.service`、`systemctl --user restart mimic-atlas.service`。Python 日志写入 `runs/atlas_YYYYMMDD/server.log`。
+For remote access, use `ssh -L 8767:127.0.0.1:8767 your-server`. The local production instance is managed by the user service `mimic-atlas.service`; use `systemctl --user status mimic-atlas.service` to inspect it and `systemctl --user restart mimic-atlas.service` to restart it. Python logs go to `runs/atlas_YYYYMMDD/server.log`.
 
-CLI 默认选择目录名最新、完成且版本兼容的 `runs/patient_index_*/manifest.json`；也可通过 `--index-root` 指定。配置索引后，源文件变化或索引不完整会明确报错，不会悄悄回退扫描。未配置索引的旧版源表读取接口仍保留用于小数据测试；全库浏览应先准备下面的索引。
+By default, the CLI selects the completed, version-compatible `runs/patient_index_*/manifest.json` with the latest directory name. Use `--index-root` to select one explicitly. When an index is configured, changed source files or incomplete indexes produce explicit errors instead of silently falling back to a scan. The older source-table reader without an index remains available for small-data tests; prepare the index below for full-cohort browsing.
 
-## 全局索引：只存位置，不存临床数据副本
+## Global index: offsets without copies of clinical records
 
-本机 MIMIC-IV 已解压为 31 个 CSV，合计 90.52 GiB。最大的 `icu/chartevents.csv` 为 41.94 GB（39.06 GiB）。按用户要求，完整解压校验后已删除对应 `.gz`；普通 CSV 可以按字节位置直接读取患者记录。
+The local MIMIC-IV installation contains 31 decompressed CSV files totaling 90.52 GiB. The largest, `icu/chartevents.csv`, is 41.94 GB (39.06 GiB). At the user's request, the corresponding `.gz` files were deleted after complete decompression verification. Uncompressed CSV files allow direct reads of patient records by byte offset.
 
 ```bash
-# 从 code/ 运行；构建需要 g++，不需要 GPU
+# Run from code/; building requires g++, but no GPU.
 .venv/bin/python -m mimic_atlas.prepare_index \
   --output mimic_atlas/runs/patient_index_20260918_offsets --workers 2
 .venv/bin/python -m mimic_atlas.verify_index \
@@ -48,55 +62,55 @@ CLI 默认选择目录名最新、完成且版本兼容的 `runs/patient_index_*
   --index-root mimic_atlas/runs/patient_index_20260918_offsets --port 8767
 ```
 
-构建扫描原始 CSV 一次。C++ 流式扫描器识别完整 CSV 记录，包括引号、逗号、引号内换行、CRLF 和末行无换行；只输出患者 ID、字节区间和记录数。同一患者分散在多个位置时保留多个区间。Python 在 SQLite 中建立患者查询索引，不改写源文件。
+The build scans each original CSV once. A streaming C++ scanner recognizes complete CSV records, including quotes, commas, quoted newlines, CRLF, and a final line without a newline. It emits only patient IDs, byte ranges, and row counts. Patients whose records occur in several places retain multiple ranges. Python builds the patient lookup indexes in SQLite without rewriting source files.
 
-索引目录内包含：
+The index directory contains:
 
-| 文件 | 内容 |
+| File | Contents |
 |---|---|
-| `tables/<表名>/subjects.sqlite` | `subject_id → start_byte, end_byte, row_count`；不含事件字段 |
-| `tables/<表名>/metadata.json` | 字段名、源文件指纹、全表计数和抽样校验值 |
-| `directory.sqlite` | 每个患者在哪些表中出现、各表记录数 |
-| `cxr.sqlite` | 患者 / 检查 / 影像 ID、影像和报告相对路径、文件可用状态 |
-| `manifest.json` | 源目录、版本、表目录、归集规则和构建结果 |
-| `progress.json`, `build.log` | 构建进度和运行日志 |
+| `tables/<table_name>/subjects.sqlite` | `subject_id → start_byte, end_byte, row_count`; no event fields |
+| `tables/<table_name>/metadata.json` | Field names, source-file fingerprint, whole-table counts, and sampled verification values |
+| `directory.sqlite` | Tables containing each patient and their row counts |
+| `cxr.sqlite` | Patient / study / image IDs, relative image and report paths, and file availability |
+| `manifest.json` | Source roots, version, table directory, grouping rules, and build results |
+| `progress.json`, `build.log` | Build progress and runtime logs |
 
-**不保存 CSV/Parquet 临床记录副本、报告正文或影像像素。** 打开患者时通过 `seek()` 读取原始 CSV 的对应区间，解析完整字段并逐行验证患者归属。报告和影像从原始路径读取；小型 CXR 元数据和字典在服务启动时读入内存。已打开患者的解析结果在有界内存缓存中复用；淘汰、闲置过期或重启后重新读取。
+**The index stores no CSV/Parquet copies of clinical records, report text, or image pixels.** When a patient is opened, the service uses `seek()` to read the relevant byte ranges from the original CSVs, parses every field, and verifies patient ownership row by row. Reports and images are read from their original paths; small CXR metadata tables and dictionaries are loaded into memory at startup. Parsed data for opened patients are reused in a bounded memory cache and reread after eviction, idle expiration, or restart.
 
-当前全库索引约 **354 MiB（0.35 GiB）**，旧版 Parquet 数据副本缓存为 11.47 GiB，减少约 97%。三个患者各 24 张临床表的原始记录读取，三轮交错测试得到的每表中位数之和：
+The current full-cohort index is approximately **354 MiB (0.35 GiB)**, compared with 11.47 GiB for the previous Parquet copy cache, a reduction of about 97%. Reading the original records from 24 clinical tables for each of three patients, across three interleaved rounds, produced the following sums of per-table median times:
 
-| 患者 | CSV 位置索引 | 旧 Parquet 缓存 |
+| Patient | CSV offset index | Previous Parquet cache |
 |---|---:|---:|
 | 10004606 | 206 ms | 1,019 ms |
 | 12137189 | 224 ms | 1,038 ms |
 | 10000032 | 68 ms | 334 ms |
 
-这是**操作系统文件缓存已热时**的 Python 读取与解析测试，不等于首次冷盘读取或整个页面的加载时间。每轮逐表比较了原始字段、顺序和重复记录。详细结果保留在 [索引运行目录](runs/patient_index_20260918_offsets/README.md)。
+This measures Python reading and parsing with a **warm operating-system file cache**, not first-access cold-disk latency or full-page load time. Each round compared original fields, ordering, and duplicate records for every table. Detailed results are retained in the [index run directory](runs/patient_index_20260918_offsets/README.md).
 
-构建可按完成的表恢复，`--workers 1` 可降低并发读盘。源 CSV 的实际路径、字节数和纳秒修改时间必须与索引一致；源表改变应重建到新目录。指纹不是整文件密码学校验。报告正文不在索引中，读取时取源文件当前内容；新增加的检查/影像需重新构建目录并重启服务。
+Builds can resume from completed tables; `--workers 1` reduces concurrent disk reads. The resolved source CSV path, byte size, and nanosecond modification time must match the index. Rebuild into a new directory when source tables change. This fingerprint is not a cryptographic checksum of the entire file. Report text is not indexed and is read from the current source file; newly added studies or images require rebuilding the directory and restarting the service.
 
-## 内存管理
+## Memory management
 
-患者数据采用统一的 LRU 与闲置过期策略：默认最多保留 **4 位患者**，估算预算 **512 MiB**，最后一次访问后 **300 秒**自动释放；清理线程每 10 秒检查一次，即使没有新请求也会回收。基础临床表、报告/配对详情、扩展表原始行、归一化事件、字段/状态和任务引用一起移除。重新访问时从位置索引重新读取全部记录。
+Patient data share an LRU cache with idle expiration: defaults are at most **4 patients**, an estimated **512 MiB** budget, and automatic release **300 seconds** after the last access. A cleanup thread runs every 10 seconds, including when there are no new requests. Base clinical tables, reports and pair details, raw extended-table rows, normalized events, field/status metadata, and task references are removed together. Revisiting a patient rereads all records through the offset index.
 
-每次加载都有独立的有效标记。淘汰时取消排队任务，正在执行的旧任务即使随后完成也不能写回；再次打开同一患者不会收到旧任务结果。HTTP 响应和导出期间暂时保护正在使用的数据。超过人数上限且所有位置均在使用时返回可重试的 503。字典在所有患者间共享，避免重复持有整份 ICD 字典。
+Each load has its own validity token. Eviction cancels queued tasks; previously running tasks cannot write back after eviction, even if they finish later. Reopening the same patient cannot receive results from an earlier load. Data in use by HTTP responses or exports are temporarily protected. When the patient limit is reached and every slot is in use, the service returns a retryable 503. Dictionaries are shared across patients to avoid retaining duplicate ICD dictionaries.
 
-图像缓存只保存编码后的预览字节，最多 **64 MiB / 512 张**，同样闲置 300 秒释放。缓存键包含原图文件指纹、尺寸、质量和格式，源图改变后不会命中旧预览；原始/解码图片不驻留，最多同时进行两次解码。所有缓存只在内存中，不写临床数据或缩略图副本到磁盘。
+The image cache stores only encoded preview bytes, up to **64 MiB / 512 images**, with the same 300-second idle expiration. Cache keys include the source image fingerprint, dimensions, quality, and format, so a changed source image cannot reuse an old preview. Original or decoded images are not retained, and at most two images are decoded concurrently. All caches reside in memory; clinical data and thumbnail copies are not cached on disk.
 
-患者预算是 Python 对象占用估算，**不是整个服务的 RSS 上限**：全库目录和共享字典是固定开销，读取/导出还有临时对象。单个超大患者或正在返回的响应可暂时超过预算，以保证记录完整；不会截断患者数据。释放对象后空间可被 Python 重用，操作系统显示的 RSS 不保证立即等量下降。
+The patient budget estimates Python object sizes; **it is not a limit on total service RSS**. The full-cohort directory and shared dictionaries add fixed overhead, while reads and exports create temporary objects. A very large patient or an active response may temporarily exceed the budget to preserve complete records; patient data are never truncated. Released space can be reused by Python, but operating-system RSS may not immediately decrease by the same amount.
 
 ```bash
 .venv/bin/python -m mimic_atlas --patient-cache-count 4 \
   --patient-cache-mib 512 --image-cache-mib 64 --cache-idle-seconds 300
 ```
 
-`GET /api/memory` 提供缓存人数、估算字节数、图片缓存实际字节数、命中和淘汰次数。浏览器在服务缓存过期后自动等待该表重新加载。
+`GET /api/memory` reports cached patient counts, estimated bytes, actual image-cache bytes, hits, and evictions. When the service cache expires, the browser automatically waits for the affected table to reload.
 
-## 导出产物与项目改名
+## Exports and project rename
 
-项目目录和 Python 包已统一为 `code/mimic_atlas`，启动使用 `python -m mimic_atlas`。下游训练、病例审阅脚本和文档引用已同步更新。
+The project directory and Python package are now consistently named `code/mimic_atlas`; start the service with `python -m mimic_atlas`. Downstream training, case-review scripts, and documentation references were updated accordingly.
 
-原根目录中的 `example_output`、`linked_output`、`representative_output_10`、`representative_linked_output_10` 已完整迁到：
+The former root-level `example_output`, `linked_output`, `representative_output_10`, and `representative_linked_output_10` directories were moved in full to:
 
 ```text
 runs/exports/legacy_20260918/
@@ -106,25 +120,25 @@ runs/exports/legacy_20260918/
 └── representative_linked_output_10/
 ```
 
-迁移逐文件校验内容与软链接，原始 JSONL/CSV、输入/目标契约和归档 HTML 均保留；历史 summary 中的路径作为生成时的来源信息保持不变。新 React **“导出记录”** 页面列出批次与文件，片段链接打开同一患者的当前影像/临床工作区，原文件可下载。
+File contents and symlinks were verified individually during migration. Original JSONL/CSV files, input/target contracts, and archived HTML were preserved. Paths in historical summaries remain unchanged as provenance from the time of generation. The React Export Records page lists batches and files; episode links open the current image/clinical workspace for the same patient, and original files remain downloadable.
 
-CLI 的新默认输出为 `runs/exports/generated_YYYYMMDD/cxr` 与 `linked`。`runs/exports/` 下一层或两层中含 `summary.json` 的导出批次会自动出现在该页面。导出清单流式分页读取，不在内存中长期缓存整份训练数据。用户显式生成的导出文件与可自动淘汰的浏览缓存分别管理。
+The CLI now defaults to `runs/exports/generated_YYYYMMDD/cxr` and `linked`. Export batches containing `summary.json` one or two levels below `runs/exports/` appear automatically on that page. Export manifests are streamed with pagination rather than retaining complete training datasets in memory. Explicitly generated export files are managed separately from automatically evicted browsing caches.
 
-## 患者归集与配对规则
+## Patient grouping and pairing rules
 
-规则写在 `prepare_index.py` 和索引清单的 `cxr.rules` 中：
+The rules are recorded in `prepare_index.py` and the index manifest's `cxr.rules`:
 
-- 只按完整、精确的 `subject_id` 归集患者，不根据时间接近或影像相似混合患者。
-- 检查由 `(subject_id, study_id)` 标识，影像由 `dicom_id` 标识；冲突归属阻止发布索引。保留全部检查和投照体位，即使没有 split、标签、报告或本地影像。
-- 报告从该患者目录中的 `s{study_id}.txt` 定位；缺失、空报告分别显示。
-- IV 原始字段保持不变。缺失 `hadm_id` 的记录仍属于该患者，但不猜测住院；eMAR/POE 明细只使用同一患者的唯一父记录补充时间与住院归属。
-- **索引只负责找全 A、B、C，不决定 AB、BC、ABC 或 AC。** 现有“影像配对”页是独立的相邻检查视图，不影响全量数据。
+- Group patients only by a complete, exact `subject_id`; never combine patients based on nearby timestamps or similar images.
+- Identify studies by `(subject_id, study_id)` and images by `dicom_id`; conflicting ownership blocks index publication. Retain every study and projection, including those without a split, labels, report, or local image.
+- Locate reports as `s{study_id}.txt` under the patient's directory. Missing and empty reports are displayed separately.
+- Preserve original IV fields. Records without `hadm_id` still belong to the patient, but admission membership is not guessed. eMAR/POE detail rows inherit time and admission context only from a unique parent record belonging to the same patient.
+- **The index finds all of A, B, and C; it does not choose AB, BC, ABC, or AC.** The existing Image Pairs page is a separate view of adjacent studies and does not restrict the full dataset.
 
-现有配对视图沿完整时间线选择严格相邻、同 AP/PA 的检查，间隔 1 小时至 365 天，不跨过中间检查。双方真实采集时间同时落在唯一住院区间 `[min(edregtime, admittime), dischtime]` 时才关联住院；未匹配和有歧义均保留。`study_id` 不是 `hadm_id`。
+The existing pair view selects strictly adjacent studies along the complete timeline, with matching AP/PA projections and intervals from 1 hour to 365 days. It does not skip intervening studies. An admission is linked only when both actual acquisition timestamps fall within one unique admission interval, `[min(edregtime, admittime), dischtime]`; unmatched and ambiguous cases are retained. `study_id` is not `hadm_id`.
 
-## 数据接入与全量范围
+## Data setup and full-cohort scope
 
-`setup_data.py` 校验后建立可重复使用的软链接；路径冲突时停止：
+`setup_data.py` validates sources and creates reusable symlinks, stopping on path conflicts:
 
 ```text
 code/data/
@@ -133,85 +147,85 @@ code/data/
 └── mimic-iv-3.1 -> /home/data1/data/MIMIC/mimic-iv-3.1
 ```
 
-本机 `/home/data2/chk/data/MIMIC` 指向 `/home/data1/data/MIMIC`。普通读取接口支持 `.csv` 和 `.csv.gz`；新位置索引要求 `.csv`。可用 `--cxr-root`、`--iv-root`、`--pairs` 覆盖路径和精选入口。
+On this machine, `/home/data2/chk/data/MIMIC` points to `/home/data1/data/MIMIC`. The ordinary reader supports both `.csv` and `.csv.gz`; the new offset index requires `.csv`. Override source paths and the curated entrypoint with `--cxr-root`, `--iv-root`, and `--pairs`.
 
-| 范围 | 数量 |
+| Scope | Count |
 |---|---:|
-| CXR ∪ IV 患者 | 368,138 |
-| CXR / IV 患者 | 65,379 / 364,627 |
-| 同时有 CXR 和 IV | 61,868 |
-| 仅 CXR / 仅 IV | 3,511 / 302,759 |
-| CXR 检查 / 胸片 | 227,835 / 377,110 |
-| 相邻影像候选配对 / 唯一共同住院配对 | 110,729 / 70,281 |
-| train / validate / test 同住院配对 | 68,529 / 593 / 1,159 |
+| CXR ∪ IV patients | 368,138 |
+| CXR / IV patients | 65,379 / 364,627 |
+| Patients with both CXR and IV | 61,868 |
+| CXR-only / IV-only patients | 3,511 / 302,759 |
+| CXR studies / chest X-rays | 227,835 / 377,110 |
+| Adjacent image candidate pairs / pairs with one shared admission | 110,729 / 70,281 |
+| train / validate / test pairs with a shared admission | 68,529 / 593 / 1,159 |
 
-首页总览展示全库摘要；患者与配对目录提供搜索、筛选、分页和完整清单 CSV，不自动选择患者。以上是全库可用候选，未应用具体任务抽样，**不等于最终训练清单**。精选示例单独保留 7 位患者和 10 个注释片段。
+The overview summarizes the full cohort. Patient and pair directories provide search, filters, pagination, and complete directory CSV exports; no patient is selected automatically. These counts describe available full-cohort candidates before task-specific sampling and **are not the final training manifest**. Curated examples separately retain 7 patients and 10 annotated episodes.
 
-进入患者后自动读取 **24 张患者级临床表**：7 张住院/ICU 背景表和 17 张扩展表，无需逐项加载。表清单中的源文件大小是服务器上的全库 CSV 大小，不是该患者的记录大小。仅 IV 的患者同样可查看所有相关记录。
+Opening a patient automatically loads **24 patient-level clinical tables**: 7 admission/ICU context tables and 17 extended tables, without requiring individual load actions. Source-file sizes in the table list refer to the server's full-cohort CSVs, not the patient's records. IV-only patients can also access all relevant records.
 
-| 分组 | 表 |
+| Group | Tables |
 |---|---|
-| 住院与 ICU 背景 | `admissions`, `transfers`, `diagnoses_icd`, `procedures_icd`, `icustays`, `procedureevents`, `inputevents` |
-| 检验与生命体征 | `labevents`, `chartevents`, `outputevents`, `ingredientevents` |
-| 微生物与常规测量 | `microbiologyevents`, `omr` |
-| 处方、给药与药房 | `prescriptions`, `emar`, `emar_detail`, `pharmacy` |
-| 医嘱与其他记录 | `poe`, `poe_detail`, `datetimeevents`, `services`, `hcpcsevents`, `drgcodes`, `patients` |
+| Admission and ICU context | `admissions`, `transfers`, `diagnoses_icd`, `procedures_icd`, `icustays`, `procedureevents`, `inputevents` |
+| Laboratory results and vital signs | `labevents`, `chartevents`, `outputevents`, `ingredientevents` |
+| Microbiology and routine measurements | `microbiologyevents`, `omr` |
+| Prescriptions, administration, and pharmacy | `prescriptions`, `emar`, `emar_detail`, `pharmacy` |
+| Orders and other records | `poe`, `poe_detail`, `datetimeevents`, `services`, `hcpcsevents`, `drgcodes`, `patients` |
 
-字典从原始数据补充项目和编码含义；`provider` / `caregiver` 是工作人员目录，不是患者记录表。
+Original dictionaries supply item and code descriptions. `provider` and `caregiver` are staff directories, not patient record tables.
 
-## 浏览和导出
+## Browsing and exporting
 
-- 首页为独立的“数据总览”（`#overview`），集中展示简介、全库规模、覆盖、划分和配对审计。“全量患者”（`#patients`）、“影像配对”（`#pairs`）和“精选示例”（`#featured`）只展示各自的目录与筛选。点击总览覆盖分组或 split 可跳转到对应的已筛选目录，刷新后仍保留该入口的筛选条件。
-- “数据集简介与统计口径”说明 CXR/IV 内容、按患者去重后的并集与交集、患者/住院/检查/影像标识，以及可浏览候选与实际训练集的区别，附官方说明链接。在独立总览中默认展开，患者页默认折叠；统计来自当前全库目录，新导出的离线 HTML 保留导出时统计并明确其实际内容范围。
-- 全部检查展示在患者时间线上；点击单次检查可查看所有投照，选择配对可比较两次影像、报告和四态 CheXpert 标签。
-- 影像默认 512 px，可切换 960 / 1400 px；点击放大读取 1800 px。同步缩放、亮度、对比度、反相和拖动不修改原始影像。
-- 临床背景页展示住院、ICU、病区、操作/输入事件和 ICD 编码，并提供 7 张原始表的分页、搜索、完整字段和 CSV。
-- 扩展表支持患者全部记录、指定住院或影像前后 0 / 6 / 24 / 72 小时。项目按 `itemid + 原始单位` 分组；散点图只显示观测值，不插值、不换算单位。日期级、文本、界限值和无时间记录仍在明细中。
-- 原始记录 CSV 导出包含全部筛选结果，不受分页和绘图采样限制；超过 1,500 个绘图点时明确显示抽样状态。
-- JSON 导出患者浏览数据和加载概况。离线 HTML 内嵌当前配对、两次检查的可用影像（最多 1400 px）、报告、标签、临床背景，以及导出时已加载表中前后各 24 小时的完整记录；可断网直接打开。未嵌入表明确标记，单次检查不提供片段 HTML。
+- The standalone Data Overview page (`#overview`) presents the introduction, full-cohort size, coverage, splits, and pair audit. All Patients (`#patients`), Image Pairs (`#pairs`), and Featured Examples (`#featured`) show their respective directories and filters. Clicking a coverage group or split in the overview opens the corresponding filtered directory; refreshing preserves that entrypoint's filters.
+- The dataset introduction and counting-methods panel explains CXR/IV contents, patient-deduplicated unions and intersections, patient/admission/study/image identifiers, and the distinction between browsable candidates and actual training data, with links to official documentation. It is expanded by default on the standalone overview and collapsed on patient pages. Statistics come from the current full-cohort directory; newly exported offline HTML retains export-time statistics and explicitly states the scope of its embedded content.
+- The patient timeline includes all studies. Open a study to inspect all projections, or select a pair to compare both images, reports, and four-state CheXpert labels.
+- Images default to 512 px, with 960 / 1400 px options; opening the enlarged view loads 1800 px. Synchronized zoom, brightness, contrast, inversion, and panning do not modify source images.
+- Clinical context displays admissions, ICU stays, ward transfers, procedure/input events, and ICD codes, with pagination, search, complete fields, and CSV exports for the 7 original tables.
+- Extended tables support all patient records, a selected admission, or windows extending 0 / 6 / 24 / 72 hours before and after imaging. Items are grouped by `itemid + original unit`; scatter plots show observed values without interpolation or unit conversion. Date-only records, text, threshold values, and records without timestamps remain in the detail tables.
+- Raw-record CSV exports contain every filtered result, independent of pagination and plot sampling. Plots explicitly indicate sampling when more than 1,500 points are available.
+- JSON exports contain patient browsing data and load status. Offline HTML embeds the selected pair, available images from both studies (up to 1400 px), reports, labels, clinical context, and complete records within the window extending 24 hours before and after the pair from tables loaded at export time. It can be opened without a network connection. Tables not embedded are explicitly marked. Single-study views do not offer episode HTML exports.
 
-页面使用可取消的 API 请求。切换患者后旧响应不能覆盖新患者；临床背景稍后完成时更新住院选项，保留已选表和范围。图片以外的数据不再施加过小的传输限制，列表和原始记录仍分页以便浏览。
+The interface uses cancellable API requests. After switching patients, stale responses cannot overwrite the new patient's state. When clinical context arrives later, admission options update while preserving the selected table and scope. Non-image data no longer have overly restrictive transfer limits; directories and raw records remain paginated for browsing.
 
-随访影像、报告及 IV 回顾性记录不是当前状态预测输入。ICD 诊断是出院编码，操作编码只有日期精度；同期治疗不能解释为影像变化的原因。原有 `forecast_inputs.jsonl` 输入边界保持不变。
+Follow-up images, reports, and retrospective IV records are not inputs for current-state prediction. ICD diagnoses are discharge codes, and procedure codes have only date-level precision. Concurrent treatment cannot be interpreted as the cause of an image change. The original `forecast_inputs.jsonl` input boundary is unchanged.
 
-## 项目结构
+## Project structure
 
 ```text
 mimic_atlas/
 ├── frontend/
-│   ├── src/App.jsx                 # 应用、导航与目录加载
-│   ├── src/components/             # 患者目录、查看器、报告与临床记录
-│   ├── src/api.js                  # API、取消请求、导出
-│   ├── src/charts.js               # 本地 SVG 时间轴与趋势绘制
-│   ├── src/styles/                 # 白色设计样式
+│   ├── src/App.jsx                 # App, navigation, and directory loading
+│   ├── src/components/             # Patient directories, viewer, reports, clinical records
+│   ├── src/api.js                  # API calls, cancellation, and exports
+│   ├── src/charts.js               # Local SVG timelines and trend charts
+│   ├── src/styles/                 # Light interface styles
 │   ├── package.json, package-lock.json
-│   └── vite.config.js              # 开发代理与生产构建
+│   └── vite.config.js              # Development proxy and production build
 ├── backend/
-│   ├── app.py                      # FastAPI 生命周期、CLI、页面交付
-│   ├── api.py                      # 患者、表、影像与导出 API
-│   ├── schemas.py                  # 请求与查询参数校验
-│   ├── images.py                   # 原始影像读取与缩放
-│   └── frontend.py                 # React 资源与离线 HTML 内嵌
-├── app.py, __main__.py              # FastAPI 工厂与模块启动入口
-├── data.py, cohort.py              # 患者数据、全库统计和关联
-├── memory.py                      # 统一患者 LRU/TTL 与有界图像缓存
-├── exports.py                     # 显式导出批次、分页片段与下载目录
-├── clinical_tables.py              # 扩展表解析、筛选与数值序列
-├── patient_index.py                # SQLite 查询与原始 CSV 定位读取
-├── csv_spans.cpp, prepare_index.py  # 一次扫描建立位置索引
-├── verify_index.py                 # 独立一致性校验和 API 验收
-├── setup_data.py                   # 数据软链接
-├── build_mimic_transitions.py       # 原有训练配对和显式导出
-├── link_mimic_iv_context.py         # IV 读取与临床关联
-├── tests/, browser_check*.py        # 合成数据及真实浏览器检查
-└── runs/                           # 忽略的索引、日志和显式导出
+│   ├── app.py                      # FastAPI lifecycle, CLI, and page serving
+│   ├── api.py                      # Patient, table, image, and export APIs
+│   ├── schemas.py                  # Request and query-parameter validation
+│   ├── images.py                   # Original image reading and resizing
+│   └── frontend.py                 # React assets and offline HTML embedding
+├── app.py, __main__.py              # FastAPI factory and module entrypoint
+├── data.py, cohort.py               # Patient data, cohort statistics, and linkage
+├── memory.py                       # Shared patient LRU/TTL and bounded image cache
+├── exports.py                      # Explicit export batches, paginated episodes, downloads
+├── clinical_tables.py              # Extended-table parsing, filtering, and numeric series
+├── patient_index.py                # SQLite lookup and original CSV reads by offset
+├── csv_spans.cpp, prepare_index.py  # Build offset indexes in one scan
+├── verify_index.py                 # Independent consistency and API validation
+├── setup_data.py                   # Data symlinks
+├── build_mimic_transitions.py       # Original training pairs and explicit exports
+├── link_mimic_iv_context.py         # IV reading and clinical linkage
+├── tests/, browser_check*.py        # Synthetic-data and real-browser checks
+└── runs/                           # Git-ignored indexes, logs, and explicit exports
 ```
 
-保留训练数据准备和静态导出功能，命令与导入统一使用 `mimic_atlas`，详见 [配对与训练说明](docs/transition_pipeline.md)。`runs/`、源数据、软链接、`node_modules/` 和 `frontend/dist/` 均不进入 Git。
+Training-data preparation and static exports remain available. Commands and imports consistently use `mimic_atlas`; see [Pairing and Training](docs/transition_pipeline.md). `runs/`, source data, symlinks, `node_modules/`, and `frontend/dist/` are excluded from Git.
 
-## 验证
+## Validation
 
-先构建前端，再从 `code/` 运行：
+Build the frontend first, then run from `code/`:
 
 ```bash
 .venv/bin/python -m pytest mimic_atlas/tests -q
@@ -225,39 +239,119 @@ mimic_atlas/
   --url http://127.0.0.1:8767
 ```
 
-测试依赖见 `requirements-dev.txt`；浏览器测试使用系统 Chrome/Chromium 或 Playwright Chromium，截图和结果写入 `runs/`。测试覆盖乱序/多段患者记录、多行 CSV、重复与缺失字段、患者隔离、源文件变化、自动加载、分页导出、延迟响应、临床背景迟到、离线 HTML 和 390px 手机布局。内存检查还覆盖人数/字节预算、无请求时的闲置释放、淘汰后的原始记录一致性、过期任务不能回写、已打开页面自动恢复、图片复用和旧导出导航。
+Test dependencies are listed in `requirements-dev.txt`. Browser checks use system Chrome/Chromium or Playwright Chromium and write screenshots and results to `runs/`. Coverage includes out-of-order and fragmented patient records, multiline CSV, duplicate and missing fields, patient isolation, source-file changes, automatic loading, paginated exports, delayed responses, late clinical context, offline HTML, and a 390px mobile layout. Memory checks additionally cover patient/byte budgets, idle cleanup without requests, consistency of original records after eviction, prevention of stale task writes, automatic recovery of open pages, image reuse, and navigation from older exports.
 
-## 设计与技术参考
+## Design and technical references
 
-沿用白色 Figma 设计参考：[shadcn/ui design system](https://www.figma.com/community/file/1203061493325953101)、[官方 Figma 目录](https://ui.shadcn.com/docs/figma)、[浅色 Dashboard](https://ui.shadcn.com/examples/dashboard)。此前 Figma 社区页在本机返回 403，视觉核对使用同体系官方预览；没有通过 Figma API 获取节点。界面现由 React 实现，不依赖付费设计资产。
+The interface follows the light Figma design references: [shadcn/ui design system](https://www.figma.com/community/file/1203061493325953101), [official Figma directory](https://ui.shadcn.com/docs/figma), and [light Dashboard](https://ui.shadcn.com/examples/dashboard). The Figma community page previously returned 403 on this machine, so visual checks used the same system's official previews; no nodes were retrieved through the Figma API. The interface is implemented in React and does not depend on paid design assets.
 
-结构参考：[React 自建应用](https://react.dev/learn/build-a-react-app-from-scratch)、[Vite](https://vite.dev/guide/)、[FastAPI 多文件应用](https://fastapi.tiangolo.com/tutorial/bigger-applications/)。数据与字段：[MIMIC-CXR-JPG](https://physionet.org/content/mimic-cxr-jpg/2.0.0/)、[MIMIC-IV](https://physionet.org/content/mimiciv/3.1/)、[检验](https://mimic.mit.edu/docs/iv/modules/hosp/labevents.html)、[ICU 记录](https://mimic.mit.edu/docs/iv/modules/icu/chartevents.html)。
+Architecture references: [Build a React App from Scratch](https://react.dev/learn/build-a-react-app-from-scratch), [Vite](https://vite.dev/guide/), and [FastAPI: Bigger Applications](https://fastapi.tiangolo.com/tutorial/bigger-applications/). Data and fields: [MIMIC-CXR-JPG](https://physionet.org/content/mimic-cxr-jpg/2.0.0/), [MIMIC-IV](https://physionet.org/content/mimiciv/3.1/), [Laboratory Events](https://mimic.mit.edu/docs/iv/modules/hosp/labevents.html), and [ICU Chart Events](https://mimic.mit.edu/docs/iv/modules/icu/chartevents.html).
 
-概览页的检查间隔柱状图参考 [shadcn/ui Bar Charts](https://ui.shadcn.com/charts/bar) 的简洁卡片、直接数值标签与低对比网格。使用原生 CSS 绘制，从全库候选配对实时汇总六个时间段（左闭右开，末段含上限）；按配对计数，不按患者去重。
+The overview's study-interval histogram follows the simple cards, direct value labels, and low-contrast grid of [shadcn/ui Bar Charts](https://ui.shadcn.com/charts/bar). It uses native CSS and aggregates six interval bins from the full candidate-pair cohort at runtime. Bins include the lower bound and exclude the upper bound, except that the final bin includes its upper bound. Counts are per pair, without patient deduplication.
 
-概览底部使用三张紧凑条形图：全部配对间隔、1 ≤ 间隔 < 24 小时的六段分布、全部 CXR 患者的独立检查次数分布（同一 study 的多张图像只计一次）。前两图按配对计数，第三图按患者计数，百分比分母分别显示在卡片右上角。
+The bottom of the overview contains three compact bar charts: intervals for all pairs, six interval bins for pairs with 1 ≤ interval < 24 hours, and the number of distinct studies per CXR patient (multiple images from one study count once). The first two count pairs; the third counts patients. Each card displays its percentage denominator in the upper-right corner.
 
-## MIMIC-CXR-VQA 问答浏览
+## Medication-pair review
 
-入口：<http://127.0.0.1:8767/#vqa>，或侧栏「VQA 问答」。读取本地
-`code/data/MIMIC_CXR_VQA/MIMIC-Ext-MIMIC-CXR-VQA/dataset/{train,valid,test}.json`，
-胸片通过原有 CXR 图像接口按精确 `image_id` 读取。
+Open <http://127.0.0.1:8767/#medications> or select **Medication pairs** in the
+sidebar. This page directly reads the complete selection at
+`code/data/medworld_0923`; it does not recompute pairs using the
+older Image Pairs page's adjacent-study or admission-linkage rules.
 
-- 展示三个官方集合的问题数、不同影像数、患者数、空答案比例和可点击题型分布。
-- 支持 split、verify / choose / query、7 种内容类型、空 / 非空答案筛选，以及问题、答案、idx、患者 / 检查 / 影像 ID 搜索；每页 25 题。
-- 点击「胸片与问答」查看原始问题、参考答案、可放大胸片与同图全部问答（跨官方 split、独立分页），可跳转对应患者时间线和临床记录。原始英文和答案数组不做改写；空集合显示 `[]`，不混同缺失数据。问答中的区域名称不是像素标注框。
-- 全量统计：377,391 题、142,797 张不同胸片、55,716 位去重患者；train / valid / test 分别为 290,031 / 73,567 / 13,793 题。train 与 valid 有 698 位患者重叠，test 与另外两集合无患者交集。官方 VQA split 与 Atlas CXR split 是不同字段。
+| 2026-09-23 medication selection | Count |
+| --- | ---: |
+| Selected chronological pairs | 1,022,127 |
+| Distinct patients | 21,097 |
+| Train / validate / test pairs | 985,153 / 10,630 / 26,344 |
 
-首次访问以 `ijson` 流式读取，后台构建仅驻留内存的精简问答目录，不复制原始 JSON、临床记录或影像到磁盘。目录保留至服务退出，不计入患者 LRU 预算；数据源更新后重启服务重新加载。缺失源文件明确报错，不发布部分集合。图片沿用原有有界缓存与清晰度选择。未打开 VQA 页面时不加载问答目录；此页面不包含在病例离线 HTML 中。
+Every selected pair has the same patient at both endpoints, two available
+frontal images, a nonempty report belonging to each study, and at least one
+accepted administration in the exact acquisition interval or an active infusion
+overlapping it. All forward combinations are eligible: different admissions,
+nonadjacent examinations, and AP-to-PA changes are allowed. There is no minimum
+or maximum time gap. The detailed predicates and completed verification are in
+the [preprocessing run](../data_preprocessing/runs/medication_filter_20260923/README.md).
 
-API：`/api/vqa/summary`、`/api/vqa/questions`、`/api/vqa/questions/{split}/{position}`。
-`position` 是集合内零起始位置；响应保留源数据 `idx`，不假设不同 split 的 idx 全局唯一。
+Use the split filter, exact patient ID, or pair/study search to find cases. Open
+a pair to see both images, enlarge either image, read both complete original
+reports, and inspect the medication table. The selected pair and directory
+filters are encoded in the URL, so direct links and browser Back restore the
+same case. A separate link opens the full patient workspace for broader clinical
+context.
 
-验证（从 `code/` 运行）：
+Medication records are reread from the original eMAR, eMAR details, and ICU
+inputevents through the patient byte-offset index, then checked again with the
+selection's administration predicates. The window is the exact inclusive CXR
+interval, with no added hours and no admission filter. Recomputed source counts
+must match the saved pair before records are returned. Search and source filters
+operate on the full interval result; pagination never discards records.
+
+Each record exposes its name, source, recorded status, original start/end times,
+timing relative to the first image, amount/unit, rate/unit, route, and dose basis.
+Expand it to inspect the original row, eMAR product details, identifiers, and
+patient-relative source positions. Missing values remain missing. Counts refer
+to source records rather than deduplicated doses; eMAR and ICU records can
+describe overlapping treatment. ICU amounts describe complete original
+segments and must not be interpreted as amounts delivered only between the
+images when a segment crosses a boundary.
+
+On first access, Atlas validates the completed manifest, source fingerprints,
+predicate implementation, and pair-shard checksums, then builds a compact Arrow
+directory in memory. Loading progress and errors are explicit. The directory
+remains until service exit; opened medication records have a separate bounded
+memory cache (at most 2 patients / 128 MiB, 300 seconds idle). No browsing index,
+raw clinical payload, report, or image cache is written to disk. This page is not
+embedded in the older case-level offline HTML exports.
+
+To open another complete selection with the same schema and current predicates:
+
+```bash
+# From code/. Use the CXR source/index belonging to the same installation.
+.venv/bin/python -m mimic_atlas --port 8767 \
+  --medication-cohort data/medworld_0923
+```
+
+APIs: `/api/medication-cohort`, `/api/medication-cohort/pairs`,
+`/api/medication-cohort/pairs/{id}`, and
+`/api/medication-cohort/pairs/{id}/medications`. Images use the existing image API.
+The feature follows the project's [shadcn/ui Dashboard reference](https://ui.shadcn.com/examples/dashboard)
+with count cards, filters, paired image/report panels, and paginated records.
+
+Validation, from `code/`:
+
+```bash
+.venv/bin/python -m pytest mimic_atlas/tests/test_medication_cohort.py -q
+.venv/bin/python -m mimic_atlas.browser_check_medications
+```
+
+The browser check covers real source/report identity, all 369 records of a
+nonadjacent AP-to-PA pair, active infusions at the first image, filtering and
+pagination, raw-field expansion, enlarged images, patient navigation, direct
+links, and a 390 px viewport. A separate backend check read all 7,693 records of
+the most densely recorded pair over 77 pages. Detailed evidence stays in
+`runs/medication_render_20260923/` and `runs/medication_browser_20260923/`.
+
+## MIMIC-CXR-VQA browser
+
+Open <http://127.0.0.1:8767/#vqa> or select VQA Questions in the sidebar. The browser reads
+`code/data/MIMIC_CXR_VQA/MIMIC-Ext-MIMIC-CXR-VQA/dataset/{train,valid,test}.json`
+and retrieves chest X-rays through the existing CXR image API by exact `image_id`.
+
+- Displays question counts, distinct image counts, patient counts, empty-answer rates, and clickable question-type distributions for the three official splits.
+- Supports filters for split, verify / choose / query, 7 content types, and empty / nonempty answers, plus search by question, answer, idx, or patient / study / image ID. Each page contains 25 questions.
+- Open Chest X-ray and Questions to view the original question, reference answers, an enlargeable image, and all questions for that image across official splits, with separate pagination. Links open the patient's timeline and clinical records. Original English text and answer arrays are preserved; an empty set is displayed as `[]`, distinct from missing data. Region names in questions are not pixel-level bounding-box annotations.
+- Full source totals: 377,391 questions, 142,797 distinct chest X-rays, and 55,716 distinct patients. The train / valid / test splits contain 290,031 / 73,567 / 13,793 questions. Train and valid share 698 patients; test has no patients in common with either. The official VQA split and Atlas CXR split are separate fields.
+
+On first access, `ijson` streams the source files while a compact question directory is built in the background and kept only in memory. It does not copy original JSON, clinical records, or images to disk. The directory remains until the service exits and is outside the patient LRU budget; restart the service after source updates. Missing source files cause explicit errors, and partial splits are not published. Images reuse the existing bounded cache and resolution controls. The question directory is not loaded until the VQA page is opened. This page is not included in case-level offline HTML.
+
+APIs: `/api/vqa/summary`, `/api/vqa/questions`, and `/api/vqa/questions/{split}/{position}`.
+`position` is zero-based within a split. Responses preserve the source `idx` without assuming that idx values are globally unique across splits.
+
+Validation, from `code/`:
 
 ```bash
 .venv/bin/python -m pytest mimic_atlas/tests -q
 .venv/bin/python -m mimic_atlas.browser_check_vqa
 ```
 
-浏览器检查覆盖全量计数、患者交集、空答案筛选、分页、影像匹配、同图问答、放大、患者跳转、无结果搜索和 390px 布局；截图与检查结果保留在 `runs/vqa_browser_20260918/`。视觉沿用项目的 [shadcn/ui Dashboard 参考](https://ui.shadcn.com/examples/dashboard)，使用浅色统计卡片、条形图和筛选表格。
+Browser checks cover full-cohort counts, patient intersections, empty-answer filtering, pagination, image matching, same-image questions, enlargement, patient navigation, searches with no results, and a 390px layout. Screenshots and results are retained in `runs/vqa_browser_20260918/`. Styling follows the project's [shadcn/ui Dashboard reference](https://ui.shadcn.com/examples/dashboard), using light statistic cards, bar charts, and filterable tables.

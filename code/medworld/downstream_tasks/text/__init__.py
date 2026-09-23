@@ -1,1 +1,1 @@
-from .decoder import TextDecoder, chunked_ce
+from .decoder import TextDecoder

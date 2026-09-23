@@ -17,10 +17,12 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel
 
 from .batching import BatchPrefetch, training_finished
+from . import WEIGHTS_ONLY_RESUME_ERROR
 from .config import load_config
+from .architecture import require_reviewed_data, uses_temporal
 from .datasets import TASKS, UnifiedData
 from .model import MedWorld
-from .runtime import (atomic_json, optimizer_for, read_checkpoint,
+from .runtime import (atomic_json, optimizer_for,
                       save_checkpoint, seed_all, source_fingerprint)
 
 
@@ -74,21 +76,7 @@ class DistributedTrainer:
                         "heartbeat_unix": time.time(), "stopped": self.stop, **extra})
 
     def resume(self, saved):
-        if saved["config"] != self.cfg or saved["data_fingerprint"] != self.data.fingerprint:
-            raise ValueError("Distributed resume requires identical config and data")
-        if saved["weights_fingerprint"] != self.weights_fingerprint:
-            raise ValueError("Pretrained weights changed")
-        if saved["progress"].get("world_size") != self.world_size:
-            raise ValueError("Resume must retain the same number of ranks")
-        if len(saved["rng"].get("per_rank", [])) != self.world_size:
-            raise ValueError("Per-rank RNG states missing")
-        self.model.restore(saved["model"])
-        self.optimizer.load_state_dict(saved["optimizer"])
-        self.progress = dict(saved["progress"])
-        if int(self.model.target.updates) != self.progress["step"]:
-            raise ValueError("EMA count differs from optimizer updates")
-        self.wrap()
-        restore_rank_rng(saved["rng"]["per_rank"][self.rank], self.device)
+        raise ValueError(WEIGHTS_ONLY_RESUME_ERROR)
 
     def parameter_spread(self):
         # Two moments per trainable tensor detect divergence without copying the
@@ -105,13 +93,9 @@ class DistributedTrainer:
 
     def save(self, name="last.pt"):
         self.parameter_spread()
-        local = rank_rng_state(self.device)
-        states = [None] * self.world_size
-        dist.all_gather_object(states, local)
         if self.rank == 0:
-            save_checkpoint(self.out / name, self.model, self.optimizer, self.progress,
-                            self.data.fingerprint, self.weights_fingerprint,
-                            rng_payload={**states[0], "per_rank": states, "world_size": self.world_size})
+            save_checkpoint(self.out / name, self.model, self.progress,
+                            self.data.fingerprint, self.weights_fingerprint)
         dist.barrier()
 
     @torch.no_grad()
@@ -183,7 +167,8 @@ class DistributedTrainer:
                     [p for p in self.model.parameters() if p.requires_grad], self.cfg["max_grad_norm"],
                     error_if_nonfinite=True)
                 self.optimizer.step()
-                self.model.target.update(self.model.encoder, self.cfg["ema_momentum"])
+                if uses_temporal(self.cfg):
+                    self.model.target.update(self.model.encoder, self.cfg["ema_momentum"])
                 self.progress.update(marker)
                 self.progress["step"] += 1
                 names = sorted(parts_sum)
@@ -204,10 +189,11 @@ class DistributedTrainer:
                 record = {"step": self.progress["step"], "task": task,
                           **dict(zip(names, values.cpu().tolist())), "grad_norm": float(norm),
                           "seconds": max(float(x[0]) for x in statistics), "current_global_batch": global_batch,
-                          "temporal_global_batch": sizes.get("temporal", self.cfg["batch_size"]) * len(batches) * self.world_size,
+                          "temporal_global_batch": (sizes.get("temporal", self.cfg["batch_size"]) * len(batches) * self.world_size
+                                                    if uses_temporal(self.cfg) else 0),
                           "ranks": [dict(zip(("seconds", "data_wait_seconds", "peak_allocated_gib", "peak_reserved_gib"),
                                              x.cpu().tolist())) for x in statistics],
-                          "ema_updates": int(self.model.target.updates),
+                          "ema_updates": int(self.model.target.updates) if uses_temporal(self.cfg) else 0,
                           "wall_unix": time.time()}
                 if self.rank == 0:
                     with (self.out / "metrics.jsonl").open("a") as handle:
@@ -240,10 +226,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config")
     parser.add_argument("--out", required=True)
-    parser.add_argument("--resume")
+    parser.add_argument("--resume", help="Unavailable: checkpoints contain trained weights only")
     args = parser.parse_args()
-    if args.resume and args.config:
-        parser.error("Resume uses its checkpoint configuration")
+    if args.resume:
+        parser.error(WEIGHTS_ONLY_RESUME_ERROR)
     rank, local_rank, world_size = (int(os.environ[key]) for key in ("RANK", "LOCAL_RANK", "WORLD_SIZE"))
     if world_size < 2:
         parser.error("Launch with torchrun on at least two GPUs")
@@ -264,12 +250,12 @@ def main():
         raise ValueError("Use the GPU-locking medworld.launch_distributed entry")
     (out / f"rank{rank}.pid").write_text(str(os.getpid()) + "\n")
     try:
-        saved = read_checkpoint(args.resume) if args.resume else None
-        cfg = saved["config"] if saved else load_config(args.config)
+        cfg = load_config(args.config)
         seed_all(cfg["seed"])
         torch.set_float32_matmul_precision("high")
         torch.backends.cudnn.benchmark = True
         data = UnifiedData(cfg)
+        require_reviewed_data(cfg, data)
         fingerprints = [None] * world_size
         dist.all_gather_object(fingerprints, data.fingerprint)
         if len(set(fingerprints)) != 1:
@@ -281,11 +267,8 @@ def main():
         trainer = DistributedTrainer(model, data, out, weights[0], rank, world_size)
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGUSR1):
             signal.signal(sig, trainer.request_stop)
-        if saved:
-            trainer.resume(saved)
-        else:
-            trainer.wrap()
-            seed_all(cfg["seed"] + rank)
+        trainer.wrap()
+        seed_all(cfg["seed"] + rank)
         if rank == 0:
             atomic_json(out / "config.json", cfg)
             atomic_json(out / "data_protocol.json", data.metadata)

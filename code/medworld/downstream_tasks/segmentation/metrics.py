@@ -5,14 +5,12 @@ import numpy as np
 def segmentation_metrics(prediction, target, mask):
     if len(target) != 1:
         raise ValueError("Segmentation evaluation expects one image at a time")
-    if mask.shape[1] == 1:
-        mask = mask.expand_as(target)
-    if mask.shape != target.shape:
-        raise ValueError("Segmentation channel mask differs from targets")
+    if prediction.shape != target.shape or mask.shape != target.shape:
+        raise ValueError("Segmentation predictions, targets and channel masks must align")
     active = mask[0].sum((1, 2)) > 0
     if not active.any():
         raise ValueError("No supervised segmentation channels")
-    p = (prediction[:, :target.shape[1]].sigmoid() > .5).float() * mask
+    p = (prediction.sigmoid() > .5).float() * mask
     t = (target > .5).float() * mask
     dice = ((2 * (p * t).sum((2, 3)) + 1e-6) /
             (p.sum((2, 3)) + t.sum((2, 3)) + 1e-6))[0][active].tolist()
@@ -35,16 +33,18 @@ def aggregate_segmentation(records):
         raise ValueError("Cannot aggregate empty segmentation results")
     groups = defaultdict(list)
     for row in records:
-        groups[row.get("dataset", "legacy")].append(row)
+        if any(key not in row for key in ("dataset", "volume_id", "target_names")):
+            raise ValueError("Segmentation records require dataset, volume_id and target_names")
+        groups[row["dataset"]].append(row)
     summaries = {}
     for dataset, rows in groups.items():
         volumes = {}
         channels = rows[0]["active_channels"]
-        names = rows[0].get("target_names", [str(c) for c in channels])
+        names = rows[0]["target_names"]
         for row in rows:
-            if row["active_channels"] != channels or row.get("target_names", names) != names:
+            if row["active_channels"] != channels or row["target_names"] != names:
                 raise ValueError("Channel semantics changed within a segmentation dataset")
-            identity = row.get("volume_id", row["id"])
+            identity = row["volume_id"]
             totals = volumes.setdefault(identity, np.zeros((3, len(channels)), dtype=np.float64))
             totals += np.asarray([row["intersection_per_organ"], row["prediction_pixels_per_organ"],
                                   row["target_pixels_per_organ"]], dtype=np.float64)

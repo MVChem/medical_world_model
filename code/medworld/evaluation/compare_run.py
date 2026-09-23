@@ -1,7 +1,9 @@
 """Matched, separately trained image-only versus image+slots task comparison."""
 import argparse
 import json
+import math
 from pathlib import Path
+from ..architecture import architecture, baseline_label, uses_slot_branch, uses_temporal
 
 
 def compare(baseline, conditioned, out):
@@ -14,6 +16,20 @@ def compare(baseline, conditioned, out):
         raise ValueError('Expected a trained no-slots baseline and a trained slots model')
     ca, cb = [dict(s['config']) for s in checkpoints]
     for cfg in (ca, cb):
+        cfg['architecture'] = architecture(cfg)
+    for key in ('latent_weight', 'visual_consistency_weight'):
+        if ca.get(key) != 0:
+            raise ValueError('Raw-input baseline must disable all auxiliary objectives')
+        value = cb.get(key)
+        if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value) or value < 0:
+            raise ValueError('Slots auxiliary objective weights must be finite and nonnegative')
+        ca.pop(key)
+        cb.pop(key)
+    initializations = [s.get('metadata', {}).get('task_initialization_sha256') for s in checkpoints]
+    if any(not isinstance(value, str) or len(value) != 64 or any(c not in '0123456789abcdef' for c in value)
+           for value in initializations) or initializations[0] != initializations[1]:
+        raise ValueError('Comparison requires identical recorded task initialization SHA256')
+    for cfg in (ca, cb):
         cfg.pop('slot_conditioning')
         cfg.pop('testing')
         cfg.pop('baselines', None)
@@ -21,10 +37,15 @@ def compare(baseline, conditioned, out):
         raise ValueError('Comparison requires equal configs and equal optimizer update counts')
     if a['progress'].get('world_size') != b['progress'].get('world_size'):
         raise ValueError('Comparison requires the same world size and effective batches')
-    if any(s['progress'].get('stopped') or s['progress'].get('complete') is False for s in checkpoints):
+    if any(s['progress'].get('stopped') or s['progress'].get('complete') is not True for s in checkpoints):
         raise ValueError('Comparison requires successfully completed training')
-    if a['data_fingerprint'] != b['data_fingerprint'] or a['weights_fingerprint'] != b['weights_fingerprint']:
-        raise ValueError('Data or initial pretrained weights differ')
+    if a['data_fingerprint'] != b['data_fingerprint']:
+        raise ValueError('Training data differ')
+    sample_counts = [s['progress'].get('task_samples') for s in checkpoints]
+    if any(not isinstance(value, dict) for value in sample_counts) or any(
+            type(sample_counts[0].get(task)) is not int or sample_counts[0][task] != sample_counts[1].get(task)
+            for task in ('classification', 'segmentation', 'vqa')):
+        raise ValueError('Current-task training sample counts differ or are missing')
     from ..config import load_config
     testing = load_config(conditioned / 'config.json')['testing']
     other_testing = load_config(baseline / 'config.json')['testing']
@@ -46,6 +67,8 @@ def compare(baseline, conditioned, out):
                     or summary['data_fingerprint'] != saved['data_fingerprint']
                     or summary['checkpoint_sha256'] != _sha256(run / 'final.pt')):
                 raise ValueError('Expected full matched test results on final.pt')
+            if summary.get('predictions_sha256', {}).get(task) != _sha256(directory / f'{task}.jsonl'):
+                raise ValueError('Prediction file SHA256 differs from evaluation summary')
             if task == 'vqa':
                 selection = summary.get('vqa_selection', {})
                 if (selection.get('per_type', 0) != testing['vqa_per_type'] or
@@ -76,14 +99,24 @@ def compare(baseline, conditioned, out):
                                  'unit': 'MRI volumes or CXR images', 'baseline': x, 'slots': y, 'delta': y - x})
     out.mkdir(parents=True, exist_ok=True)
     updates = {'baseline': a['progress']['step'], 'slots': b['progress']['step']}
+    arms = {name: {'label': baseline_label(saved['config']) if name == 'baseline' else 'Raw inputs + slots',
+                   'slot_branch': uses_slot_branch(saved['config']), 'temporal_training': uses_temporal(saved['config']),
+                   'latent_weight': saved['config']['latent_weight'],
+                   'visual_consistency_weight': saved['config'].get('visual_consistency_weight', 0),
+                   'weights_fingerprint': saved['weights_fingerprint'],
+                   'task_initialization_sha256': saved.get('metadata', {}).get('task_initialization_sha256')}
+            for name, saved in zip(('baseline', 'slots'), checkpoints)}
     atomic_json(out / 'comparison.json', {'baseline': str(baseline), 'conditioned': str(conditioned),
+                'architecture': architecture(a['config']), 'arms': arms,
                 'budget_mode': 'time' if ca['total_hours'] else 'steps', 'optimizer_steps': updates, 'rows': rows})
     def fmt(x):
         return 'N/A' if x is None else f'{x:.5f}'
-    lines = ['# Image-only vs image + slots', '',
-             'Same training settings, effective batches and exact optimizer update counts.',
+    lines = ['# ' + baseline_label(a['config']) + ' vs inputs + slots', '',
+             'Same task initialization, current-task data, effective batches and optimizer updates. Auxiliary objectives apply only to the slots arm when enabled.',
              f"Optimizer updates: no slots {updates['baseline']}, slots {updates['slots']}.", '',
-             '| Task | Metric | N | No slots | With 8 slots | Delta |', '|---|---|---:|---:|---:|---:|']
+             '| Arm | Slot branch | Temporal weight | VSSC weight |', '|---|---|---:|---:|']
+    lines += [f"| {arm['label']} | {arm['slot_branch']} | {arm['latent_weight']} | {arm['visual_consistency_weight']} |" for arm in arms.values()]
+    lines += ['', '| Task | Metric | N | ' + baseline_label(a['config']) + ' | With 8 slots | Delta |', '|---|---|---:|---:|---:|---:|']
     lines += ['| ' + ' | '.join([r['task'], r['metric'], str(r['n']), fmt(r['baseline']), fmt(r['slots']), fmt(r['delta'])]) + ' |' for r in rows]
     (out / 'COMPARISON.md').write_text('\n'.join(lines) + '\n')
     return rows

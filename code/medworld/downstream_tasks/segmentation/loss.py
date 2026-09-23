@@ -3,9 +3,7 @@ import torch.nn.functional as F
 
 
 def segmentation_loss(prediction, target, mask):
-    prediction = prediction[:, :target.shape[1]].float()
-    if mask.shape[1] == 1:
-        mask = mask.expand_as(target)
+    prediction = prediction.float()
     if prediction.shape != target.shape or mask.shape != target.shape:
         raise ValueError("Segmentation predictions, targets and channel masks must align")
     active = mask.sum((2, 3)) > 0

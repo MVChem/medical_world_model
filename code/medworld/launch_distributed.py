@@ -14,6 +14,7 @@ import sys
 import time
 
 from .config import PROJECT, load_config
+from . import WEIGHTS_ONLY_RESUME_ERROR
 
 
 def atomic(path, value):
@@ -97,37 +98,30 @@ def main():
     parser.add_argument("--gpus", required=True, help="Physical GPU IDs, e.g. 2,3")
     parser.add_argument("--config")
     parser.add_argument("--out", required=True)
-    parser.add_argument("--resume", help="Checkpoint from this same distributed run")
+    parser.add_argument("--resume", help="Unavailable: checkpoints contain trained weights only")
     parser.add_argument("--monitor-seconds", type=float, default=10)
     parser.add_argument("--cpu-base", type=int, help="First physical CPU core for rank affinity, e.g. 32 for GPUs 4-7")
     parser.add_argument("--skip-evaluation", action="store_true",
                         help="Explicitly skip full held-out tests (e.g. a short preflight)")
     args = parser.parse_args()
+    if args.resume:
+        parser.error(WEIGHTS_ONLY_RESUME_ERROR)
     selectors = args.gpus.split(",")
     if len(selectors) < 2 or len(set(selectors)) != len(selectors):
         parser.error("At least two distinct GPUs are required")
     if args.monitor_seconds <= 0:
         parser.error("monitor-seconds must be positive")
-    if args.resume and args.config:
-        parser.error("Resume uses its original configuration and frozen source")
     out = Path(args.out).resolve()
-    if args.resume:
-        if Path(args.resume).resolve().parent != out or not (out / "source_manifest.json").exists():
-            parser.error("Resume requires a checkpoint and frozen source in the existing run folder")
-        for name, digest in json.loads((out / "source_manifest.json").read_text()).items():
-            if hashlib.sha256((out / "source/medworld" / name).read_bytes()).hexdigest() != digest:
-                parser.error("Frozen source was modified")
-    elif out.exists() and any(out.iterdir()):
+    if out.exists() and any(out.iterdir()):
         parser.error("Choose an empty output folder")
-    cfg = None if args.resume else load_config(args.config)
-    timed = bool((cfg or json.loads((out / "requested_config.json").read_text())).get("total_hours", 0))
+    cfg = load_config(args.config)
+    timed = bool(cfg.get("total_hours", 0))
     locks, devices = reserve(selectors)
     out.mkdir(parents=True, exist_ok=True)
-    if not args.resume:
-        snapshot(out)
-        atomic(out / "requested_config.json", cfg)
+    snapshot(out)
+    atomic(out / "requested_config.json", cfg)
     launch = {"launcher_pid": os.getpid(), "started_unix": time.time(), "started_local": datetime.now().isoformat(),
-              "gpus": devices, "world_size": len(devices), "resume": args.resume, "project_root": str(PROJECT)}
+              "gpus": devices, "world_size": len(devices), "project_root": str(PROJECT)}
     packages = {}
     for name in ("torch", "transformers", "triton", "flash-linear-attention", "fla-core", "causal-conv1d"):
         try:
@@ -136,9 +130,8 @@ def main():
             packages[name] = None
     launch["packages"] = packages
     atomic(out / "launch.json", launch)
-    runtime_cfg = cfg or json.loads((out / "requested_config.json").read_text())
-    cpu_threads = str(runtime_cfg.get("cpu_threads", 8))
-    cpu_cores = runtime_cfg.get("cpu_cores_per_rank", 8)
+    cpu_threads = str(cfg.get("cpu_threads", 8))
+    cpu_cores = cfg.get("cpu_cores_per_rank", 8)
     environment = dict(os.environ, CUDA_VISIBLE_DEVICES=",".join(d["uuid"] for d in devices),
                        MEDWORLD_PROJECT_ROOT=str(PROJECT), PYTHONPATH=str(out / "source"),
                        OMP_NUM_THREADS=cpu_threads, MKL_NUM_THREADS=cpu_threads, TOKENIZERS_PARALLELISM="false",
@@ -154,14 +147,14 @@ def main():
         launch["cpu_affinity"] = sorted(selected)
     command = [sys.executable, "-m", "torch.distributed.run", "--standalone", f"--nproc_per_node={len(devices)}",
                "--module", "medworld.distributed_train", "--out", str(out)]
-    command += ["--resume", str(Path(args.resume).resolve())] if args.resume else ["--config", str(out / "requested_config.json")]
+    command += ["--config", str(out / "requested_config.json")]
     stop_requested = False
     def request_stop(*_args):
         nonlocal stop_requested
         stop_requested = True
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, request_stop)
-    log_path = out / ("resume.log" if args.resume else "train.log")
+    log_path = out / "train.log"
     with log_path.open("a") as log:
         child = subprocess.Popen(command, cwd=PROJECT, env=environment, stdout=log, stderr=subprocess.STDOUT,
                                  start_new_session=True)

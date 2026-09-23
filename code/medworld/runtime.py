@@ -1,4 +1,4 @@
-"""Optimizer-boundary checkpoints, reproducible streams and loss validation."""
+"""Trained-weight checkpoints, reproducible streams and loss validation."""
 import hashlib
 import json
 import os
@@ -11,9 +11,10 @@ import numpy as np
 import torch
 
 from .batching import BatchPrefetch
-from . import FORMAT_VERSION
+from . import FORMAT_VERSION, WEIGHTS_ONLY_RESUME_ERROR
 from .datasets import TASKS
 from .datasets.protocol import _sha256
+from .architecture import RAW_INPUT, uses_slot_branch, uses_temporal
 
 
 def seed_all(seed):
@@ -38,6 +39,8 @@ def restore_rng(state):
 
 
 def source_fingerprint(cfg):
+    if not uses_slot_branch(cfg):
+        return hashlib.sha256(b"medworld/raw_input_v1/no-pretrained-assets").hexdigest()
     root = Path(cfg["qwen"])
     paths = sorted(p for p in root.iterdir() if p.is_file() and
                    (p.suffix in (".json", ".safetensors", ".model") or p.name == "merges.txt"))
@@ -64,11 +67,14 @@ def optimizer_for(model, cfg):
                              {"params": other, "lr": cfg["learning_rate"]}], weight_decay=.01)
 
 
-def save_checkpoint(path, model, optimizer, progress, data_fingerprint, weights_fingerprint, rng_payload=None):
+def save_checkpoint(path, model, progress, data_fingerprint, weights_fingerprint):
+    """Save learned online/EMA weights and provenance, without training-resume state."""
     path = Path(path)
+    summary = {"step": progress["step"], "complete": progress["complete"],
+               "world_size": progress.get("world_size", 1),
+               "task_samples": {task: progress["offsets"][task] for task in TASKS}}
     state = {"format_version": FORMAT_VERSION, "config": model.cfg, "metadata": model.metadata,
-             "model": model.compact_state(), "optimizer": optimizer.state_dict(),
-             "progress": dict(progress), "rng": rng_state() if rng_payload is None else rng_payload,
+             "model": model.compact_state(), "progress": summary,
              "data_fingerprint": data_fingerprint, "weights_fingerprint": weights_fingerprint}
     temporary = path.with_suffix(path.suffix + ".tmp")
     torch.save(state, temporary)
@@ -76,11 +82,13 @@ def save_checkpoint(path, model, optimizer, progress, data_fingerprint, weights_
 
 
 def read_checkpoint(path):
-    state = torch.load(path, map_location="cpu", weights_only=False)
-    required = {"format_version", "config", "metadata", "model", "optimizer", "progress", "rng",
+    state = torch.load(path, map_location="cpu", weights_only=True)
+    required = {"format_version", "config", "metadata", "model", "progress",
                 "data_fingerprint", "weights_fingerprint"}
-    if set(state) != required or state["format_version"] != FORMAT_VERSION:
-        raise ValueError("Not a supported unified MedWorld checkpoint")
+    if not isinstance(state, dict) or set(state) != required or state["format_version"] != FORMAT_VERSION:
+        raise ValueError("Not a supported MedWorld trained-weights checkpoint")
+    if not isinstance(state["config"], dict) or state["config"].get("architecture") != RAW_INPUT:
+        raise ValueError("Checkpoint must explicitly declare the supported raw-input architecture")
     return state
 
 
@@ -134,21 +142,10 @@ class Trainer:
         signal.signal(signal.SIGINT, self.request_stop)
 
     def resume(self, saved):
-        if saved["progress"].get("world_size", 1) != 1:
-            raise ValueError("Resume a distributed checkpoint with medworld.distributed_train")
-        if saved["config"] != self.cfg or saved["data_fingerprint"] != self.data.fingerprint:
-            raise ValueError("Resume requires identical configuration and filtered data")
-        if saved["weights_fingerprint"] != self.weights_fingerprint:
-            raise ValueError("Pretrained weights changed")
-        self.model.restore(saved["model"])
-        self.progress = saved["progress"]
-        self.optimizer.load_state_dict(saved["optimizer"])
-        if int(self.model.target.updates) != self.progress["step"]:
-            raise ValueError("EMA update count differs from completed optimizer steps")
-        restore_rng(saved["rng"])
+        raise ValueError(WEIGHTS_ONLY_RESUME_ERROR)
 
     def save(self, name="last.pt"):
-        save_checkpoint(self.out / name, self.model, self.optimizer, self.progress,
+        save_checkpoint(self.out / name, self.model, self.progress,
                         self.data.fingerprint, self.weights_fingerprint)
 
     def run(self):
@@ -177,13 +174,17 @@ class Trainer:
                     [p for p in self.model.parameters() if p.requires_grad],
                     self.cfg["max_grad_norm"], error_if_nonfinite=True)
                 self.optimizer.step()
-                self.model.target.update(self.model.encoder, self.cfg["ema_momentum"])
+                if uses_temporal(self.cfg):
+                    self.model.target.update(self.model.encoder, self.cfg["ema_momentum"])
                 self.progress.update(marker)
                 self.progress["step"] += 1
                 self.progress["complete"] = self.progress["step"] == self.cfg["steps"]
                 record = {"step": self.progress["step"], "task": task, **values,
                           "grad_norm": float(norm), "seconds": time.monotonic() - start,
-                          "ema_updates": int(self.model.target.updates)}
+                          "ema_updates": int(self.model.target.updates) if uses_temporal(self.cfg) else 0,
+                          "current_global_batch": self.cfg.get("task_batch_sizes", {}).get(task, self.cfg["batch_size"]) * len(batches),
+                          "temporal_global_batch": (self.cfg.get("task_batch_sizes", {}).get("temporal", self.cfg["batch_size"]) * len(batches)
+                                                    if uses_temporal(self.cfg) else 0)}
                 if device.type == "cuda":
                     record.update(cuda_step_peak_allocated_gib=torch.cuda.max_memory_allocated(device) / 1024**3,
                                   cuda_step_peak_reserved_gib=torch.cuda.max_memory_reserved(device) / 1024**3)

@@ -2,9 +2,8 @@
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
 from ..downstream_tasks.registry import SPLITS
-from ..asset_paths import provenance_path
+
 
 def _read(path: Path) -> dict:
     return json.loads(path.read_text())
@@ -30,32 +29,6 @@ def _split(value: str) -> str:
     return value
 
 
-def _patient_audit(records: dict[str, dict[str, list[dict]]]) -> dict[str, Any]:
-    """Reject leakage between any tasks' splits, not just within each task."""
-    patients = {
-        (task, split): {str(row["subject_id"]) for row in rows}
-        for task, splits in records.items() for split, rows in splits.items()
-    }
-    intersections = {}
-    for (task, split), values in patients.items():
-        for (other_task, other_split), other_values in patients.items():
-            if split == other_split:
-                continue
-            count = len(values & other_values)
-            key = f"{task}/{split}__{other_task}/{other_split}"
-            intersections[key] = count
-            if count:
-                raise ValueError(f"Cross-task patient split leakage: {key}, {count} patients")
-    return {
-        "patient_counts": {
-            task: {split: len(patients[task, split]) for split in splits}
-            for task, splits in records.items()
-        },
-        "cross_split_intersection_counts": intersections,
-        "globally_patient_disjoint": True,
-    }
-
-
 PRIORITY = {"train": 0, "validate": 1, "test": 2, "human_test": 3}
 
 
@@ -77,10 +50,8 @@ def patient_holdouts(current_records, observations):
     return result
 
 
-
 def manifest_key(path, root):
-    """Preserve historical relative fingerprints; allow external data roots."""
-    path = provenance_path(path, root)
+    """Use logical project-relative paths, preserving prepared-data symlinks."""
     try:
         return str(Path(path).relative_to(root))
     except ValueError:

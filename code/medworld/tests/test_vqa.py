@@ -3,7 +3,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 from PIL import Image
-from medworld.datasets.current import MultiTaskData
+from medworld.datasets.prepared import PreparedData
 from medworld.downstream_tasks.text.metrics import vqa_metrics
 
 
@@ -14,7 +14,7 @@ class VQATests(unittest.TestCase):
             Image.new('RGB', (64, 32)).save(image)
             row = {'image': str(image), 'id': 'x', 'subject_id': '1', 'question': 'Is there edema?',
                    'answer': ['yes'], 'semantic_type': 'verify', 'report': 'MUST NOT ENTER INPUTS'}
-            data = MultiTaskData.__new__(MultiTaskData)
+            data = PreparedData.__new__(PreparedData)
             example = data._example('vqa', 'test', row)
             batch = data.collate('vqa', [example])
             self.assertEqual(batch['questions'], ['Is there edema?'])

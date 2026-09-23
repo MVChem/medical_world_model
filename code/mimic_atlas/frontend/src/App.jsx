@@ -7,6 +7,7 @@ import Exports from "./components/Exports";
 import DatasetIntro from "./components/DatasetIntro";
 import Overview from "./components/Overview";
 import VQA from "./components/VQA";
+import MedicationPairs from "./components/MedicationPairs";
 
 const snapshot = window.MIMIC_SNAPSHOT;
 function currentRoute() {
@@ -18,6 +19,19 @@ function currentRoute() {
   const hash = location.hash.slice(1),
     params = new URLSearchParams(hash),
     page = hash.split("&")[0];
+  if (page === "medications") {
+    const split = params.get("split") || "all";
+    return {
+      mode: "medications",
+      pair: params.get("pair") || "",
+      page: Math.max(1, Number.parseInt(params.get("page"), 10) || 1),
+      filters: {
+        q: params.get("q") || "",
+        subject_id: params.get("subject_id") || "",
+        split: ["all", "train", "validate", "test", "unassigned"].includes(split) ? split : "all",
+      },
+    };
+  }
   const filters = {};
   for (const [name, values] of Object.entries({
     coverage: ["all", "cxr", "matched", "cxr_only", "iv_only"],
@@ -89,7 +103,11 @@ export default function App() {
   function navigate(next) {
     if (snapshot) return;
     if (next.mode) setBrowseRoute(next);
-    const filterQuery = new URLSearchParams(next.filters || {}).toString();
+    const filterQuery = new URLSearchParams({
+      ...next.filters,
+      ...(next.pair ? { pair: next.pair } : {}),
+      ...(next.page > 1 ? { page: next.page } : {}),
+    }).toString();
     const hash = next.subject
       ? new URLSearchParams({
           subject: next.subject,
@@ -131,6 +149,7 @@ export default function App() {
               counts.patients,
             ],
             ["pairs", "⇄", "影像配对", counts.pairs],
+            ["medications", "+", "Medication pairs", null],
             ["featured", "☆", "精选示例", catalog?.featured?.length],
             ["vqa", "?", "VQA 问答", null],
             ["exports", "↓", "导出记录", null],
@@ -213,7 +232,9 @@ export default function App() {
         {catalog?.state === "ready" && route.subject && (
           <DatasetIntro catalog={catalog} compact offline={Boolean(snapshot)} />
         )}
-        {route.mode === "vqa" && !snapshot ? (
+        {route.mode === "medications" && !snapshot ? (
+          <MedicationPairs route={route} quality={quality} imagesReady={catalog?.state === "ready"} onNavigate={navigate} />
+        ) : route.mode === "vqa" && !snapshot ? (
           <VQA quality={quality} imagesReady={catalog?.state === "ready"} onOpen={(subject) => navigate({ subject })} />
         ) : catalog?.state !== "ready" ? (
           <div id="startup" className="startup" role="status">

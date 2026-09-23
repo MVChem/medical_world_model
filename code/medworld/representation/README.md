@@ -36,6 +36,8 @@ It is not added to classification, report, or the temporal loss. The spatial cur
 Logs record task loss, `visual_consistency`, and `visual_consistency_weighted` separately.
 
 Evaluation and inference do not execute the auxiliary reconstruction branch or teacher; they use the same slots and standard task decoders.
-Auxiliary parameters are saved in compact checkpoints for training restoration. The frozen target projection is reconstructed from a private seed.
+Auxiliary trained parameters are retained in format-5 weights-only checkpoints.
+Optimizer state is excluded, so these files do not support exact training resume.
+The frozen target projection is reconstructed from a private seed.
 The auxiliary reconstruction module uses a separate initialization RNG to preserve the main model initialization and sampling random stream.
 Controlled experiments should use the same decoders, data, and training budgets, varying only the auxiliary objective. Such training comparisons have not yet been completed.

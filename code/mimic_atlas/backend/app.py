@@ -20,10 +20,15 @@ from ..patient_index import VERSION
 from .api import create_api_router
 from .frontend import DIST
 from .vqa import create_vqa_router
+from .medications import create_medication_router
+from ..medication_cohort import MedicationCohort
 
 
-def create_app(config=None, *, store=None):
+def create_app(config=None, *, store=None, medication_cohort=None):
     store = store or AtlasStore(config or AtlasConfig())
+    medications = (medication_cohort if isinstance(medication_cohort, MedicationCohort)
+                   else MedicationCohort(medication_cohort, expected_cxr_root=store.cxr_root))
+    medications.bind_cxr_root(store.cxr_root)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -31,6 +36,7 @@ def create_app(config=None, *, store=None):
         try:
             yield
         finally:
+            medications.close()
             store.close()
 
     app = FastAPI(
@@ -46,6 +52,8 @@ def create_app(config=None, *, store=None):
     app.state.store = store
     app.include_router(create_api_router(store))
     app.include_router(create_vqa_router())
+    app.state.medication_cohort = medications
+    app.include_router(create_medication_router(medications))
     app.mount(
         "/assets",
         StaticFiles(directory=DIST / "assets", check_dir=False),
@@ -92,6 +100,10 @@ def main():
     parser.add_argument("--cxr-root", type=Path, default=defaults.cxr_root)
     parser.add_argument("--iv-root", type=Path, default=defaults.iv_root)
     parser.add_argument("--pairs", type=Path, default=defaults.pairs_path)
+    parser.add_argument(
+        "--medication-cohort", type=Path,
+        help="Prepared pair selection v1 directory (default: code/data/medworld_0923)",
+    )
     parser.add_argument(
         "--index-root",
         type=Path,
@@ -152,7 +164,8 @@ def main():
         cache_idle_seconds=args.cache_idle_seconds,
         image_cache_bytes=args.image_cache_mib * 2**20,
     )
-    uvicorn.run(create_app(config), host=args.host, port=args.port, log_config=None)
+    uvicorn.run(create_app(config, medication_cohort=args.medication_cohort),
+                host=args.host, port=args.port, log_config=None)
 
 
 if __name__ == "__main__":

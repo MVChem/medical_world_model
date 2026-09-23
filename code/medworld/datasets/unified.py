@@ -1,4 +1,4 @@
-"""Global patient holdouts for the joint Table 1 / Table 2 training protocol."""
+"""Global patient holdouts for reviewed tasks and temporal representation learning."""
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 import hashlib
@@ -8,25 +8,27 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from .current import MultiTaskData
-from ..downstream_tasks.registry import TASKS
+from .prepared import PreparedData
 from .temporal import TemporalData
+from .temporal_selection import SELECTION_SCHEMA
 
 from .protocol import patient_holdouts
 
 
 class UnifiedData:
     def __init__(self, cfg, root=None):
-        if cfg.get("prepared_data"):
-            expected_temporal = Path(cfg["prepared_data"]) / "temporal"
-            if Path(cfg["temporal_data"]).resolve() != expected_temporal.resolve():
-                raise ValueError("Prepared temporal_data must point to prepared_data/temporal")
-            from .prepared import PreparedData
-            self.current = PreparedData(cfg, root=root)
-        else:
-            self.current = MultiTaskData(root=root, cfg=cfg)
+        if not cfg.get("prepared_data"):
+            raise ValueError("UnifiedData requires prepared_data with reviewed segmentation")
+        expected_temporal = Path(cfg["prepared_data"]) / "temporal"
+        external_temporal = Path(cfg["temporal_data"]).resolve() != expected_temporal.resolve()
+        if external_temporal:
+            manifest_path = Path(cfg["temporal_data"]) / "manifest.json"
+            if (not manifest_path.is_file()
+                    or json.loads(manifest_path.read_text()).get("schema") != SELECTION_SCHEMA):
+                raise ValueError("temporal_data requires a selection manifest or prepared_data/temporal")
+        self.current = PreparedData(cfg, root=root)
         self.temporal = TemporalData(cfg["temporal_data"], cfg["bidirectional"], cfg.get("image_workers", 1))
-        if cfg.get("prepared_data"):
+        if not external_temporal:
             for name, digest in self.temporal.source_hashes.items():
                 if self.current._file_sha256.get(f"temporal/{name}") != digest:
                     raise ValueError(f"Prepared manifest fingerprint mismatch: temporal/{name}")
@@ -51,12 +53,7 @@ class UnifiedData:
             raise ValueError("Empty classification training pool after holdouts")
         self.current.pos_weight = torch.tensor(np.clip(
             (labels == 0).sum(0) / np.maximum((labels == 1).sum(0), 1), .25, 10), dtype=torch.float32)
-        temporal_before, temporal_after, excluded_patients = {}, {}, {}
-        for split, rows in self.temporal.pairs.items():
-            kept = [r for r in rows if holdouts[str(r["patient"])] == split]
-            temporal_before[split], temporal_after[split] = len(rows), len(kept)
-            excluded_patients[split] = len({str(r["patient"]) for r in rows if holdouts[str(r["patient"])] != split})
-            self.temporal.pairs[split] = kept
+        temporal_before, temporal_after, excluded_patients = self.temporal.filter_holdouts(holdouts)
         used = {}
         def audit(patient, split):
             patient = str(patient)
@@ -66,27 +63,27 @@ class UnifiedData:
             for split, rows in splits.items():
                 for row in rows:
                     audit(row["subject_id"], split)
-        for split, rows in self.temporal.pairs.items():
-            for row in rows:
-                audit(row["patient"], split)
+        for patient, split in self.temporal.patient_splits():
+            audit(patient, split)
         self.metadata = {
             "current_original": self.current.metadata, "current_filtered_counts": self.current.counts,
             "current_dropped_rows": dropped, "temporal_original_pair_counts": temporal_before,
             "temporal_filtered_pair_counts": temporal_after, "temporal_excluded_patients": excluded_patients,
             "temporal_source_sha256": self.temporal.source_hashes,
+            "temporal_schema": self.temporal.schema,
+            "temporal_input": "source/target images and each own report; signed actual time only",
             "patient_policy": "Keep test/human_test; drop conflicting train/validate rows; never relocate rows",
             "globally_patient_disjoint": True, "bidirectional": cfg["bidirectional"],
             "time_condition": "signed realized_gap_hours", "ehr": False,
         }
         self._segmentation_groups = {}
         self._segmentation_sampling = cfg.get("segmentation_sampling", "uniform")
-        if getattr(self.current, "manual_only", False):
-            self.segmentation_layout = list(self.current.segmentation_layout)
-            self.metadata.update(segmentation_layout=self.segmentation_layout,
-                                 segmentation_training_sampling=self._segmentation_sampling,
-                                 segmentation_mri_order="Seeded volume blocks with shuffled slices within each volume")
-            for index, row in enumerate(self.current._records["segmentation"]["train"]):
-                self._segmentation_groups.setdefault(row["dataset"], []).append(index)
+        self.segmentation_layout = list(self.current.segmentation_layout)
+        self.metadata.update(segmentation_layout=self.segmentation_layout,
+                             segmentation_training_sampling=self._segmentation_sampling,
+                             segmentation_mri_order="Seeded volume blocks with shuffled slices within each volume")
+        for index, row in enumerate(self.current._records["segmentation"]["train"]):
+            self._segmentation_groups.setdefault(row["dataset"], []).append(index)
         self.fingerprint = hashlib.sha256(json.dumps(self.metadata, sort_keys=True).encode()).hexdigest()
         self._permutations = {}
         self._image_workers = cfg.get("image_workers", 1)

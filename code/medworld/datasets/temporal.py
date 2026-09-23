@@ -1,12 +1,16 @@
 """Signed actual-time pairs, with a source-only inference boundary."""
 import math
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
+import json
+import operator
 from pathlib import Path
 
 from PIL import Image, ImageOps
 import torch
 
 from .protocol import _rows, _sha256
+from .temporal_selection import CompactPairs, SELECTION_SCHEMA, read_selection
 
 SPLITS = ("train", "validate", "test")
 
@@ -20,20 +24,55 @@ def directed_pair(row, reverse=False):
                   delta_hours=-gap if reverse else gap)
     if reverse:
         result["source"], result["target"] = row["target"], row["source"]
+        for key in row:
+            if key.startswith("source_") and (other := "target_" + key[7:]) in row:
+                result[key], result[other] = row[other], row[key]
     return result
+
+
+class DirectedPairs(Sequence):
+    """Expose forward/backward pairs without duplicating the cohort in memory."""
+
+    def __init__(self, pairs, bidirectional):
+        self.pairs, self.directions = pairs, 2 if bidirectional else 1
+
+    def __len__(self):
+        return len(self.pairs) * self.directions
+
+    def __getitem__(self, index):
+        if isinstance(index, slice):
+            return [self[i] for i in range(*index.indices(len(self)))]
+        index = operator.index(index)
+        if index < 0:
+            index += len(self)
+        if not 0 <= index < len(self):
+            raise IndexError(index)
+        pair, direction = divmod(index, self.directions)
+        return directed_pair(self.pairs[pair], bool(direction))
 
 
 class TemporalData:
     def __init__(self, root, bidirectional=True, image_workers=1):
         self.root = Path(root)
+        self.bidirectional = bidirectional
+        self.image_workers = image_workers
+        self._image_pool = None
+        self.asset_root = self.root
+        self.schema = "prepared-temporal"
+        manifest_path = self.root / "manifest.json"
+        if manifest_path.is_file():
+            manifest = json.loads(manifest_path.read_text())
+            if manifest.get("schema") != SELECTION_SCHEMA:
+                raise ValueError("Unsupported temporal selection manifest schema")
+            self.schema = manifest["schema"]
+            self.observations, self.pairs, self.source_hashes, self.asset_root = read_selection(self.root, manifest)
+            self.lookup = {row["id"]: row for row in self.observations}
+            return
         self.observations = _rows(self.root / "observations.jsonl")
         self.lookup = {row["id"]: row for row in self.observations}
         if len(self.lookup) != len(self.observations):
             raise ValueError("Duplicate temporal observation ID")
         self.pairs = {split: _rows(self.root / f"{split}.jsonl") for split in SPLITS}
-        self.bidirectional = bidirectional
-        self.image_workers = image_workers
-        self._image_pool = None
         seen, patients = set(), {}
         for observation in self.observations:
             patient, split = str(observation["patient"]), observation["split"]
@@ -48,25 +87,47 @@ class TemporalData:
                     obs = self.lookup[row[side]]
                     if obs["split"] != split or str(obs["patient"]) != str(row["patient"]):
                         raise ValueError("Temporal pair crosses patient or split")
-                    if len(obs["labels"]) not in (6, 13) or not obs["report"].strip():
-                        raise ValueError("Temporal observations require a report and six legacy or 13 finding labels")
-                directed_pair(row)  # validate actual time independently of the old horizon bucket
+                    if not obs["report"].strip():
+                        raise ValueError("Temporal observations require their own nonempty report")
+                directed_pair(row)  # Validate the signed actual time interval.
         self.source_hashes = {name: _sha256(self.root / name) for name in
                               ("observations.jsonl", "train.jsonl", "validate.jsonl", "test.jsonl")}
 
     def directed(self, split):
-        return [directed_pair(row, reverse) for row in self.pairs[split]
-                for reverse in ((False, True) if self.bidirectional else (False,))]
+        return DirectedPairs(self.pairs[split], self.bidirectional)
+
+    def filter_holdouts(self, holdouts):
+        before, after, excluded = {}, {}, {}
+        for split, rows in self.pairs.items():
+            if isinstance(rows, CompactPairs):
+                kept, excluded_patients = rows.filter_patients(holdouts)
+            else:
+                kept = [r for r in rows if holdouts[str(r["patient"])] == split]
+                excluded_patients = {str(r["patient"]) for r in rows
+                                     if holdouts[str(r["patient"])] != split}
+            before[split], after[split], excluded[split] = len(rows), len(kept), len(excluded_patients)
+            self.pairs[split] = kept
+        return before, after, excluded
+
+    def patient_splits(self):
+        for split, rows in self.pairs.items():
+            patients = rows.patients() if isinstance(rows, CompactPairs) else {str(r["patient"]) for r in rows}
+            for patient in patients:
+                yield patient, split
 
     def _observation(self, observation_id):
         row = self.lookup[observation_id]
         path = Path(row["image"])
         if not path.is_absolute():
-            path = self.root / path
+            path = self.asset_root / path
         with Image.open(path) as image:
             image = ImageOps.pad(image.convert("RGB"), (512, 512),
                                  method=Image.Resampling.BICUBIC, color="black")
-        return image, row["report"]
+        report = ((self.asset_root / row["report_file"]).read_text(encoding="utf-8")
+                  if "report_file" in row else row["report"])
+        if not report.strip():
+            raise ValueError(f"Temporal observation has an empty report: {observation_id}")
+        return image, report
 
     def batch(self, rows, *, source_only=False):
         if not rows:
@@ -83,8 +144,5 @@ class TemporalData:
                   "delta_hours": torch.tensor([row["delta_hours"] for row in rows], dtype=torch.float32)}
         if not source_only:
             target = observations("target")
-            result.update(target={"images": [o[0] for o in target], "texts": [o[1] for o in target]},
-                          report_targets=[o[1] for o in target],
-                          labels=torch.tensor([self.lookup[row["target"]]["labels"] for row in rows],
-                                              dtype=torch.float32))
+            result["target"] = {"images": [o[0] for o in target], "texts": [o[1] for o in target]}
         return result

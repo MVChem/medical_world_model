@@ -969,6 +969,8 @@ input[type="search"] {
   }
   .workspace-nav {
     display: flex;
+    flex-wrap: wrap;
+    max-width: 100%;
     margin-left: auto;
     gap: 4px;
   }
@@ -1038,9 +1040,10 @@ input[type="search"] {
     margin: 0;
   }
   .workspace-nav button {
-    flex: 1;
+    flex: 1 0 auto;
     justify-content: center;
-    padding: 7px 5px;
+    padding: 7px 9px;
+    white-space: nowrap;
   }
   .workspace-nav small {
     margin-left: 3px;

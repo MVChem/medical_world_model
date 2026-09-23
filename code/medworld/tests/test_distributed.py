@@ -31,7 +31,7 @@ class BranchModel(nn.Module):
 
         self.world = nn.Linear(4, 4)
         self.target = EMATarget(self.encoder)
-        self.cfg = {"amp": False}
+        self.cfg = load_config(overrides={"amp": False})
 
     forward = MedWorld.forward
 

@@ -5,41 +5,35 @@ import math
 import os
 from pathlib import Path
 from .downstream_tasks.registry import TASKS
-from .asset_paths import relocate_asset
+from .architecture import RAW_INPUT, architecture, normalize_baseline
 
 PROJECT = Path(os.environ.get("MEDWORLD_PROJECT_ROOT", Path(__file__).resolve().parents[2])).resolve()
 DEFAULTS = {
-    # Empty preserves frozen historical configurations; use the September 22
-    # configuration for the expanded Atlas cohort.
-    "prepared_data": "",
-    "current_data": "code/data/medworld/current",
-    "dense_data": "code/data/medworld/dense",
-    "baseline_data": "code/data/medworld/baseline",
-    "selection_file": "code/data/medworld/selection/selection.json",
-    "classification_data": "code/data/medworld/classification",
-    "vqa_data": "code/data/MIMIC_CXR_VQA/MIMIC-Ext-MIMIC-CXR-VQA/dataset",
-    "image_root": "code/data/MIMIC_CXR/files",
+    "architecture": RAW_INPUT,
+    "prepared_data": "code/data/medworld_0922",
+    "vqa_data": "code/data/medworld_0922/vqa",
+    "image_root": "code/data/medworld_0922/images",
     "slot_conditioning": True,
     "testing": {"enabled": True, "tasks": list(TASKS), "human_segmentation": True, "reuse_completed": True, "vqa_per_type": 0, "vqa_seed": 42},
     "baselines": {"no_slots": True, "qwen": True},
-    "decoder_width": 256, "decoder_depth": 2,
-    "segmentation_channels": 3,
-    "segmentation_sampling": "uniform",
-    "observation_prompt": "Chest radiograph observation.",
+    "decoder_width": 256, "decoder_depth": 2, "task_patch_size": 16,
+    "segmentation_channels": 6,
+    "segmentation_sampling": "balanced_dataset",
+    "observation_prompt": "Medical image observation.",
 
     "qwen": "code/data/medworld/weights/Qwen3.5-0.8B",
     "jepa": "code/vjepa2/checkpoints/vjepa2_1_vitb_dist_vitG_384.pt",
-    "temporal_data": "code/data/medworld/temporal",
+    "temporal_data": "code/data/medworld_0923",
     "seed": 42, "lora_rank": 8, "lora_alpha": 16,
-    "vision_pixels": 256, "answer_tokens": 128, "context_tokens": 384,
-    "generation_tokens": 64, "predictor_width": 512, "predictor_depth": 4,
+    "vision_pixels": 256, "answer_tokens": 384, "context_tokens": 384,
+    "generation_tokens": 384, "predictor_width": 512, "predictor_depth": 4,
     "ema_momentum": 0.99, "bidirectional": True,
     "learning_rate": 1e-4, "lora_learning_rate": 5e-5, "max_grad_norm": 1.0,
     "batch_size": 1, "accumulation": 8,
     "steps": 4800,
     "latent_weight": 1.0,
     "save_every": 100, "validate_every": 200, "validation_samples": 8,
-    "ce_chunk_tokens": 32, "amp": False, "task_batch_sizes": {}, "prefetch_batches": 2, "image_workers": 1,
+    "amp": False, "task_batch_sizes": {}, "prefetch_batches": 2, "image_workers": 1,
     "visual_consistency_weight": 0.0, "visual_consistency_views": 2,
     "total_hours": 0.0,
     "require_fast_kernels": False,
@@ -60,10 +54,11 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError(f"Unknown configuration keys: {sorted(unknown)}")
     cfg = deepcopy(DEFAULTS)
     cfg.update(supplied)
-    if not isinstance(cfg["prepared_data"], str):
-        raise ValueError("prepared_data must be a directory path or an empty string")
-    if cfg["segmentation_channels"] not in (3, 6) or type(cfg["segmentation_channels"]) is not int:
-        raise ValueError("segmentation_channels must be 3 (legacy) or 6 (reviewed CXR/MRI)")
+    architecture(cfg)
+    if not isinstance(cfg["prepared_data"], str) or not cfg["prepared_data"].strip():
+        raise ValueError("prepared_data must be a nonempty reviewed-manifest directory path")
+    if cfg["segmentation_channels"] != 6 or type(cfg["segmentation_channels"]) is not int:
+        raise ValueError("segmentation_channels must be 6 (reviewed CXR/MRI)")
     if cfg["segmentation_sampling"] not in ("uniform", "balanced_dataset"):
         raise ValueError("segmentation_sampling must be uniform or balanced_dataset")
     if not isinstance(cfg["observation_prompt"], str) or not cfg["observation_prompt"].strip():
@@ -88,15 +83,17 @@ def load_config(path=None, overrides=None, root=None):
     if (not isinstance(tasks, list) or any(not isinstance(t, str) or t not in TASKS for t in tasks)
             or len(set(tasks)) != len(tasks) or (testing["enabled"] and not tasks)):
         raise ValueError("testing.tasks must list distinct supported tasks (nonempty when enabled)")
-    integers = ("decoder_width", "decoder_depth", "lora_rank", "lora_alpha", "vision_pixels", "answer_tokens", "context_tokens",
+    integers = ("decoder_width", "decoder_depth", "task_patch_size", "lora_rank", "lora_alpha", "vision_pixels", "answer_tokens", "context_tokens",
                 "generation_tokens", "predictor_width", "predictor_depth", "batch_size",
                 "accumulation", "steps",
-                "save_every", "validate_every", "validation_samples", "ce_chunk_tokens", "prefetch_batches", "image_workers", "visual_consistency_views", "cpu_threads", "cpu_cores_per_rank")
+                "save_every", "validate_every", "validation_samples", "prefetch_batches", "image_workers", "visual_consistency_views", "cpu_threads", "cpu_cores_per_rank")
     for key in integers:
         if type(cfg[key]) is not int or cfg[key] <= 0:
             raise ValueError(f"{key} must be a positive integer")
     if cfg["decoder_width"] % 8:
         raise ValueError("decoder_width must be divisible by 8")
+    if cfg["vision_pixels"] % cfg["task_patch_size"]:
+        raise ValueError("vision_pixels must be divisible by task_patch_size")
     if cfg["answer_tokens"] < 2 or cfg["predictor_width"] % 8:
         raise ValueError("answer_tokens >= 2; predictor_width must be divisible by 8")
     if type(cfg["seed"]) is not int or not 0 <= cfg["seed"] < 2**32:
@@ -129,11 +126,9 @@ def load_config(path=None, overrides=None, root=None):
             raise ValueError(f"Invalid {key}")
     if not 0 <= cfg["ema_momentum"] < 1:
         raise ValueError("ema_momentum must be in [0, 1)")
-    for key in ('qwen', 'jepa', 'temporal_data', 'current_data', 'dense_data', 'baseline_data', 'selection_file', 'classification_data', 'vqa_data', 'image_root'):
+    for key in ('qwen', 'jepa', 'prepared_data', 'temporal_data', 'vqa_data', 'image_root'):
         p = Path(cfg[key]).expanduser()
-        p = relocate_asset(p, root)
-        # Preserve manifest aliases: their logical paths are part of the existing protocol hash.
+        p = p if p.is_absolute() else root / p
+        # Manifest identities use the configured project links, not symlink targets.
         cfg[key] = str(p.resolve() if key in ("qwen", "jepa", "temporal_data") else p.absolute())
-    if cfg["prepared_data"]:
-        cfg["prepared_data"] = str(relocate_asset(Path(cfg["prepared_data"]).expanduser(), root).absolute())
-    return cfg
+    return normalize_baseline(cfg)

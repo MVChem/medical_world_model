@@ -13,6 +13,7 @@ import shutil
 from copy import deepcopy
 
 from .config import PROJECT, load_config
+from .architecture import architecture, baseline_label, normalize_baseline, uses_slot_branch, uses_temporal
 from .launch_distributed import gpu_status, atomic
 
 
@@ -93,7 +94,7 @@ def arm_config(cfg, use_slots, steps=None):
     result['slot_conditioning'] = use_slots
     if steps is not None:
         result.update(total_hours=0, steps=steps)
-    return result
+    return normalize_baseline(result)
 
 
 def plan_updates(run, total_hours, calibration_seconds):
@@ -172,10 +173,16 @@ def write_report(run, cfg, budgets, no_slots_rows, qwen_rows, skipped):
                     if (label, metric) in no_slots:
                         row['no_slots'] = no_slots[(label, metric)]
                     rows.append(row)
+    arms = {name: {'slot_branch': uses_slot_branch(settings), 'temporal_training': uses_temporal(settings),
+                   'latent_weight': settings['latent_weight'],
+                   'visual_consistency_weight': settings.get('visual_consistency_weight', 0)}
+            for name, settings in [('slots', arm_config(cfg, True))] +
+            ([('no_slots', arm_config(cfg, False))] if cfg['baselines']['no_slots'] else [])}
     atomic(run / 'comparison.json', {'training': budgets, 'baselines': cfg['baselines'],
+                                    'architecture': architecture(cfg), 'arm_objectives': arms,
                                     'skipped': skipped, 'qwen_training_steps': 0, 'rows': rows})
     columns = ['slots'] + (['no_slots'] if no_slots_rows else []) + (['qwen'] if qwen_rows else [])
-    names = {'slots': 'With 8 slots', 'no_slots': 'No slots',
+    names = {'slots': 'With 8 slots', 'no_slots': baseline_label(cfg),
              'qwen': 'Native ' + native_spec(cfg)['label'] if qwen_rows else 'Native Qwen'}
     lines = ['# MedWorld experiment', '',
              'Both trained arms must finish exactly the same optimizer updates with matching batches. Time is an estimate; native Qwen is not trained.', '',
@@ -184,6 +191,9 @@ def write_report(run, cfg, budgets, no_slots_rows, qwen_rows, skipped):
     for name, budget in budgets.items():
         elapsed = budget['elapsed_seconds']
         lines.append(f"| {name} | {budget['target_steps']} | {elapsed:.1f} | {budget['steps']} |")
+    lines += ['', '| Arm | Slot branch | Temporal weight | VSSC weight |', '|---|---|---:|---:|']
+    for name, settings in arms.items():
+        lines.append(f"| {names[name]} | {settings['slot_branch']} | {settings['latent_weight']} | {settings['visual_consistency_weight']} |")
     lines += ['',
              '| Task | Metric | N | ' + ' | '.join(names[c] for c in columns) + ' |',
              '|---|---|---:|' + '---:|' * len(columns)]

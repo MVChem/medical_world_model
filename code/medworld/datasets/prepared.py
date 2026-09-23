@@ -1,25 +1,38 @@
-"""Expanded Atlas cohorts with original images and linked supervised masks."""
+"""Human-reviewed Atlas cohorts with original images and source masks."""
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 import torch
 import torch.nn.functional as F
+from torch.utils.data import Dataset
 
 from ..config import PROJECT
-from ..downstream_tasks.registry import FINDINGS, MANUAL_SEGMENTATION_LAYOUT, PENDING_TASKS, SPLITS, TASKS
-from .current import MultiTaskData
+from ..downstream_tasks.registry import FINDINGS, MANUAL_SEGMENTATION_LAYOUT, SPLITS, TASKS
 from .pixels import human_target, source_canvas
-from .protocol import _read, _rows, _sha256, manifest_key
+from .protocol import _read, _rows, _sha256, _split, manifest_key
 from .vqa import load_vqa
 
 
-class PreparedData(MultiTaskData):
-    """Read explicit prepared cohorts, including manual-only multi-modal v2.
+class TaskDataset(Dataset):
+    """Decode original image files for a selected task and split."""
 
-    The inherited dataset/collation interfaces keep training and evaluation
-    identical. Only fixed supervised target arrays are memory-mapped; source
-    image pixels are decoded on demand and never written to disk.
+    def __init__(self, owner, task, split):
+        self.owner, self.task, self.split = owner, task, split
+        self.rows = owner._records[task][split]
+
+    def __len__(self):
+        return len(self.rows)
+
+    def __getitem__(self, index):
+        return self.owner._example(self.task, self.split, self.rows[index])
+
+
+class PreparedData:
+    """Load prepared-v2 cohorts with reviewed CXR and MRI segmentation.
+
+    Source images and manual masks are decoded on demand. No prepared pixel
+    arrays, pseudo-target arrays, or encoder feature caches are used.
     """
 
     def __init__(self, cfg, root=None):
@@ -27,19 +40,16 @@ class PreparedData(MultiTaskData):
         project = Path(root or PROJECT).resolve()
         manifest_path = self.root / "manifest.json"
         manifest = _read(manifest_path)
-        self.manual_only = manifest.get("schema") == "medworld-prepared-v2"
-        if manifest.get("schema") not in ("medworld-prepared-v1", "medworld-prepared-v2"):
-            raise ValueError("Unsupported prepared data schema")
-        self.segmentation_layout = list(MANUAL_SEGMENTATION_LAYOUT) if self.manual_only else ["right lung", "left lung", "heart"]
-        if self.manual_only:
-            if manifest.get("segmentation_layout") != self.segmentation_layout:
-                raise ValueError("Prepared manual segmentation layout differs from MedWorld")
-            if cfg.get("segmentation_channels") != len(self.segmentation_layout):
-                raise ValueError("Prepared manual segmentation requires segmentation_channels=6")
+        if manifest.get("schema") != "medworld-prepared-v2":
+            raise ValueError("Prepared data requires the medworld-prepared-v2 schema")
+        self.segmentation_layout = list(MANUAL_SEGMENTATION_LAYOUT)
+        if manifest.get("segmentation_layout") != self.segmentation_layout:
+            raise ValueError("Prepared manual segmentation layout differs from MedWorld")
+        if cfg.get("segmentation_channels") != len(self.segmentation_layout):
+            raise ValueError("Prepared manual segmentation requires segmentation_channels=6")
         if manifest.get("findings") != list(FINDINGS):
             raise ValueError("Prepared classification finding order differs from MedWorld")
         self._file_sha256 = manifest.get("file_sha256", {})
-        self._arrays = {}
         self._checked_paths = {}
         self._sources = {task: [] for task in ("classification", "segmentation")}
         self._records = {task: {split: [] for split in SPLITS} for task in TASKS}
@@ -79,7 +89,7 @@ class PreparedData(MultiTaskData):
                     if (not isinstance(labels, list) or len(labels) != len(FINDINGS)
                             or any(type(value) is not int or value not in (-2, -1, 0, 1) for value in labels)):
                         raise ValueError("Prepared classification requires 13 four-state labels")
-                elif self.manual_only:
+                else:
                     self._manual_record(row)
                     paths = row.get("masks", []) + ([row["mask_file"]] if "mask_file" in row else [])
                     for path in paths:
@@ -96,25 +106,6 @@ class PreparedData(MultiTaskData):
                             # uses the builder's source digest plus file stats.
                             if row["kind"] != "mri":
                                 hashes[key] = _sha256(Path(path))
-                elif row["kind"] == "montgomery":
-                    if split != "human_test" or len(row["masks"]) != 2:
-                        raise ValueError("Human segmentation requires two lung masks in human_test")
-                    row["masks"] = [self._path(path) for path in row["masks"]]
-                elif row["kind"] == "cxas":
-                    if split == "human_test":
-                        raise ValueError("CXAS pseudo masks cannot enter human_test")
-                    row["target_file"] = self._path(row["target_file"])
-                    array = self._array(row["target_file"])
-                    index = row["target_index"]
-                    if type(index) is not int or not 0 <= index < len(array):
-                        raise ValueError("Prepared CXAS target index is out of bounds")
-                    stat = Path(row["target_file"]).stat()
-                    targets[manifest_key(Path(row["target_file"]), project)] = {
-                        "shape": list(array.shape), "dtype": str(array.dtype),
-                        "size_bytes": stat.st_size, "mtime_ns": stat.st_mtime_ns,
-                    }
-                else:
-                    raise ValueError("Prepared segmentation kind must be cxas or montgomery")
                 row["index"] = len(self._sources[task])
                 self._sources[task].append(row)
                 self._records[task][split].append(row)
@@ -133,22 +124,30 @@ class PreparedData(MultiTaskData):
         self.pos_weight = torch.tensor(np.clip(
             (labels == 0).sum(0) / np.maximum((labels == 1).sum(0), 1), .25, 10), dtype=torch.float32)
         self.metadata = {
-            "version": 2 if self.manual_only else 1, "schema": manifest["schema"], "input_mode": "on_demand_source_no_pixel_cache",
-            "tasks": list(TASKS), "pending_tasks": dict(PENDING_TASKS), "counts": self.counts,
+            "version": 2, "schema": manifest["schema"], "input_mode": "on_demand_source_no_pixel_cache",
+            "tasks": list(TASKS), "counts": self.counts,
             "findings": list(FINDINGS), "source_sha256": hashes,
             "preparation_sources": manifest.get("source_sha256", {}),
             "patient_audit": "Computed after global holdout filtering",
             "classification": "Atlas source images; 13 CheXpert labels; unknown and uncertain labels masked",
-            "segmentation": "Linked fixed CXAS three-organ targets; Montgomery human_test has two lungs",
+            "segmentation": "Human-reviewed CXR organs and MRI tumor regions; no pseudo labels",
+            "segmentation_layout": self.segmentation_layout,
+            "segmentation_datasets": sorted({row["dataset"] for row in self._sources["segmentation"]}),
             "supervised_target_files": targets,
-            "array_validation": "Only fixed supervised masks are loaded; no historical pixel or feature arrays",
+            "array_validation": "Manual source masks only; MRI volumes decoded on demand",
             "image_geometry": "512-square padded grayscale canvases with recorded even ROI boxes",
         }
-        if self.manual_only:
-            self.metadata.update(segmentation="Human-reviewed CXR organs and MRI tumor regions; no pseudo labels",
-                                 segmentation_layout=self.segmentation_layout,
-                                 array_validation="Manual source masks only; MRI volumes decoded on demand",
-                                 segmentation_datasets=sorted({row["dataset"] for row in self._sources["segmentation"]}))
+
+    def dataset(self, task, split):
+        if task not in TASKS:
+            raise ValueError(f"Unsupported task: {task}")
+        return TaskDataset(self, task, _split(split))
+
+    @staticmethod
+    def _vqa_image(path):
+        with Image.open(path) as image:
+            return ImageOps.pad(image.convert("RGB"), (512, 512),
+                                method=Image.Resampling.BICUBIC, color="black")
 
     def _manual_record(self, row):
         kind = row.get("kind")
@@ -206,17 +205,6 @@ class PreparedData(MultiTaskData):
         self._checked_paths[value] = result
         return result
 
-    def _array(self, key):
-        if self.manual_only:
-            raise ValueError("Prepared v2 forbids legacy pseudo-target arrays")
-        if key not in self._arrays:
-            array = np.load(key, mmap_mode="r", allow_pickle=False)
-            if (array.ndim != 4 or array.shape[1:] != (3, 256, 256)
-                    or array.dtype not in (np.dtype("float16"), np.dtype("float32"))):
-                raise ValueError("Prepared CXAS targets must have shape N x 3 x 256 x 256 and float dtype")
-            self._arrays[key] = array
-        return self._arrays[key]
-
     def _pixels(self, key, index):
         row = self._sources[key][index]
         if row.get("kind") == "mri":
@@ -228,7 +216,9 @@ class PreparedData(MultiTaskData):
 
     def _example(self, task, split, row):
         if task == "vqa":
-            return super()._example(task, split, row)
+            return {"task": task, "split": split, "id": row["id"], "subject_id": str(row["subject_id"]),
+                    "image": self._vqa_image(row["image"]), "question": row["question"], "answer": row["answer"],
+                    "semantic_type": row.get("semantic_type", "diagnosis")}
         source = self._pixels(task, row["index"])
         pixels = torch.from_numpy(np.array(source, copy=True)).float()[None] / 255
         pixels = F.interpolate(pixels[None], (256, 256), mode="area")[0]
@@ -237,7 +227,7 @@ class PreparedData(MultiTaskData):
         if task == "classification":
             result["labels"] = torch.tensor(row["labels"], dtype=torch.float32)
             result["label_mask"] = (result["labels"] == 0) | (result["labels"] == 1)
-        elif self.manual_only:
+        elif task == "segmentation":
             target = torch.zeros(len(self.segmentation_layout), 256, 256)
             if row["kind"] == "mri":
                 from .mri_pixels import mri_target
@@ -257,22 +247,23 @@ class PreparedData(MultiTaskData):
             result.update(targets=target, mask=mask, segmentation_dataset=row["dataset"],
                           volume_id=row["volume_id"], active_channels=row["channels"], target_names=row["target_names"])
         else:
-            target = (human_target(row) if row["kind"] == "montgomery" else
-                      torch.from_numpy(np.array(self._array(row["target_file"])[row["target_index"]], copy=True)).float())
-            if not torch.isfinite(target).all() or torch.any((target < 0) | (target > 1)):
-                raise ValueError("Prepared segmentation target is not a finite probability")
-            mask = torch.zeros(1, 256, 256)
-            y, x, height, width = [value // 2 for value in row["box"]]
-            mask[:, y:y + height, x:x + width] = 1
-            result.update(targets=target, mask=mask)
+            raise ValueError(f"Unsupported task: {task}")
         return result
 
     @staticmethod
     def collate(task, examples):
-        result = MultiTaskData.collate(task, examples)
-        if task == "segmentation" and any("segmentation_dataset" in row for row in examples):
+        if not examples or any(e["task"] != task or e["split"] != examples[0]["split"] for e in examples):
+            raise ValueError("Expected a nonempty batch from one task and split")
+        result = {"task": task, "split": examples[0]["split"], "images": [e["image"] for e in examples],
+                  "ids": [e["id"] for e in examples], "subject_ids": [str(e["subject_id"]) for e in examples]}
+        if task == "vqa":
+            result.update(questions=[e["question"] for e in examples], answers=[e["answer"] for e in examples],
+                          semantic_types=[e["semantic_type"] for e in examples])
+        else:
+            keys = ("pixels", "labels", "label_mask") if task == "classification" else ("pixels", "targets", "mask")
+            for key in keys:
+                result[key] = torch.stack([e[key] for e in examples])
+        if task == "segmentation":
             for key in ("segmentation_dataset", "volume_id", "active_channels", "target_names"):
-                if any(key not in row for row in examples):
-                    raise ValueError("Cannot mix manual v2 segmentation with legacy supervision")
                 result[key] = [row[key] for row in examples]
         return result

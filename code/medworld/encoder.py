@@ -68,13 +68,13 @@ class StateEncoder(nn.Module):
             nn.Sequential(nn.LayerNorm(visual_width), nn.Linear(visual_width, STATE_WIDTH)) for _ in range(4)])
         self.visual_norm = nn.LayerNorm(STATE_WIDTH)
 
-    def forward(self, image_inputs, text_ids=None, text_mask=None, features=None, *, spatial=False, return_image_features=False):
+    def forward(self, image_inputs, text_ids, text_mask, features):
         grid = image_inputs["image_grid_thw"]
         batch = len(grid)
         if not batch or not torch.equal(grid, grid[:1].expand_as(grid)):
             raise ValueError("Use one equally prepared square image per observation")
         with capture_depths(self.vision.blocks) as captured:
-            vision_output = self.vision(hidden_states=image_inputs["pixel_values"].to(next(self.vision.parameters()).dtype),
+            self.vision(hidden_states=image_inputs["pixel_values"].to(next(self.vision.parameters()).dtype),
                         grid_thw=grid)
         visual = []
         for j in range(4):
@@ -83,8 +83,6 @@ class StateEncoder(nn.Module):
             query = self.slot_queries[4 + j]
             weights = ((values * query).sum(-1) / math.sqrt(STATE_WIDTH)).softmax(-1)
             visual.append(self.visual_norm((weights[..., None] * values).sum(1) + query))
-        if spatial:
-            return torch.stack(visual, 1)
         if features is None or features.shape != (batch, 64, 768) or text_ids is None or text_mask is None:
             raise ValueError("Full state requires aligned JEPA features and observation text")
         embed = self.language.get_input_embeddings()
@@ -98,6 +96,4 @@ class StateEncoder(nn.Module):
             self.language(inputs_embeds=sequence, attention_mask=mask, position_ids=positions,
                           use_cache=False, return_dict=True)
         fusion = [self.fusion_readouts[j](captured[j][:, -4 + j].float()) for j in range(4)]
-        state = torch.stack(fusion + visual, 1)
-        image_features = vision_output.pooler_output.reshape(batch, -1, self.language.get_input_embeddings().weight.shape[1])
-        return (state, image_features) if return_image_features else state
+        return torch.stack(fusion + visual, 1)

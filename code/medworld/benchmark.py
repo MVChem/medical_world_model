@@ -6,6 +6,7 @@ from pathlib import Path
 import time
 
 from .gpu import acquire_gpu
+from .architecture import uses_temporal
 
 
 def main():
@@ -28,7 +29,7 @@ def main():
     from .datasets import UnifiedData
     from .model import MedWorld
     from .runtime import optimizer_for, seed_all
-    cfg = load_config(args.config, overrides={"amp": True, "ce_chunk_tokens": 128, "image_workers": args.image_workers})
+    cfg = load_config(args.config, overrides={"amp": True, "image_workers": args.image_workers})
     seed_all(cfg["seed"])
     torch.set_float32_matmul_precision("high")
     torch.backends.cudnn.benchmark = True
@@ -36,6 +37,7 @@ def main():
     model = MedWorld(cfg, device).train()
     model.pos_weight.copy_(data.current.pos_weight.to(device))
     optimizer = optimizer_for(model, cfg)
+    temporal_enabled = uses_temporal(cfg)
     out.parent.mkdir(parents=True, exist_ok=True)
     (out.parent / (out.stem + "_config.json")).write_text(json.dumps(cfg, indent=2) + "\n")
     for task in args.tasks.split(","):
@@ -50,7 +52,7 @@ def main():
                 batch = data.training_batch(task, repetition * size, size, cfg["seed"])
                 temporal_batch = (data.training_batch("temporal", repetition * size,
                                   cfg["task_batch_sizes"].get("temporal", size), cfg["seed"])
-                                  if task != "temporal" else None)
+                                  if task != "temporal" and temporal_enabled else None)
                 loaded = time.monotonic()
                 try:
                     loss, parts = model(task, batch, temporal_batch)
@@ -60,7 +62,8 @@ def main():
                     norm = torch.nn.utils.clip_grad_norm_(
                         [p for p in model.parameters() if p.requires_grad], cfg["max_grad_norm"], error_if_nonfinite=True)
                     optimizer.step()
-                    model.target.update(model.encoder, cfg["ema_momentum"])
+                    if model.target is not None:
+                        model.target.update(model.encoder, cfg["ema_momentum"])
                     torch.cuda.synchronize()
                     seconds = time.monotonic() - start
                     last_peak = torch.cuda.max_memory_allocated() / 1024**3

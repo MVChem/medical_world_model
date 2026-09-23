@@ -1,4 +1,4 @@
-"""Current task order, label vocabulary and explicitly pending task adapters."""
+"""Task order, classification vocabulary and reviewed segmentation channels."""
 TASKS = ("classification", "segmentation", "vqa")
 SPLITS = ("train", "validate", "test", "human_test")
 FINDINGS = (
@@ -7,7 +7,6 @@ FINDINGS = (
     "Pleural Effusion", "Pleural Other", "Pneumonia", "Pneumothorax",
     "Support Devices",
 )
-PENDING_TASKS = {}
 
 # Manual CXR organs and reviewed brain-tumor regions share a padded target
 # tensor; per-example masks select only the channels annotated in that dataset.

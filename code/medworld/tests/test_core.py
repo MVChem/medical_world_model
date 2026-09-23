@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 import tempfile
-from types import SimpleNamespace
 import unittest
 
 from PIL import Image
@@ -11,9 +10,6 @@ from torch import nn
 from medworld.config import load_config
 from medworld.datasets import patient_holdouts
 from medworld.datasets.temporal import TemporalData, directed_pair
-from medworld.decoders import TextDecoder, TaskDecoder
-from medworld.downstream_tasks.common import validate_state
-from medworld.downstream_tasks.segmentation import SegmentationHead
 from medworld.ema import EMATarget
 from medworld.predictor import WorldModel, time_features
 
@@ -103,96 +99,6 @@ class PredictorTests(unittest.TestCase):
                 load_config(overrides=override)
 
 
-class Tokenizer:
-    eos_token_id, pad_token_id = 2, 0
-
-    def apply_chat_template(self, *args, **kwargs):
-        return "question"
-
-    def __call__(self, texts, **kwargs):
-        return {"input_ids": torch.tensor([[1, 3]] * len(texts)), "attention_mask": torch.ones(len(texts), 2, dtype=torch.long)}
-
-    def encode(self, text, **kwargs):
-        return [3 + ord(c) % 13 for c in text]
-
-    def batch_decode(self, ids, **kwargs):
-        return [[int(i) for i in row if i not in (0, 2)] for row in ids]
-
-
-class CausalLanguage(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.embedding = nn.Embedding(16, 8)
-        self.transform = nn.Linear(8, 8)
-
-    def get_input_embeddings(self):
-        return self.embedding
-
-    def forward(self, inputs_embeds=None, input_ids=None, past_key_values=None, **kwargs):
-        values = inputs_embeds if inputs_embeds is not None else self.embedding(input_ids)
-        cumulative = values.cumsum(1)
-        if past_key_values is not None:
-            cumulative = cumulative + past_key_values
-        return SimpleNamespace(last_hidden_state=self.transform(cumulative.tanh()),
-                               past_key_values=cumulative[:, -1:])
-
-
-class DecoderTests(unittest.TestCase):
-    def test_vqa_loss_requires_images_and_reaches_all_slots(self):
-        torch.manual_seed(17)
-        trunk = TaskDecoder(16, width=8, depth=1)
-        language = CausalLanguage().requires_grad_(False)
-        head = nn.Linear(8, 16, bias=False).requires_grad_(False)
-        decoder = TextDecoder(language, head, Tokenizer(), load_config(overrides={"answer_tokens": 5, "decoder_width": 8}))
-        images = torch.randn(2, 4, 16, requires_grad=True)
-        slots = torch.randn(2, 8, 1024, requires_grad=True)
-        loss = decoder.loss(trunk(images, slots), ["q1", "q2"], ["abc", "a"])
-        loss.backward()
-        self.assertGreater(float(images.grad.norm()), 0)
-        self.assertTrue((slots.grad.abs().sum((0, 2)) > 0).all())
-        self.assertTrue(all(p.grad is None for p in language.parameters()))
-        self.assertTrue(torch.isfinite(decoder.loss(trunk(images), ["q1", "q2"], ["abc", "a"])))
-        with self.assertRaises(ValueError):
-            trunk(None, slots)
-        ids, mask = decoder.targets(["abcdefg", "a"], "cpu")
-        self.assertEqual(mask.sum(1).tolist(), [5, 2])
-        self.assertEqual(ids[0, -1], 2)
-
-    def test_per_sample_eos_and_cache_positions(self):
-        class ScriptedLanguage(CausalLanguage):
-            def __init__(self):
-                super().__init__()
-                self.calls = []
-            def forward(self, **kwargs):
-                i = len(self.calls)
-                self.calls.append(kwargs)
-                hidden = torch.zeros(2, 1, 8)
-                hidden[0, 0, 2] = 10
-                hidden[1, 0, 4 if i < 2 else 2] = 10
-                return SimpleNamespace(last_hidden_state=hidden, past_key_values="cache")
-        language = ScriptedLanguage()
-        head = nn.Linear(8, 16, bias=False)
-        with torch.no_grad():
-            head.weight.zero_()
-            head.weight[:8].copy_(torch.eye(8))
-        decoder = TextDecoder(language, head, Tokenizer(), load_config(overrides={"decoder_width": 8})).eval()
-        self.assertEqual(decoder.generate(torch.randn(2, 4, 8), ["q1", "q2"], 8), [[], [4, 4]])
-        self.assertEqual(language.calls[1]["position_ids"].tolist(), [[6], [6]])
-        self.assertEqual(language.calls[2]["input_ids"].tolist(), [[0], [4]])
-
-    def test_segmentation_shares_transformer_and_reads_all_eight_slots(self):
-        trunk = TaskDecoder(16, width=8, depth=1)
-        images = torch.randn(1, 4, 16, requires_grad=True)
-        slots = torch.randn(1, 8, 1024, requires_grad=True)
-        head = SegmentationHead(width=8)
-        prediction = head(trunk(images, slots))
-        self.assertEqual(prediction.shape, (1, 3, 256, 256))
-        prediction.square().mean().backward()
-        self.assertGreater(float(images.grad.norm()), 0)
-        self.assertTrue((slots.grad.abs().sum((0, 2)) > 0).all())
-        self.assertEqual(head(trunk(images)).shape, prediction.shape)
-
-
 class DataTests(unittest.TestCase):
     def test_global_holdout_precedence(self):
         current = {"report": {"train": [{"subject_id": "p1"}, {"subject_id": "p2"}],
@@ -207,7 +113,7 @@ class DataTests(unittest.TestCase):
             root = Path(tmp)
             Image.new("RGB", (4, 8)).save(root / "image.png")
             observations = [{"id": ident, "patient": "p", "split": "train", "image": "image.png",
-                             "report": text, "labels": [0] * 6} for ident, text in (("a", "before"), ("b", "after"))]
+                             "report": text, "labels": [0] * 13} for ident, text in (("a", "before"), ("b", "after"))]
             pair = {"id": "pair", "patient": "p", "split": "train", "source": "a", "target": "b",
                     "horizon": 1, "realized_gap_hours": 27.5}
             for name, rows in (("observations", observations), ("train", [pair]), ("validate", []), ("test", [])):
@@ -219,7 +125,7 @@ class DataTests(unittest.TestCase):
             self.assertEqual(backward["target"], "a")
             batch = data.batch([backward])
             self.assertEqual(batch["source"]["texts"], ["after"])
-            self.assertEqual(batch["report_targets"], ["before"])
+            self.assertEqual(batch["target"]["texts"], ["before"])
             del data.lookup["b"]  # inaccessible target must not affect forward inference
             source = data.batch([forward], source_only=True)
             self.assertEqual(set(source), {"source", "delta_hours"})

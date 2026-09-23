@@ -91,7 +91,7 @@ class BuildTests(unittest.TestCase):
     def test_replace_through_symlink_keeps_alias_and_archives_prior_bundle(self):
         central = self.root / "central"
         central.mkdir()
-        (central / ".medworld-prepared").write_text("medworld-prepared-v1\n")
+        (central / ".medworld-prepared").write_text("medworld-prepared-v2\n")
         (central / "prior.txt").write_text("prior bundle")
         self.args.output_dir.symlink_to(central, target_is_directory=True)
         self.args.replace = True
@@ -105,7 +105,7 @@ class BuildTests(unittest.TestCase):
 
     def test_failed_publish_restores_previous_bundle(self):
         self.args.output_dir.mkdir()
-        (self.args.output_dir / ".medworld-prepared").write_text("medworld-prepared-v1\n")
+        (self.args.output_dir / ".medworld-prepared").write_text("medworld-prepared-v2\n")
         (self.args.output_dir / "prior.txt").write_text("prior bundle")
         self.args.replace = True
         rename = Path.rename

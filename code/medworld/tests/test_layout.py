@@ -8,7 +8,7 @@ from medworld.config import load_config
 
 class LayoutTests(unittest.TestCase):
     def test_runtime_entrypoints_import(self):
-        for module in ('datasets.current', 'datasets.temporal', 'datasets.protocol',
+        for module in ('datasets.prepared', 'datasets.temporal', 'datasets.protocol',
                        'datasets.unified', 'downstream_tasks.segmentation.decoder',
                        'evaluation.evaluate',
                        'evaluation.compare_run', 'downstream_tasks.text.decoder',
@@ -32,9 +32,9 @@ class LayoutTests(unittest.TestCase):
             root = Path(tmp)
             (root / 'actual').mkdir()
             (root / 'alias').symlink_to(root / 'actual', target_is_directory=True)
-            cfg = load_config(overrides={'dense_data': 'alias'}, root=root)
-            self.assertEqual(cfg['dense_data'], str(root / 'alias'))
-            self.assertTrue(Path(cfg['dense_data']).is_dir())
+            cfg = load_config(overrides={'prepared_data': 'alias'}, root=root)
+            self.assertEqual(cfg['prepared_data'], str(root / 'alias'))
+            self.assertTrue(Path(cfg['prepared_data']).is_dir())
 
 
 if __name__ == '__main__':

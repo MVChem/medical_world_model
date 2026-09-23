@@ -27,7 +27,6 @@ def main():
     lock, device = acquire_gpu(a.gpu)
     try:
         import torch
-        import numpy as np
         from ..datasets import UnifiedData
         from ..runtime import load_model, atomic_json
         from ..datasets.protocol import _sha256
@@ -67,8 +66,7 @@ def main():
                             row.update(segmentation_metrics(prediction.cpu(), batch['targets'], batch['mask']))
                             for key, batch_key in [('dataset', 'segmentation_dataset'), ('volume_id', 'volume_id'),
                                                    ('target_names', 'target_names')]:
-                                if batch_key in batch:
-                                    row[key] = batch[batch_key][0]
+                                row[key] = batch[batch_key][0]
                         else:
                             row.update(question=batch['questions'][0], answer=batch['answers'][0],
                                        semantic_type=batch['semantic_types'][0], prediction=prediction[0])
@@ -80,8 +78,8 @@ def main():
                     metrics = classification_metrics([r['labels'] for r in records], [r['probabilities'] for r in records], FINDINGS)
                 elif task == 'segmentation':
                     metrics = aggregate_segmentation(records)
-                    metrics['target_kind'] = ('human-reviewed CXR and MRI masks' if model.cfg.get('segmentation_channels') == 6
-                        else 'human two-lung masks' if a.split == 'human_test' else 'legacy CXAS pseudo three-organ masks')
+                    metrics['target_kind'] = ('human Montgomery lung masks' if a.split == 'human_test'
+                                              else 'human-reviewed CXR and MRI masks')
                 else:
                     metrics = vqa_metrics(records)
                 summary['predictions_sha256'][task] = _sha256(out / f'{task}.jsonl')

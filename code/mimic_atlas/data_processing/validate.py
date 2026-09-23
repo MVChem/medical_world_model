@@ -41,55 +41,53 @@ def validate(config):
             if task == "classification" and batch["labels"].shape != (1, 13):
                 raise ValueError("Unexpected classification batch shape")
             if task == "segmentation":
-                channels = 6 if data.current.manual_only else 2 if split == "human_test" else 3
-                if batch["targets"].shape != (1, channels, 256, 256):
+                if batch["targets"].shape != (1, 6, 256, 256):
                     raise ValueError("Unexpected segmentation batch shape")
             decoded[f"{task}/{split}"] = len(batch["images"])
     segmentation_groups = {}
-    if data.current.manual_only:
-        for split, rows in data.current._records["segmentation"].items():
-            groups = {}
-            for index, row in enumerate(rows):
-                if row["kind"] == "cxas" or "target_file" in row:
-                    raise ValueError("Pseudo segmentation entered the reviewed dataset")
-                groups.setdefault(row["dataset"], []).append(index)
-            for dataset, indices in groups.items():
-                volumes = {rows[index]["volume_id"] for index in indices}
-                patients = {rows[index]["subject_id"] for index in indices}
-                segmentation_groups[f"{dataset}/{split}"] = {
-                    "images_or_slices": len(indices), "volumes": len(volumes), "patients": len(patients)}
-                selected = sorted({indices[0], indices[len(indices) // 2], indices[-1]})
-                # Decode separately to avoid retaining many six-channel tensors.
-                for index in selected:
-                    example = data.batch("segmentation", split, [index])
-                    expected = rows[index]["channels"]
-                    active = (example["mask"][0].sum((1, 2)) > 0).nonzero().flatten().tolist()
-                    if active != expected:
-                        raise ValueError("Segmentation active channels changed during decoding")
-                decoded[f"{dataset}/{split}"] = len(selected)
-        required = {f"{dataset}/{split}" for dataset in
-                    ("mimic_cxr_human", "ucsf_alptdg", "mu_glioma_post")
-                    for split in ("train", "validate", "test")}
-        required.add("montgomery/human_test")
-        if not required.issubset(segmentation_groups):
-            raise ValueError(f"Required reviewed segmentation datasets/splits missing: {sorted(required - segmentation_groups.keys())}")
-        # Exercise mixed-modality collation and real six-channel head gradients,
-        # without loading a foundation model or performing an optimizer update.
-        from medworld.downstream_tasks.segmentation.decoder import SegmentationHead
-        from medworld.downstream_tasks.segmentation.loss import segmentation_loss
-        from medworld.downstream_tasks.segmentation.metrics import segmentation_metrics
-        batch = data.training_batch("segmentation", 0, 3, cfg["seed"])
-        head = SegmentationHead(width=32, channels=6)
-        prediction = head(torch.randn(3, 16, 32))
-        loss = segmentation_loss(prediction, batch["targets"], batch["mask"])
-        if not torch.isfinite(loss):
-            raise ValueError("Nonfinite mixed segmentation loss")
-        loss.backward()
-        if not all(p.grad is not None and torch.isfinite(p.grad).all() for p in head.parameters()):
-            raise ValueError("Nonfinite or missing six-channel head gradients")
-        for i in range(3):
-            segmentation_metrics(prediction[i:i+1].detach(), batch["targets"][i:i+1], batch["mask"][i:i+1])
-        decoded["mixed_segmentation_head_forward_backward"] = 3
+    for split, rows in data.current._records["segmentation"].items():
+        groups = {}
+        for index, row in enumerate(rows):
+            if row["kind"] == "cxas" or "target_file" in row:
+                raise ValueError("Pseudo segmentation entered the reviewed dataset")
+            groups.setdefault(row["dataset"], []).append(index)
+        for dataset, indices in groups.items():
+            volumes = {rows[index]["volume_id"] for index in indices}
+            patients = {rows[index]["subject_id"] for index in indices}
+            segmentation_groups[f"{dataset}/{split}"] = {
+                "images_or_slices": len(indices), "volumes": len(volumes), "patients": len(patients)}
+            selected = sorted({indices[0], indices[len(indices) // 2], indices[-1]})
+            # Decode separately to avoid retaining many six-channel tensors.
+            for index in selected:
+                example = data.batch("segmentation", split, [index])
+                expected = rows[index]["channels"]
+                active = (example["mask"][0].sum((1, 2)) > 0).nonzero().flatten().tolist()
+                if active != expected:
+                    raise ValueError("Segmentation active channels changed during decoding")
+            decoded[f"{dataset}/{split}"] = len(selected)
+    required = {f"{dataset}/{split}" for dataset in
+                ("mimic_cxr_human", "ucsf_alptdg", "mu_glioma_post")
+                for split in ("train", "validate", "test")}
+    required.add("montgomery/human_test")
+    if not required.issubset(segmentation_groups):
+        raise ValueError(f"Required reviewed segmentation datasets/splits missing: {sorted(required - segmentation_groups.keys())}")
+    # Exercise mixed-modality collation and real six-channel head gradients,
+    # without loading a foundation model or performing an optimizer update.
+    from medworld.downstream_tasks.segmentation.decoder import SegmentationHead
+    from medworld.downstream_tasks.segmentation.loss import segmentation_loss
+    from medworld.downstream_tasks.segmentation.metrics import segmentation_metrics
+    batch = data.training_batch("segmentation", 0, 3, cfg["seed"])
+    head = SegmentationHead(width=32, channels=6)
+    prediction = head(torch.randn(3, 16, 32))
+    loss = segmentation_loss(prediction, batch["targets"], batch["mask"])
+    if not torch.isfinite(loss):
+        raise ValueError("Nonfinite mixed segmentation loss")
+    loss.backward()
+    if not all(p.grad is not None and torch.isfinite(p.grad).all() for p in head.parameters()):
+        raise ValueError("Nonfinite or missing six-channel head gradients")
+    for i in range(3):
+        segmentation_metrics(prediction[i:i+1].detach(), batch["targets"][i:i+1], batch["mask"][i:i+1])
+    decoded["mixed_segmentation_head_forward_backward"] = 3
     for split, pairs in data.temporal.pairs.items():
         if not pairs:
             continue

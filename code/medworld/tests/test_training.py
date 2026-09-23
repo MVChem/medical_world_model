@@ -63,7 +63,7 @@ class ToyData:
 
 
 class TrainingTests(unittest.TestCase):
-    def test_joint_resume_matches_uninterrupted_with_accumulation(self):
+    def test_joint_training_saves_weights_and_ema_with_accumulation(self):
         cfg = load_config(overrides={"steps": 6, "accumulation": 2, "batch_size": 3,
                                      "task_batch_sizes": {"temporal": 4}, "validation_samples": 1})
         with tempfile.TemporaryDirectory() as tmp, redirect_stdout(io.StringIO()):
@@ -87,19 +87,24 @@ class TrainingTests(unittest.TestCase):
             self.assertFalse(partial.run())
             self.assertEqual(int(partial.model.target.updates), 2)
             saved = read_checkpoint(partial.out / "last.pt")
-            resumed = make("resumed")
-            resumed.resume(saved)
-            self.assertTrue(resumed.run())
-            self.assertEqual(resumed.progress, full.progress)
-            self.assertEqual(int(resumed.model.target.updates), 6)  # one EMA per optimizer update
-            for name, parameter in full.model.named_parameters():
-                torch.testing.assert_close(parameter, dict(resumed.model.named_parameters())[name], rtol=0, atol=0)
-            self.assertEqual(resumed.progress["offsets"]["temporal"], 48)
+            restored = make("restored")
+            restored.model.restore(saved["model"])
+            for name, parameter in partial.model.named_parameters():
+                torch.testing.assert_close(parameter, dict(restored.model.named_parameters())[name], rtol=0, atol=0)
+            self.assertEqual(int(restored.model.target.updates), 2)
+            self.assertEqual(saved["progress"], {"step": 2, "complete": False, "world_size": 1,
+                             "task_samples": {"classification": 6, "segmentation": 6, "vqa": 0}})
+            with self.assertRaisesRegex(ValueError, "trained weights only"):
+                restored.resume(saved)
+            self.assertEqual(int(full.model.target.updates), 6)  # one EMA per optimizer update
+            self.assertEqual(full.progress["offsets"]["temporal"], 48)
             for task in ("classification", "segmentation", "vqa"):
-                self.assertEqual(resumed.progress["offsets"][task], 12)
-            saved["data_fingerprint"] = "changed"
-            with self.assertRaises(ValueError):
-                resumed.resume(saved)
+                self.assertEqual(full.progress["offsets"][task], 12)
+            final = read_checkpoint(full.out / "final.pt")
+            self.assertEqual(final["progress"]["step"], 6)
+            self.assertTrue(final["progress"]["complete"])
+            self.assertNotIn("optimizer", final)
+            self.assertNotIn("rng", final)
 
     def test_first_update_combines_both_objectives_and_freezes_target(self):
         model = ToyModel(load_config()).eval()
