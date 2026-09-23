@@ -1,13 +1,14 @@
-% Selected plan: research_notes/0917_trajectory_and_slot_attention_plan.md at Git commit 31c98ca.
-% Export actual learned visual-readout weights; verify their spatial mapping.
+% Interim MRI figure; source: code/fig5_v2/runs/mri_forecast_final_20260922/.
+% The self-contained SVG in ppt/ppt/ is the editable source; PDF stays local.
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=\linewidth]{ppt/source/fig5_v2.png}
-    \caption{Planned attention visualization: one current radiograph and a brief
-    report excerpt above a $2\times2$ grid of actual visual-slot attention
-    overlays (S5--S8). Panels identify the source encoder depths and share a
-    color scale and opacity. Weights describe patch aggregation during
-    current-state encoding, not finding-specific attribution or predicted
-    future lesion locations.}
+    \includegraphics[width=\linewidth]{ppt/ppt/fig5_v2.pdf}
+    \caption{MRI change prediction and slot attention for two held-out patients.
+    An auxiliary MRI-trained probe predicts enhancing-tissue (ET) occupancy
+    change, $P(\mathrm{gain})-P(\mathrm{loss})$, from the current T1ce image and
+    elapsed time. Follow-up overlays show observed ET differences; coral
+    contours mark baseline ET. The right panels show MRI-supervised readout
+    attention at four encoder depths, with a shared logarithmic scale.
+    Forecasting improvement over persistence has not been established.}
     \label{fig:candidate_slot_attention}
 \end{figure}

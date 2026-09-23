@@ -2,7 +2,7 @@ LATEXMK := latexmk -pdf -interaction=nonstopmode -halt-on-error
 PYTHON ?= python3
 INKSCAPE ?= inkscape
 MAIN_FIGURES := ppt/ppt/fig1_v1.pdf ppt/ppt/fig1_v8.pdf ppt/ppt/fig3_v3.pdf \
-                ppt/ppt/fig4_v1.pdf ppt/source/fig5_v2.png ppt/ppt/fig6_v1.pdf
+                ppt/ppt/fig4_v1.pdf ppt/ppt/fig5_v2.pdf ppt/ppt/fig6_v1.pdf
 APPENDIX_FIGURE := ppt/ppt/appendix_fig1_v1.pdf
 
 .PHONY: all paper supplementary figures clean
@@ -25,6 +25,10 @@ ppt/ppt/fig4_v1.pdf: ppt/ppt/fig4_v1.svg
 
 # The retrieval SVG embeds its radiographs and needs no experiment data to export.
 ppt/ppt/fig6_v1.pdf: ppt/ppt/fig6_v1.svg
+	$(INKSCAPE) $< --export-area-page --export-type=pdf --export-filename=$@
+
+# The MRI SVG embeds all image panels; rebuilding needs no model or dataset.
+ppt/ppt/fig5_v2.pdf: ppt/ppt/fig5_v2.svg
 	$(INKSCAPE) $< --export-area-page --export-type=pdf --export-filename=$@
 
 ppt/ppt/%.pdf: ppt/ppt/%.pptx ppt/scripts/export_pdf/build.py

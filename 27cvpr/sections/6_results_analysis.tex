@@ -35,14 +35,15 @@ We evaluate the utility of learned state slots for image classification, visual 
 \subsection{Slot Attention Visualization}
 \label{sec:attention_visualization}
 
-\Cref{fig:candidate_slot_attention} reserves a view of how the four visual slots
-aggregate patches from the current radiograph. The planned visualization uses
-the actual softmax weights of the learned visual-slot readout at each selected
-encoder depth, with a shared color scale. These weights describe current-state
-construction; the accompanying report text supplies case context, not a
-finding-specific attention query. Slots have no prescribed anatomical roles,
-and the maps do not establish future lesion locations or forecasting accuracy.
-Weight export and verification of the token-to-image mapping remain pending.
+\Cref{fig:candidate_slot_attention} shows MRI forecasting and attention
+readouts added to a frozen CXR-trained encoder. These separately supervised
+probes differ from the original MedWorld predictor and visual-slot readout.
+The displayed slices maximize baseline ET area, and the scans were
+retrospectively registered to the follow-up examination; these examples do
+not constitute prospective validation. Attention describes patch aggregation
+for the current image, with no prescribed anatomical roles for individual
+slots. Improvement over persistence has not been established on held-out
+patients.
 
 \input{sections/candidate_slot_attention}
 
