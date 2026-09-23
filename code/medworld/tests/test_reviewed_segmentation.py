@@ -117,6 +117,7 @@ def test_balanced_mri_stream_keeps_volume_blocks_and_exact_resume():
 
     def sampler():
         data = UnifiedData.__new__(UnifiedData)
+        data.future = None
         data.current = SimpleNamespace(_records={"segmentation": {"train": records}})
         data._segmentation_sampling = "balanced_dataset"
         data._segmentation_groups = {}

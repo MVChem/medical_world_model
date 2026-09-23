@@ -1,6 +1,7 @@
 """Native Qwen3.5 baseline on MedWorld's matched classification/VQA test data."""
 import argparse
 import json
+import time
 from pathlib import Path
 
 
@@ -54,9 +55,12 @@ def main():
         from medworld.downstream_tasks.registry import FINDINGS
         from medworld.downstream_tasks.classification.metrics import classification_metrics
         from medworld.downstream_tasks.text.metrics import vqa_metrics
+        from medworld.evaluation.protocol import metric_protocol
+        from medworld.evaluation.selection import reference_manifest
         from medworld.runtime import atomic_json, seed_all
         from medworld.datasets.protocol import _sha256
         seed_all(cfg['seed'])
+        startup_started = time.monotonic()
         out.mkdir(parents=True, exist_ok=True)
         atomic_json(out / 'status.json', {'status': 'loading'})
         data = UnifiedData(cfg)
@@ -66,11 +70,14 @@ def main():
             attn_implementation='sdpa').to(device).eval().requires_grad_(False)
         ids = yes_no_ids(processor.tokenizer)
         root = Path(spec['path'])
-        summary = {'baseline': 'native_model_no_project_training', 'model_id': a.model, 'model_label': spec['label'], 'model': str(root),
+        summary = {'metric_protocol': metric_protocol('table2'), 'references': {},
+                   'baseline': 'native_model_no_project_training', 'model_id': a.model, 'model_label': spec['label'], 'model': str(root),
                    'split': 'test', 'limit': a.limit, 'partial': a.limit is not None,
                    'data_fingerprint': data.fingerprint, 'tasks': {},
+                   'timing': {'startup_seconds': time.monotonic() - startup_started, 'tasks': {}},
                    'classification_scoring': 'softmax over raw next-token Yes/No logits',
                    'vqa_scoring': 'MedWorld strict JSON label-set EM/micro-F1; unconstrained greedy decoding',
+                   'unsupported_tasks': {'segmentation': 'N/A: native model has no segmentation head'},
                    'weights_sha256': {f.name: _sha256(f) for f in sorted(root.glob('*.safetensors'))},
                    'source_sha256': _sha256(Path(__file__))}
         atomic_json(out / 'config.json', cfg)
@@ -89,11 +96,13 @@ def main():
                 if not count:
                     raise ValueError(f'Empty test cohort: {task}')
                 records = []
+                inference_seconds = 0.
                 with (out / f'{task}.jsonl').open('w') as journal:
                     for index in range(count):
                         batch = data.batch(task, 'test', [indices[index]])
                         image = batch['images'][0]
                         row = {'id': batch['ids'][0], 'patient': batch['subject_ids'][0]}
+                        inference_started = time.monotonic()
                         if task == 'classification':
                             probabilities = []
                             for finding in FINDINGS:
@@ -111,15 +120,21 @@ def main():
                                                                 skip_special_tokens=True)
                             row.update(question=batch['questions'][0], prediction=answer,
                                        answer=batch['answers'][0], semantic_type=batch['semantic_types'][0])
+                        inference_seconds += time.monotonic() - inference_started
                         journal.write(json.dumps(row, ensure_ascii=False) + '\n')
                         journal.flush()
                         records.append(row)
                         atomic_json(out / 'status.json', {'status': 'running', 'task': task,
                                                         'completed': index + 1, 'total': count})
+                scoring_started = time.monotonic()
                 metrics = (classification_metrics([r['labels'] for r in records],
                            [r['probabilities'] for r in records], FINDINGS)
                            if task == 'classification' else vqa_metrics(records))
                 summary['tasks'][task] = {'n': count, **metrics}
+                summary['timing']['tasks'][task] = {'n': count, 'inference_seconds': inference_seconds,
+                    'scoring_seconds': time.monotonic() - scoring_started,
+                    'inference_seconds_per_example': inference_seconds / count}
+                summary['references'][task] = reference_manifest(task, records)
                 summary.setdefault('predictions_sha256', {})[task] = _sha256(out / f'{task}.jsonl')
                 atomic_json(out / 'summary.json', summary)
         atomic_json(out / 'status.json', {'status': 'complete', 'partial': a.limit is not None})

@@ -7,6 +7,8 @@ import unittest
 from medworld.config import load_config
 from medworld.datasets.protocol import _sha256
 from medworld.evaluation.compare_native import compare_native
+from medworld.evaluation.protocol import metric_protocol
+from medworld.evaluation.selection import reference_manifest, select_vqa
 
 
 class NativeComparisonTests(unittest.TestCase):
@@ -25,8 +27,10 @@ class NativeComparisonTests(unittest.TestCase):
                       'answer': ['yes'], 'semantic_type': 'verify', 'prediction': '["yes"]'}
             for folder in (evaluation, native):
                 (folder / 'vqa.jsonl').write_text(json.dumps(record) + '\n')
-            selection = {'per_type': 1, 'seed': 42, 'ids': ['vqa:test:1']}
-            summary = {'limit': None, 'split': 'test', 'data_fingerprint': fingerprint,
+            _, selection = select_vqa([record])
+            summary = {'metric_protocol': metric_protocol('table2'),
+                       'references': {'vqa': reference_manifest('vqa', [record])},
+                       'limit': None, 'split': 'test', 'data_fingerprint': fingerprint,
                        'vqa_selection': selection, 'tasks': {'vqa': {'n': 1, 'exact_match': 1, 'micro_f1': 1}},
                        'predictions_sha256': {'vqa': _sha256(evaluation / 'vqa.jsonl')}}
             trained = {**summary, 'checkpoint_sha256': _sha256(slots / 'final.pt')}

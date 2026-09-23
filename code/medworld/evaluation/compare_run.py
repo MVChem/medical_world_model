@@ -4,6 +4,8 @@ import json
 import math
 from pathlib import Path
 from ..architecture import architecture, baseline_label, uses_slot_branch, uses_temporal
+from .protocol import metric_protocol, validate_metric_protocol, training_tasks
+from .selection import REFERENCE_FIELDS, validate_references
 
 
 def compare(baseline, conditioned, out):
@@ -44,12 +46,15 @@ def compare(baseline, conditioned, out):
     sample_counts = [s['progress'].get('task_samples') for s in checkpoints]
     if any(not isinstance(value, dict) for value in sample_counts) or any(
             type(sample_counts[0].get(task)) is not int or sample_counts[0][task] != sample_counts[1].get(task)
-            for task in ('classification', 'segmentation', 'vqa')):
-        raise ValueError('Current-task training sample counts differ or are missing')
+            for task in training_tasks(a['config'])):
+        raise ValueError('Training task sample counts differ or are missing')
     from ..config import load_config
     testing = load_config(conditioned / 'config.json')['testing']
     other_testing = load_config(baseline / 'config.json')['testing']
-    if not testing['enabled'] or any(testing[k] != other_testing[k] for k in ('enabled', 'tasks', 'human_segmentation', 'vqa_per_type', 'vqa_seed')):
+    test_keys = ('enabled', 'tasks', 'human_segmentation', 'vqa_per_type', 'vqa_seed')
+    if a['config']['future_enabled']:
+        test_keys += ('future_tasks',)
+    if not testing['enabled'] or any(testing[k] != other_testing[k] for k in test_keys):
         raise ValueError('Both runs must select the same enabled tests')
     rows = []
     for task, folder, keys in [('classification', 'classification', ('macro_auroc', 'macro_ap')),
@@ -62,6 +67,7 @@ def compare(baseline, conditioned, out):
         for run, saved in zip((baseline, conditioned), checkpoints):
             directory = run / 'evaluation' / folder
             summary = json.loads((directory / 'summary.json').read_text())
+            validate_metric_protocol(summary, 'table2')
             expected_split = 'human_test' if folder == 'segmentation_human' else 'test'
             if (summary['limit'] is not None or summary['split'] != expected_split
                     or summary['data_fingerprint'] != saved['data_fingerprint']
@@ -76,7 +82,13 @@ def compare(baseline, conditioned, out):
                     raise ValueError('VQA sampling protocol differs from selected tests')
             summaries.append(summary['tasks'][task])
             records.append(_rows(directory / f'{task}.jsonl'))
-        fields = ['id', 'patient'] + (['labels'] if task == 'classification' else ['question', 'answer'] if task == 'vqa' else [])
+            validate_references(summary, task, records[-1])
+            if task == 'vqa':
+                if len(records) == 1:
+                    vqa_selection = summary['vqa_selection']
+                elif vqa_selection != summary['vqa_selection']:
+                    raise ValueError('VQA sampling protocol differs between trained arms')
+        fields = REFERENCE_FIELDS[task]
         if not records[0] or len(records[0]) != len(records[1]) or any(x['n'] != len(records[0]) for x in summaries):
             raise ValueError('Test denominators differ')
         if any(any(x[k] != y[k] for k in fields) for x, y in zip(*records)):
@@ -87,6 +99,8 @@ def compare(baseline, conditioned, out):
                          'delta': y - x if x is not None and y is not None else None})
         if task == 'segmentation':
             groups = [s.get('by_dataset', {}) for s in summaries]
+            if any(not group for group in groups):
+                raise ValueError('Segmentation requires per-dataset reviewed-mask results')
             if set(groups[0]) != set(groups[1]):
                 raise ValueError('Segmentation source datasets differ')
             for dataset in sorted(groups[0]):
@@ -106,7 +120,8 @@ def compare(baseline, conditioned, out):
                    'weights_fingerprint': saved['weights_fingerprint'],
                    'task_initialization_sha256': saved.get('metadata', {}).get('task_initialization_sha256')}
             for name, saved in zip(('baseline', 'slots'), checkpoints)}
-    atomic_json(out / 'comparison.json', {'baseline': str(baseline), 'conditioned': str(conditioned),
+    atomic_json(out / 'comparison.json', {'metric_protocol': metric_protocol('table2'),
+                'baseline': str(baseline), 'conditioned': str(conditioned),
                 'architecture': architecture(a['config']), 'arms': arms,
                 'budget_mode': 'time' if ca['total_hours'] else 'steps', 'optimizer_steps': updates, 'rows': rows})
     def fmt(x):

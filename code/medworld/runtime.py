@@ -12,9 +12,9 @@ import torch
 
 from .batching import BatchPrefetch
 from . import FORMAT_VERSION, WEIGHTS_ONLY_RESUME_ERROR
-from .datasets import TASKS
 from .datasets.protocol import _sha256
 from .architecture import RAW_INPUT, uses_slot_branch, uses_temporal
+from .evaluation.protocol import training_tasks
 
 
 def seed_all(seed):
@@ -72,7 +72,7 @@ def save_checkpoint(path, model, progress, data_fingerprint, weights_fingerprint
     path = Path(path)
     summary = {"step": progress["step"], "complete": progress["complete"],
                "world_size": progress.get("world_size", 1),
-               "task_samples": {task: progress["offsets"][task] for task in TASKS}}
+               "task_samples": {task: progress["offsets"][task] for task in training_tasks(model.cfg)}}
     state = {"format_version": FORMAT_VERSION, "config": model.cfg, "metadata": model.metadata,
              "model": model.compact_state(), "progress": summary,
              "data_fingerprint": data_fingerprint, "weights_fingerprint": weights_fingerprint}
@@ -109,7 +109,7 @@ def validate(model, data, samples):
     model.eval()
     metrics = {}
     try:
-        for task in TASKS:
+        for task in training_tasks(model.cfg):
             count = min(samples, len(data.rows(task, "validate")))
             if not count:
                 continue
@@ -130,7 +130,7 @@ class Trainer:
         self.model, self.data, self.out = model, data, Path(out)
         self.cfg, self.weights_fingerprint = model.cfg, weights_fingerprint
         self.progress = {"step": 0, "complete": False,
-                         "offsets": {task: 0 for task in (*TASKS, "temporal")}}
+                         "offsets": {task: 0 for task in (*training_tasks(self.cfg), "temporal")}}
         self.optimizer = optimizer_for(model, self.cfg)
         self.stop = False
 

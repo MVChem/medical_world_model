@@ -85,6 +85,44 @@ class UnifiedData:
         for index, row in enumerate(self.current._records["segmentation"]["train"]):
             self._segmentation_groups.setdefault(row["dataset"], []).append(index)
         self.fingerprint = hashlib.sha256(json.dumps(self.metadata, sort_keys=True).encode()).hexdigest()
+        self.base_data_fingerprint = self.fingerprint
+        self.holdouts = dict(holdouts)
+        self.future = None
+        if cfg.get("future_enabled", False):
+            from .future import FutureData
+            extra = FutureData.extra_holdouts(cfg["future_data"])
+            priority = {"train": 0, "validate": 1, "test": 2, "human_test": 3}
+            for patient, split in extra.items():
+                previous = self.holdouts.get(str(patient), "train")
+                if split not in priority or priority[split] < priority[previous]:
+                    raise ValueError("Future-task holdouts cannot weaken an existing patient holdout")
+                self.holdouts[str(patient)] = split
+            for task, splits in self.current._records.items():
+                for split, rows in splits.items():
+                    kept = [row for row in rows if self.holdouts[str(row["subject_id"])] == split]
+                    splits[split] = kept
+                    dropped[f"{task}/{split}"] += len(rows) - len(kept)
+            self.current.counts = {task: {split: len(rows) for split, rows in splits.items()}
+                                   for task, splits in self.current._records.items()}
+            labels = np.asarray([row["labels"] for row in self.current._records["classification"]["train"]])
+            if not len(labels):
+                raise ValueError("Future-task holdouts emptied the classification training pool")
+            self.current.pos_weight = torch.tensor(np.clip(
+                (labels == 0).sum(0) / np.maximum((labels == 1).sum(0), 1), .25, 10), dtype=torch.float32)
+            _, final_pairs, extra_excluded = self.temporal.filter_holdouts(self.holdouts)
+            self._segmentation_groups = {}
+            for index, row in enumerate(self.current._records["segmentation"]["train"]):
+                self._segmentation_groups.setdefault(row["dataset"], []).append(index)
+            self.future = FutureData(cfg, self.base_data_fingerprint, self.holdouts)
+            self.metadata.update(
+                current_filtered_counts=self.current.counts,
+                temporal_filtered_pair_counts=final_pairs,
+                temporal_excluded_patients={split: excluded_patients.get(split, 0) + extra_excluded.get(split, 0)
+                                            for split in set(excluded_patients) | set(extra_excluded)},
+                future=self.future.metadata,
+                future_extra_holdouts=extra,
+                base_data_fingerprint=self.base_data_fingerprint)
+            self.fingerprint = hashlib.sha256(json.dumps(self.metadata, sort_keys=True).encode()).hexdigest()
         self._permutations = {}
         self._image_workers = cfg.get("image_workers", 1)
         self._current_image_pool = None
@@ -93,12 +131,16 @@ class UnifiedData:
     def rows(self, task, split):
         if task == "temporal":
             return self._directed[split]
+        if self.future is not None and task in self.future._rows:
+            return self.future.rows(task, split)
         return self.current._records[task][split]
 
     def batch(self, task, split, indices, *, source_only=False):
         if task == "temporal":
             rows = self.rows(task, split)
             return self.temporal.batch([rows[i] for i in indices], source_only=source_only)
+        if self.future is not None and task in self.future._rows:
+            return self.future.batch(task, split, indices, source_only=source_only)
         dataset = self.current.dataset(task, split)
         if self._image_workers > 1:
             if self._current_image_pool is None:

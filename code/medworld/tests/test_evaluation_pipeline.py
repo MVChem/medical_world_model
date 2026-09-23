@@ -1,4 +1,5 @@
 import json
+import hashlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -8,6 +9,11 @@ from medworld import evaluate_run, launch_distributed
 from medworld.run_experiment import evaluation_jobs
 from medworld.config import load_config
 from medworld.datasets.protocol import _sha256
+from medworld.evaluation.protocol import FUTURE_TASKS, metric_protocol
+from medworld.evaluation.selection import reference_manifest, select_vqa
+from medworld.evaluation.future_metrics import reference_fingerprint, score_future_task
+from medworld.evaluation.future_common import scoring_protocol
+from medworld.datasets.vqa import VOCABULARY
 
 
 class EvaluationPipelineTests(unittest.TestCase):
@@ -69,15 +75,69 @@ class EvaluationPipelineTests(unittest.TestCase):
             directory = root / 'evaluation/vqa'
             directory.mkdir(parents=True)
             predictions = directory / 'vqa.jsonl'
-            predictions.write_text('{"id":"x"}\n')
+            records = [{'id': 'x', 'patient': 'p', 'question': 'Question?', 'answer': ['yes'],
+                        'semantic_type': 'verify', 'prediction': ['yes']}]
+            predictions.write_text(json.dumps(records[0]) + '\n')
+            _, selection = select_vqa(records)
             summary = {'checkpoint_sha256': 'checkpoint', 'data_fingerprint': 'data', 'limit': None,
-                       'split': 'test', 'tasks': {'vqa': {'n': 1}}, 'predictions_sha256': {'vqa': _sha256(predictions)}}
+                       'metric_protocol': metric_protocol(), 'references': {'vqa': reference_manifest('vqa', records)},
+                       'vqa_selection': selection, 'split': 'test', 'tasks': {'vqa': {'n': 1}},
+                       'predictions_sha256': {'vqa': _sha256(predictions)}}
             (directory / 'summary.json').write_text(json.dumps(summary))
             self.assertTrue(evaluate_run.completed_job(root, job, 'checkpoint', 'data'))
             with self.assertRaisesRegex(ValueError, 'checkpoint/protocol'):
                 evaluate_run.completed_job(root, job, 'different', 'data')
             predictions.write_text('{"id":"tampered"}\n')
             with self.assertRaisesRegex(ValueError, 'contents changed'):
+                evaluate_run.completed_job(root, job, 'checkpoint', 'data')
+
+    def test_future_enabled_plan_tests_every_table_column(self):
+        cfg = load_config(overrides={'future_enabled': True})
+        jobs = evaluation_jobs(Path('/run'), cfg)
+        self.assertEqual({job['id'] for job in jobs},
+                         {'classification', 'segmentation', 'segmentation_human', 'vqa', *FUTURE_TASKS})
+        self.assertTrue(all('--limit' not in job['args'] for job in jobs))
+
+    def test_future_reuse_requires_current_scorer_files_and_dataset_fingerprint(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cfg = load_config(overrides={'future_enabled': True})
+            (root / 'config.json').write_text(json.dumps(cfg))
+            data_protocol = {'future': {'cohort': 'fixed'}}
+            (root / 'data_protocol.json').write_text(json.dumps(data_protocol))
+            job = next(job for job in evaluation_jobs(root, cfg) if job['id'] == 'future_vqa')
+            directory = root / 'evaluation/future_vqa'
+            directory.mkdir(parents=True)
+            reference = {'id': 'future:vqa:1', 'patient': 'p1', 'target': VOCABULARY[0]}
+            predictions = directory / 'future_vqa.jsonl'
+            predictions.write_text(json.dumps({**reference, 'prediction': reference['target']}) + '\n')
+            protocol = scoring_protocol('future_vqa', [reference], cfg)
+            protocol_path = directory / 'future_vqa_protocol.json'
+            protocol_path.write_text(json.dumps(protocol))
+            metrics = score_future_task('future_vqa', [reference], {reference['id']: reference['target']}, protocol=protocol)
+            summary = {'checkpoint_sha256': 'checkpoint', 'data_fingerprint': 'data', 'limit': None,
+                       'metric_protocol': metric_protocol('table1'), 'split': 'test',
+                       'future_data_fingerprint': hashlib.sha256(json.dumps(data_protocol['future'], sort_keys=True).encode()).hexdigest(),
+                       'references': {'future_vqa': {'n': 1, 'references_sha256': reference_fingerprint([reference])}},
+                       'tasks': {'future_vqa': metrics}, 'predictions_sha256': {'future_vqa': _sha256(predictions)}}
+            summary_path = directory / 'summary.json'
+            summary_path.write_text(json.dumps(summary))
+            self.assertTrue(evaluate_run.completed_job(root, job, 'checkpoint', 'data'))
+            protocol_path.unlink()
+            with self.assertRaisesRegex(ValueError, 'protocol file is missing'):
+                evaluate_run.completed_job(root, job, 'checkpoint', 'data')
+            protocol_path.write_text(json.dumps({**protocol, 'schema': 'legacy'}))
+            with self.assertRaisesRegex(ValueError, 'current definition'):
+                evaluate_run.completed_job(root, job, 'checkpoint', 'data')
+            protocol_path.write_text(json.dumps(protocol))
+            summary['future_data_fingerprint'] = 'another cohort'
+            summary_path.write_text(json.dumps(summary))
+            with self.assertRaisesRegex(ValueError, 'data fingerprint'):
+                evaluate_run.completed_job(root, job, 'checkpoint', 'data')
+            summary['future_data_fingerprint'] = hashlib.sha256(json.dumps(data_protocol['future'], sort_keys=True).encode()).hexdigest()
+            summary['tasks']['future_vqa']['accuracy'] = None
+            summary_path.write_text(json.dumps(summary))
+            with self.assertRaisesRegex(ValueError, 'incomplete or nonfinite'):
                 evaluate_run.completed_job(root, job, 'checkpoint', 'data')
 
     def test_incomplete_training_is_never_tested(self):

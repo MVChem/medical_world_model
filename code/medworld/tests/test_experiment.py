@@ -44,20 +44,28 @@ class ExperimentTests(unittest.TestCase):
             self.assertEqual(a, b)
             self.assertEqual(cfg['total_hours'], 3)
 
-    def run_fake(self, root, *, no_slots=True, qwen=True, hours=0, testing=True, mismatch=False, model_id="qwen08b"):
+    def run_fake(self, root, *, no_slots=True, qwen=True, hours=0, testing=True, mismatch=False, model_id="qwen08b", future=False):
         run = root / 'experiment'
         from medworld_zero_shot_eval.models import models
         spec = next(s for s in models() if s['id'] == model_id)
-        cfg = load_config(overrides={'steps': 6, 'total_hours': hours, 'qwen': spec['path'],
+        cfg = load_config(overrides={'steps': 8 if future else 6, 'total_hours': hours, 'qwen': spec['path'],
+                          'future_enabled': future,
                           'baselines': {'no_slots': no_slots, 'qwen': qwen},
                           'testing': {'enabled': testing, 'tasks': ['classification', 'vqa'],
                                       'vqa_per_type': 100}})
         calls, settings = [], {}
 
         def launch(command, **kwargs):
+            if 'medworld.evaluate_run' in command:
+                arm = Path(command[command.index('--run') + 1])
+                calls.append('evaluate_' + arm.name)
+                self.assertTrue((run / 'baseline/final.pt').exists())
+                return Mock(wait=Mock(return_value=0), poll=Mock(return_value=0))
             out = Path(command[command.index('--out') + 1])
             config = json.loads(Path(command[command.index('--config') + 1]).read_text())
             calls.append(out.name); settings[out.name] = config
+            if future and config['testing']['enabled']:
+                self.assertIn('--skip-evaluation', command)
             out.mkdir()
             count = config['steps'] + int(mismatch and out.name == 'baseline')
             (out / 'config.json').write_text(json.dumps(config))
@@ -70,6 +78,7 @@ class ExperimentTests(unittest.TestCase):
 
         def native(jobs, gpus, path, env):
             calls.append('qwen')
+            self.assertEqual([job['id'] for job in jobs], ['qwen', 'qwen_future'] if future else ['qwen'])
             args = jobs[0]['args']
             self.assertEqual(args[args.index('--model') + 1], model_id)
             self.assertNotIn('--limit', args)
@@ -80,8 +89,10 @@ class ExperimentTests(unittest.TestCase):
              patch.object(experiment, 'schedule', side_effect=native), \
              patch.object(experiment, 'plan_updates', return_value={'target_steps_per_arm': 12}), \
              patch('medworld.evaluation.compare_run.compare', return_value=[]), \
-             patch('medworld.evaluation.compare_native.compare_native', return_value=[]):
+             patch('medworld.evaluation.compare_native.compare_native', return_value=[]), \
+             patch('medworld.evaluation.table_reports.write_tables') as export:
             experiment.run_experiment(cfg, run, '2,3')
+            self.assertEqual(export.call_count, int(future and testing))
         return calls, settings, run
 
     def test_all_switch_combinations_preserve_slots_first_and_selected_tests(self):
@@ -123,6 +134,28 @@ class ExperimentTests(unittest.TestCase):
             calls, settings, _ = self.run_fake(Path(tmp), hours=3, no_slots=False, qwen=False)
             self.assertEqual(calls, ['slots'])
             self.assertEqual(settings['slots']['total_hours'], 3)
+
+    def test_future_pipeline_finishes_both_training_arms_before_full_tests(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            calls, settings, _ = self.run_fake(Path(tmp), model_id='qwen9b', future=True, hours=24)
+            self.assertEqual(calls, ['calibration_slots', 'calibration_baseline', 'slots', 'baseline',
+                                     'evaluate_slots', 'evaluate_baseline', 'qwen'])
+            for name in ('calibration_slots', 'calibration_baseline'):
+                self.assertEqual(settings[name]['steps'], 24)
+
+    def test_future_budget_requires_every_task_in_two_warm_cycles(self):
+        from medworld.evaluation.protocol import training_tasks
+        tasks = training_tasks(load_config(overrides={'future_enabled': True}))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name, seconds in [('slots', 20), ('baseline', 10)]:
+                directory = root / f'calibration_{name}'
+                directory.mkdir()
+                (directory / 'metrics.jsonl').write_text('\n'.join(json.dumps({
+                    'task': tasks[i % 8], 'wall_unix': 100 + (i + 1) * seconds}) for i in range(24)))
+            plan = experiment.plan_updates(root, 24, 300, tasks)
+            self.assertEqual(plan['target_steps_per_arm'] % 8, 0)
+            self.assertEqual(plan['seconds_per_step'], {'slots': 20., 'baseline': 10.})
 
     def test_disabled_testing_skips_native_but_still_trains_selected_arms(self):
         with tempfile.TemporaryDirectory() as tmp:

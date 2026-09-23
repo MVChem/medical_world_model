@@ -132,3 +132,27 @@ The 2026-09-23 run retained **1,022,127 pairs from 21,097 patients** out of
 also matched independently re-read original clinical records. All 69 focused
 tests passed after moving the code into this package. Detailed split counts,
 record-density distributions, and exact commands remain in the run directory.
+
+## Table 1/2 future supervision
+
+[`build_table12.py`](build_table12.py) adds final supervised task labels under
+`code/data/medworld_0923/table12_v1` without copying original images or reports.
+It creates fixed train/validation/test records for future VQA, progression,
+future reports, 30-day mortality, and remaining length of stay. Clinical outcomes
+are built from full linked source examinations and do not require subsequent
+images or medication records. The manifest records patient holds, original
+source hashes, exclusions, and positive/negative/class support.
+
+```sh
+PYTHONPATH=code code/.venv/bin/python -m data_preprocessing.build_table12 \
+  --config code/medworld/configs/medworld_0923.json \
+  --output code/data/medworld_0923/table12_v1
+```
+
+Choose a new output directory for any rebuild; completed manifests are immutable.
+Rows link back to original CXR observations and Atlas patient views. Explicit
+human Chest ImaGenome comparisons remain test-only; source-anchored silver
+comparisons on other patients supply progression training/validation. Outcomes
+use documented acquisition, admission, discharge, death, and follow-up rules.
+See the [fixed evaluation protocol](../medworld/EVALUATION.md) and
+[preparation run](runs/table12_20260923/) for full definitions and actual counts.

@@ -20,7 +20,8 @@ from .batching import BatchPrefetch, training_finished
 from . import WEIGHTS_ONLY_RESUME_ERROR
 from .config import load_config
 from .architecture import require_reviewed_data, uses_temporal
-from .datasets import TASKS, UnifiedData
+from .datasets import UnifiedData
+from .evaluation.protocol import training_tasks
 from .model import MedWorld
 from .runtime import (atomic_json, optimizer_for,
                       save_checkpoint, seed_all, source_fingerprint)
@@ -46,7 +47,7 @@ class DistributedTrainer:
         self.cfg, self.weights_fingerprint = model.cfg, weights_fingerprint
         self.rank, self.world_size, self.device = rank, world_size, model.device
         self.progress = {"step": 0, "complete": False,
-                         "offsets": {task: 0 for task in (*TASKS, "temporal")},
+                         "offsets": {task: 0 for task in (*training_tasks(self.cfg), "temporal")},
                          "world_size": world_size, "started_unix": None, "deadline_unix": None}
         self.optimizer = optimizer_for(model, self.cfg)
         self.ddp = None
@@ -104,7 +105,7 @@ class DistributedTrainer:
         self.model.eval()
         metrics = {}
         try:
-            for task in TASKS:
+            for task in training_tasks(self.cfg):
                 count = min(self.cfg["validation_samples"], len(self.data.rows(task, "validate")))
                 values = torch.zeros(2, device=self.device, dtype=torch.float64)
                 for index in range(self.rank, count, self.world_size):
@@ -203,7 +204,8 @@ class DistributedTrainer:
                 del batches, parts_sum, values
                 if self.progress["step"] % self.cfg["validate_every"] == 0:
                     metrics = self.validate()
-                    score = sum(metrics[t + "_loss"] for t in TASKS) / len(TASKS)
+                    tasks = training_tasks(self.cfg)
+                    score = sum(metrics[t + "_loss"] for t in tasks) / len(tasks)
                     if score < self.progress.get("best_validation", float("inf")):
                         self.progress["best_validation"] = score
                         self.save("best.pt")

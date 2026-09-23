@@ -14,8 +14,8 @@ class SweepTest(unittest.TestCase):
             root = Path(folder)
             (root / 'experiments').mkdir()
             (root / 'experiments/registry.json').write_text('[]')
-            cfg = root / 'legacy.json'
-            cfg.write_text(json.dumps({'current_data': 'code/medworld_stage1/data/overnight_20260910'}))
+            cfg = root / 'config.json'
+            cfg.write_text(json.dumps({'prepared_data': 'code/data/medworld_0922'}))
             run = root / 'runs/retest'
             calls = []
 
@@ -23,7 +23,7 @@ class SweepTest(unittest.TestCase):
                 model = command[command.index('--model') + 1]
                 out = Path(command[command.index('--out') + 1])
                 resolved = json.loads(Path(command[command.index('--config') + 1]).read_text())
-                self.assertEqual(resolved['current_data'], str(root / 'code/data/medworld/current'))
+                self.assertEqual(resolved['prepared_data'], str(root / 'code/data/medworld_0922'))
                 calls.append((model, out.name))
                 out.mkdir(parents=True)
                 failed = model == 'qwen4b'

@@ -1,104 +1,149 @@
 \section{Evaluation Details}
 \label{app:protocol}
 
-\subsection{Longitudinal inputs and joint training}
+\subsection{Inputs, cohorts, and matched training}
 
-Adjacent frontal MIMIC-CXR studies from the same admission form temporal pairs.
-The prepared cohort spans 6--72 hours and contains 297 held-out pairs from
-94 patients. Global patient filtering retains 14,868 training and 227 validation
-pairs. Training uses signed actual time gaps and both pair directions. Each
-observation includes its image and report; EHR variables are not inputs.
-Follow-up evidence reaches only the detached target encoder. The retrospective
-protocol assumes that the source report is available at the source observation.
+The executable protocol has five future tasks in
+Table~\ref{main-tab:future_prediction} and three current tasks in
+Table~\ref{main-tab:downstream_tasks}. The current comparison includes a
+raw-input task decoder, native Qwen3.5-9B without project training, and
+Qwen3.5-9B-based MedWorld with eight additional slot conditions. Other methods
+listed in the main tables remain separate planned experiments. Missing results
+are not imputed from earlier protocols.
 
-Qwen3.5-0.8B and a frozen V-JEPA encoder construct four fusion and four visual
-slots of width 1024. Every optimizer update combines one temporal batch with
-one current-task batch, cycling through classification, segmentation, and VQA.
-Temporal supervision is LayerNorm-normalized latent MSE with weight 1; it has
-no future-report or future-finding loss. The optional visual consistency term
-has weight 0.1 on segmentation updates. The target encoder follows EMA with
-momentum 0.99. Encoder and VQA-decoder LoRA parameters are independent, with
-shared immutable pretrained language weights.
+The raw baseline learns image patches, optional report embeddings, and its task
+readouts from scratch. It constructs no Qwen, V-JEPA, world predictor, EMA target,
+or visual slot consistency branch. MedWorld supplies the same raw task inputs
+and adds eight slots from its separate Qwen/V-JEPA state encoder. Current tasks
+use the source slots; future tasks use the world predictor's forecast slots.
+Both trained arms start from identical task-decoder and readout weights and
+receive equal optimizer updates and per-task sample counts. Only MedWorld uses
+temporal latent prediction and visual slot consistency supervision.
 
-The current paired run starts each arm from pretrained backbones and allocates
-1,350 optimizer updates per arm on two GPUs. Per-rank batches are 128 for
-classification, segmentation, and temporal pairs, and 64 for VQA; gradient
-accumulation is 1. Both arms retain the auxiliary objectives, while only the
-slot-conditioned arm passes slots into the task decoder. Equal update counts
-do not imply equal compute. Clinical forecast decoding is a planned separate
-evaluation; no historical scores are assigned to the current model.
+Each update selects one task from a fixed eight-task cycle. MedWorld also uses a
+temporal pair batch with signed elapsed hours and detached EMA target slots;
+the baseline has no temporal batch. Temporal representation training uses the
+paired selection in \texttt{medworld\_0923}. Medication records contributed to
+that cohort's selection but are not model inputs. The current experiment uses
+a shared approximate one-day training budget, calibrated over three full task
+cycles per arm; both formal arms restart from the original initialization and
+finish the same number of complete cycles. Evaluation takes additional time.
 
-\subsection{Future-prediction metrics}
+Future VQA selects the closest eligible earlier frontal examination for each
+official target image from the full CXR timeline. Future report generation
+selects the closest eligible source among the forward pairs in
+\texttt{medworld\_0923}. Neither selection examines target labels. Future VQA
+takes a single categorical answer from the official local question annotations.
+Its longitudinal split follows existing global patient holdouts across all
+original annotation partitions, rather than the published current-image test
+partition. Annotations from future test patients are absent from every training
+task; original annotation IDs and partitions are retained. Progression requires an explicit comparison tied to the
+exact previous and current image IDs, anatomical region, and finding. All
+Chest ImaGenome human gold patients already belong to the shared test holdouts;
+they remain test-only. Source-anchored report-derived silver comparisons on
+other patients supply training and validation labels. Conflicting or mixed
+comparison directions are excluded before model inference. Equality of binary
+finding labels does not establish stability.
 
-Table~\ref{main-tab:future_prediction} fixes four dimensions with two metrics each. The current finding schema covers atelectasis, cardiomegaly, consolidation, edema, pleural effusion, and pneumothorax. A frozen CheXbert extractor maps reference and generated reports to findings. Reference labels that are uncertain or unmentioned are masked; predictions cannot reduce the evaluation mask. Each metric reports its reference-defined support and coverage, shared across methods.
+Patient holdouts are shared across current tasks, temporal learning, and future
+tasks. Clinical outcome cohorts start from the full linked source-examination
+inventory and do not require a later radiograph or medication record. An
+examination must belong to one unambiguous recorded encounter, including its
+linked emergency-department interval where available. Original manifests,
+exclusion counts, label support, and patient/cohort hashes are retained with
+the prepared data and each run.
 
-\paragraph{Future clinical status.}
-Finding AP is the macro average of non-interpolated average precision; AUROC is also computed per finding and macro-averaged. Both use continuous scores and the same set of findings with positive and negative reference support. Class prevalence and eligible counts accompany the results.
+Future inference receives only the source image, source report, and prescribed
+request. All methods receive the same source report prefix of at most 383 UTF-8
+bytes. Future VQA and progression additionally receive the task question and
+actual requested positive interval. Mortality always requests 30 days;
+remaining length of stay uses a fixed 24-hour latent readout request, never the
+observed outcome duration. Target images, reports, labels, discharge times, and
+death records do not enter the prediction function. The retrospective protocol
+assumes the source report is available at the examination.
 
-For a zero-shot VLM, each finding is queried independently with the same source evidence and horizon. If $\ell_{\mathrm{yes}}$ and $\ell_{\mathrm{no}}$ are the conditional log-likelihoods of fixed candidate answers, the score is $s=\exp(\ell_{\mathrm{yes}})/(\exp(\ell_{\mathrm{yes}})+\exp(\ell_{\mathrm{no}}))$. Single-token candidates use next-token logits; multi-token candidates use complete answer log-likelihoods at a fixed answer boundary. Both candidates must be scored, even if one is absent from an API's top-$k$ output. These ranking scores need not be calibrated clinical probabilities. Prompts, tokenization, masks, and parsing are fixed before test evaluation. Trained forecasters instead use a supervised finding head; planned native supervised and state-augmented conditions should share that readout and its supervision. Different probability sources do not isolate state conditioning.
+\subsection{Table 1: future prediction}
 
-\paragraph{Disease progression.}
-Transition F1 treats onset ($0\rightarrow1$) and resolution ($1\rightarrow0$) as separate events for each finding. Both source and future references must be assessable. Stable cases remain in the evaluation and can contribute false-positive changes; an omitted finding does not count as a correctly predicted resolution. F1 is computed for each finding--event pair and averaged over pairs with reference-positive event support. This is an event-level macro average, not a pooled micro F1 or an unweighted average of the onset and resolution subgroup means.
+\paragraph{Future VQA accuracy.}
+Each question has one reference answer from the fixed official categorical
+vocabulary. Accuracy counts correct normalized answers over all fixed eligible
+questions. Invalid outputs count as incorrect. Native Qwen scores a pinned
+single-token option codebook; the supervised arms use a categorical readout.
 
-Direction F1 assesses improved, stable, and worsened findings on reference-defined pairs where the abnormality persists at both endpoints and its direction is assessable. Annotations identify the finding, laterality, and comparison anchored to the selected source study; conflicting or unanchored reference comparisons are ineligible. Left and right changes are scored separately when annotated, and overlapping whole-patient and side-specific annotations are not counted twice. F1 is macro-averaged over supported finding--scope--direction classes. Missing predictions, incorrect resolutions, and parsing failures remain errors on the fixed eligible references. Equal coarse severity bins alone do not establish stability. The direction annotation vocabulary, reference review, and supported scopes will be frozen before model comparison; this label validation remains pending for the 297-pair cohort. Scores from a separate 82-pair direction study with a different input protocol are not inserted into the main table.
+\paragraph{Progression balanced accuracy.}
+Human test annotations distinguish improved, stable, and worsened changes for
+an explicitly requested region and finding. The primary score is the mean of
+the three class recalls over all eligible region--finding examples. All three
+classes must have test support. Per-class and per-finding support accompany the
+primary score; an invalid direction remains an error in its reference class.
 
-\paragraph{Future report fidelity.}
-RadGraph uses the RadGraph-XL partial F1 variant, averaged over reports. GREEN~\citep{ostmeier2024green} assesses clinical content errors using a frozen evaluator. The target Findings/Impression scope, scorer checkpoints, prompts, and failure handling are fixed across methods before evaluation. These scores measure agreement with observed follow-up reports; source-anchored changes are evaluated separately by the progression metrics.
+\paragraph{Future report RadGraph F1.}
+We use the official RadGraph-XL partial entity/relation F1, averaged over the
+fixed full observed target reports. Scorer source, model, tokenizer, and runtime
+assets are pinned by hashes. All generators have the same 2,047-byte output
+budget plus a decoder termination token. Generation is greedy. Original target
+reports are retained in full for scoring even when a training target exceeds
+the decoder's byte budget. No lexical similarity substitute is used.
 
-\paragraph{Probabilistic reliability.}
-The same future-finding scores used for AP/AUROC are evaluated as probability predictions. For finding $k$ with fixed valid reference set $\mathcal I_k$, the Brier score is $|\mathcal I_k|^{-1}\sum_{i\in\mathcal I_k}(p_{ik}-y_{ik})^2$, macro-averaged over the common finding set. It measures overall probability error, including both discrimination and calibration. Classwise ECE uses ten fixed equal-width probability bins for each finding: it sums the absolute difference between the mean predicted positive probability and observed positive fraction within each bin, weighted by the bin's share of valid references, then macro-averages across findings. Empty bins contribute zero. This adapts binned calibration evaluation~\citep{guo2017calibration} to per-finding event probabilities rather than top-label confidence. Lower Brier and ECE are better.
+\paragraph{Thirty-day mortality AUROC.}
+The prediction target is death within 30 days after the source examination,
+not mortality measured from admission. Exact recorded in-hospital death times
+take precedence over date-only patient death records. Date-only deaths whose
+precision overlaps the start or end boundary are excluded. Negative labels
+require known survival beyond the horizon or sufficient death ascertainment
+under the source release's one-year post-discharge follow-up window. Censored
+or contradictory records are excluded before inference. AUROC uses continuous
+risk predictions and requires both classes; repeated source examinations
+remain grouped by patient in all splits.
 
-The main table evaluates uncalibrated probability predictions. Metric definitions
-retain their original scale; Tables~\ref{main-tab:future_prediction}
-and~\ref{main-tab:downstream_tasks} display scores multiplied by 100 with two decimal places. Any post-hoc calibration will be fitted using validation data only, with a matched calibration procedure across methods, and reported separately. Reliability diagrams, bin counts, and horizon-specific comparisons remain planned supplementary analyses. These metrics assess the selected follow-up cohort and report-derived references, not unrestricted population disease risk.
+\paragraph{Remaining length-of-stay MAE.}
+The reference is the linked encounter's discharge time minus source acquisition
+time, in days. Discharge by death is included. Trained readouts predict a
+nonnegative duration; MAE is the mean absolute error in days. Native Qwen uses
+the probability-weighted expectation of a fixed day grid
+$\{0,0.5,1,2,3,5,7,10,14,21,30,60,90,180,365\}$; this grid is fixed independently
+of evaluation labels. The fixed 24-hour latent request does not redefine the
+remaining-stay outcome as a 24-hour endpoint.
 
-\paragraph{Supplementary analyses.}
-The supplementary analysis plan includes separate onset and resolution F1,
-stable-reference false-change rates, direction confusion matrices, horizon
-breakdowns, and paired patient-bootstrap intervals; not all are complete.
-CheXbert macro-positive F1 and future retrieval remain supplementary. Planned
-Future R@1 ranks the actual follow-up and fixed other-patient candidates by
-disagreement with a common predicted finding schema, extracted from reports or
-emitted by the transition prior. Candidates must be matched on horizon,
-acquisition conditions, coarse current findings, and reference assessability;
-ties split first-place credit equally. Candidate-pool size and eligible-query
-counts will accompany retrieval scores. Degree errors require reviewed ordinal
-annotations. These analyses do not add columns to the fixed eight-metric table.
+Table 1 reports the first four scores as percentages and length-of-stay MAE in
+days. Missing prediction records or invalid numeric outputs make an evaluation
+incomplete rather than changing the reference denominator. Outcome scores
+characterize the linked CXR population and its ascertainment rules.
 
-\subsection{Downstream supervision and evaluation}
+\subsection{Table 2: current downstream tasks}
 
-All three tasks withhold the same-exam report. A two-layer, width-256
-Transformer combines native Qwen image tokens with all eight state slots and
-retains its image-token outputs. Classification uses finding-specific attention
-queries; segmentation uses a spatial upsampling head; VQA projects the decoded
-image tokens to Qwen language width and appends the question and answer-format
-instruction. The no-slots arm omits only the slot condition from this decoder.
+Current classification, segmentation, and VQA withhold the same-examination
+report, including from the slots encoder. VQA additionally receives its question.
+Classification uses 13 report-derived finding/device labels, masks uncertain and
+missing references, and reports macro AUROC and non-interpolated average
+precision over findings with both positive and negative test support. Native
+Qwen uses fixed Yes/No likelihood scores for these findings.
 
-After global patient filtering, classification uses 12,818/160/353
-train/validation/test images; segmentation uses 3,825/249/447 images;
-VQA uses 281,092/72,821/13,793 questions. Classification masks unknown and
-uncertain labels among 13 finding/device labels, with 11 labels supporting
-both classes in the test set. AUROC and non-interpolated AP are macro-averaged
-over eligible labels. Native zero-shot checkpoints supply Yes/No likelihood
-scores, while trained models use supervised finding heads.
+Current VQA uses the official local answer vocabulary and JSON answer arrays.
+After lowercasing and trimming surrounding whitespace, exact answer-set match
+and pooled micro F1 are computed on the same references. Malformed outputs count
+as errors. The prescribed comparison selects 100 Verify, 100 Choose, and 100
+Query questions with seed 42; IDs and reference hashes bind every method to this
+same 300-question subset. This is not a full-test VQA score.
 
-VQA evaluation selects 100 Verify, 100 Choose, and 100 Query questions using
-seed 42, producing 300 questions on 225 images. Selection IDs and hashes are
-saved with each evaluation. Model outputs are parsed as JSON answer lists
-under a shared fixed vocabulary, and scored with exact answer-set match and
-micro F1. Invalid answers remain errors and their counts are reported.
-Greedy generation uses at most 64 tokens. The subset is shared across all
-Table~\ref{main-tab:downstream_tasks} models; it is not a full-test score.
+Segmentation uses human-reviewed masks only: the 200-image MIMIC heart/lung
+collection, UCSF-ALPTDG and MU-Glioma-Post MRI, and the external Montgomery lung
+test. No CXAS pseudo masks are used. The shared decoder predicts six channels:
+lungs, heart, NETC, SNFH, ET, and RC. Only annotated channels and spatial regions
+contribute to loss and metrics. Predictions threshold sigmoid outputs at 0.5;
+an empty prediction against an empty reference scores one. MRI slice confusion
+counts are summed within each volume before channel and volume averaging.
+Per-dataset mean Dice and IoU are reported for both trained arms. The main table
+equally averages the three internal datasets, while Montgomery is reported
+separately. Native Qwen has no segmentation head and receives N/A.
 
-Segmentation uses CXAS pseudo-labels for the two lungs and heart; an external
-set of 138 Montgomery images supplies human lung masks for the main-table
-Lung Dice metric. Dice against CXAS pseudo-labels on 447 test images is
-reserved for supplementary analysis. Padding is excluded from spatial losses
-and metrics. Both evaluations remain pending because the
-current paired run enables only classification and VQA final tests.
-The matched trained rows remain unfilled until evaluation completes. Direct
-native Qwen fine-tuning and removal of temporal supervision are separate
-controls needed to attribute improvements beyond zero-shot references.
+Full table export requires completed checkpoints with matching initialization,
+update counts, per-task sample counts, data fingerprints, test IDs, and reference
+hashes. Only trained parameters and compact EMA state are saved; frozen
+pretrained backbones are referenced by their original asset hashes. Optimizer
+state is not retained, and these checkpoints support evaluation rather than
+exact training continuation. Earlier metric formats are not accepted by the
+current exporters.
 
 \begin{figure*}[p]
     \centering

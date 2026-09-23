@@ -4,11 +4,16 @@ from pathlib import Path
 
 from ..datasets.protocol import _rows, _sha256
 from ..runtime import atomic_json
+from .protocol import metric_protocol, validate_metric_protocol
+from .selection import REFERENCE_FIELDS, validate_references
 
 
 def compare_native(conditioned, native, out, tasks):
+    if not tasks or set(tasks) - {'classification', 'vqa'} or len(set(tasks)) != len(tasks):
+        raise ValueError('Native Table 2 comparison supports distinct classification/VQA tasks only')
     conditioned, native, out = map(Path, (conditioned, native, out))
     raw = json.loads((native / 'summary.json').read_text())
+    validate_metric_protocol(raw, 'table2')
     status = json.loads((native / 'status.json').read_text())
     from ..run_experiment import native_spec
     cfg = json.loads((conditioned / 'config.json').read_text())
@@ -28,6 +33,7 @@ def compare_native(conditioned, native, out, tasks):
     for task in tasks:
         directory = conditioned / 'evaluation' / task
         trained = json.loads((directory / 'summary.json').read_text())
+        validate_metric_protocol(trained, 'table2')
         if (trained.get('limit') is not None or trained.get('split') != 'test'
                 or trained.get('checkpoint_sha256') != checkpoint_hash
                 or trained.get('data_fingerprint') != fingerprint):
@@ -40,9 +46,9 @@ def compare_native(conditioned, native, out, tasks):
             data = _rows(path)
             if not data or len(data) != summary['tasks'][task]['n']:
                 raise ValueError('Incomplete test predictions')
+            validate_references(summary, task, data)
             records.append(data)
-        fields = ['id', 'patient'] + (['labels'] if task == 'classification'
-                                     else ['question', 'answer', 'semantic_type'])
+        fields = REFERENCE_FIELDS[task]
         if (len(records[0]) != len(records[1])
                 or any(any(a[k] != b[k] for k in fields) for a, b in zip(*records))):
             raise ValueError('Test IDs or references differ')
@@ -54,5 +60,7 @@ def compare_native(conditioned, native, out, tasks):
             rows.append({'task': task, 'metric': key, 'n': len(records[0]), 'qwen': x, 'slots': y,
                          'delta': y - x if x is not None and y is not None else None})
     out.mkdir(parents=True, exist_ok=True)
-    atomic_json(out / 'qwen_comparison.json', {'native': str(native), 'conditioned': str(conditioned), 'rows': rows})
+    atomic_json(out / 'qwen_comparison.json', {'metric_protocol': metric_protocol('table2'),
+                'native': str(native), 'conditioned': str(conditioned), 'rows': rows,
+                'unsupported_tasks': {'segmentation': 'N/A: native Qwen has no segmentation head'}})
     return rows

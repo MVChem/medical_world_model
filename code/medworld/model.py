@@ -12,6 +12,7 @@ from .downstream_tasks.segmentation.decoder import SegmentationHead
 from .downstream_tasks.training import current_loss as current_task_loss
 from .downstream_tasks.registry import TASKS
 from .downstream_tasks.common.decoder import TaskDecoder
+from .downstream_tasks.future import FUTURE_TASKS, FutureHeads
 from .ema import EMATarget
 from .encoder import FrozenJEPA, StateEncoder
 from .predictor import WorldModel
@@ -31,6 +32,8 @@ class MedWorld(nn.Module):
             self.classification = ClassificationHead(width=cfg["decoder_width"])
             self.segmentation = SegmentationHead(width=cfg["decoder_width"], channels=cfg["segmentation_channels"])
             self.text = TextDecoder(cfg)
+            if cfg.get("future_enabled", False):
+                self.future = FutureHeads(cfg)
         digest = hashlib.sha256()
         for name, value in self.named_parameters():
             digest.update(name.encode())
@@ -58,6 +61,11 @@ class MedWorld(nn.Module):
             "latent_weight": cfg["latent_weight"],
             "visual_consistency_weight": cfg["visual_consistency_weight"],
             "target_update": "EMA after optimizer updates" if uses_temporal(cfg) else None,
+            "future_tasks": list(FUTURE_TASKS) if cfg.get("future_enabled", False) else [],
+            "future_inputs": ["source image", "source report", "requested positive horizon hours",
+                              "task question where applicable"] if cfg.get("future_enabled", False) else [],
+            "future_slot_condition": "world(source slots, requested horizon)"
+                                     if cfg.get("future_enabled", False) and uses_slot_branch(cfg) else None,
         }
         if uses_slot_branch(cfg):
             with torch.random.fork_rng(devices=[]):
@@ -92,7 +100,7 @@ class MedWorld(nn.Module):
         if self.tokenizer.pad_token_id is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         self.jepa = FrozenJEPA(cfg["jepa"])
-        if uses_temporal(cfg):
+        if uses_temporal(cfg) or cfg.get("future_enabled", False):
             self.world = WorldModel(cfg)
         self.metadata.update(
             qwen_fast_kernels=fast_kernels,
@@ -113,7 +121,7 @@ class MedWorld(nn.Module):
                 if temporal_batch is not None:
                     raise ValueError("Joint updates require a current task")
                 return self.temporal_loss(batch)
-            loss, parts = self.current_loss(task, batch)
+            loss, parts = self.future_loss(task, batch) if task in FUTURE_TASKS else self.current_loss(task, batch)
             if temporal_batch is not None:
                 temporal, temporal_parts = self.temporal_loss(temporal_batch)
                 loss = loss + temporal
@@ -192,6 +200,46 @@ class MedWorld(nn.Module):
             loss = loss + weighted
         return loss, parts
 
+    def future_inputs(self, batch):
+        """Forecast from the source only; target reports/labels never enter here."""
+        if not hasattr(self, "future"):
+            raise ValueError("Future heads are disabled; set future_enabled before training")
+        images, reports = batch.get("images"), batch.get("reports")
+        if not isinstance(reports, (list, tuple)) or not reports or any(not isinstance(r, str) for r in reports):
+            raise ValueError("Future tasks require one source report string per example")
+        limit = self.cfg.get("future_source_bytes", 383)
+        reports = [report.encode("utf-8")[:limit].decode("utf-8", errors="ignore") for report in reports]
+        hours = batch["delta_hours"]
+        if (not isinstance(hours, torch.Tensor) or hours.shape != (len(reports),)
+                or not hours.is_floating_point() or not torch.isfinite(hours).all() or (hours <= 0).any()):
+            raise ValueError("Future tasks require finite positive requested horizons in hours")
+        if images is not None and len(images) != len(reports):
+            raise ValueError("Future source image/report counts differ")
+        prepared = batch.get("prepared")
+        predicted = None
+        if self.cfg["slot_conditioning"]:
+            source = self.encode(images, texts=reports, prepared=prepared)
+            predicted = self.world(source, hours.to(self.device))
+        features = self.task_decoder(images=images, reports=reports, slots=predicted,
+                                     prepared=prepared.get("task") if prepared is not None else None)
+        return features, predicted
+
+    def future_loss(self, task, batch):
+        if task not in FUTURE_TASKS:
+            raise ValueError(f"Unknown future task: {task}")
+        self.validate_future_request(task, batch)
+        features, _ = self.future_inputs(batch)
+        loss = self.future.loss(task, features, batch)
+        return self.cfg.get("future_weight", 1.0) * loss, {task: loss.detach()}
+
+    @staticmethod
+    def validate_future_request(task, batch):
+        expected = {"mortality_30d": 720, "remaining_los": 24}.get(task)
+        if expected is not None:
+            hours = batch.get("delta_hours")
+            if not isinstance(hours, torch.Tensor) or not (hours == expected).all():
+                raise ValueError(f"{task} requires the fixed {expected}-hour request, never the realized outcome")
+
     def temporal_loss(self, batch):
         if not uses_temporal(self.cfg):
             raise ValueError("This model has no temporal training objective")
@@ -205,6 +253,10 @@ class MedWorld(nn.Module):
 
     @torch.no_grad()
     def predict(self, task, batch):
+        if task in FUTURE_TASKS:
+            self.validate_future_request(task, batch)
+            features, _ = self.future_inputs(batch)
+            return self.future.predict(task, features, batch)
         if task == "segmentation" and not batch.get("images"):
             raise ValueError("Segmentation requires an input image with spatial coordinates")
         features, slots = self.task_inputs(batch.get("images"), reports=batch.get("reports"))

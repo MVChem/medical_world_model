@@ -6,6 +6,9 @@ from unittest.mock import patch
 from medworld.config import load_config
 from medworld.datasets.protocol import _sha256
 from medworld.evaluation.compare_run import compare
+from medworld.evaluation.protocol import metric_protocol
+from medworld.evaluation.protocol import FUTURE_TASKS
+from medworld.evaluation.selection import reference_manifest, select_vqa
 
 
 class ComparisonTests(unittest.TestCase):
@@ -23,8 +26,12 @@ class ComparisonTests(unittest.TestCase):
                                 'progress': {'step': 10, 'complete': True,
                                              'task_samples': {'classification': 4, 'segmentation': 3, 'vqa': 3}},
                                 'data_fingerprint': 'same', 'weights_fingerprint': name + '-sources'})
-            (directory / 'vqa.jsonl').write_text(json.dumps({'id': 'x', 'patient': '1', 'question': 'q', 'answer': ['yes']}) + '\n')
-            (directory / 'summary.json').write_text(json.dumps({'limit': None, 'split': 'test',
+            record = {'id': 'x', 'patient': '1', 'question': 'q', 'answer': ['yes'], 'semantic_type': 'verify'}
+            _, selection = select_vqa([record])
+            (directory / 'vqa.jsonl').write_text(json.dumps(record) + '\n')
+            (directory / 'summary.json').write_text(json.dumps({'metric_protocol': metric_protocol('table2'),
+                'references': {'vqa': reference_manifest('vqa', [record])}, 'vqa_selection': selection,
+                'limit': None, 'split': 'test',
                 'data_fingerprint': 'same', 'checkpoint_sha256': _sha256(run / 'final.pt'),
                 'predictions_sha256': {'vqa': _sha256(directory / 'vqa.jsonl')},
                 'tasks': {'vqa': {'n': 1, 'exact_match': score, 'micro_f1': score}}}))
@@ -44,6 +51,31 @@ class ComparisonTests(unittest.TestCase):
             self.assertFalse(result['arms']['baseline']['slot_branch'])
             self.assertTrue(result['arms']['slots']['slot_branch'])
             self.assertIn('Raw-input task-only baseline', (root / 'comparison/COMPARISON.md').read_text())
+
+    def test_old_metric_protocol_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            checkpoints = self.raw_pair(root)
+            path = root / 'baseline/evaluation/vqa/summary.json'
+            summary = json.loads(path.read_text())
+            summary.pop('metric_protocol')
+            path.write_text(json.dumps(summary))
+            with patch('medworld.runtime.read_checkpoint', side_effect=checkpoints), self.assertRaises(ValueError):
+                compare(root / 'baseline', root / 'slots', root / 'comparison')
+
+    def test_future_training_counts_are_checked_before_current_task_comparison(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            checkpoints = self.raw_pair(root)
+            for name, checkpoint in zip(('baseline', 'slots'), checkpoints):
+                checkpoint['config']['future_enabled'] = True
+                checkpoint['progress']['task_samples'].update({task: 4 for task in FUTURE_TASKS})
+                (root / name / 'config.json').write_text(json.dumps(checkpoint['config']))
+            with patch('medworld.runtime.read_checkpoint', side_effect=checkpoints):
+                self.assertEqual(len(compare(root / 'baseline', root / 'slots', root / 'comparison')), 2)
+            checkpoints[1]['progress']['task_samples']['future_report'] = 8
+            with patch('medworld.runtime.read_checkpoint', side_effect=checkpoints), self.assertRaisesRegex(ValueError, 'sample counts'):
+                compare(root / 'baseline', root / 'slots', root / 'comparison')
 
     def test_raw_pair_rejects_missing_or_stale_prediction_hashes(self):
         for tamper in (False, True):
@@ -99,7 +131,7 @@ class ComparisonTests(unittest.TestCase):
             for saved in checkpoints:
                 saved['config']['total_hours'] = 0
             checkpoints[1]['progress']['step'] = 10
-            (root / 'slots/evaluation/vqa/vqa.jsonl').write_text('{"id":"other","patient":"1","question":"q","answer":["yes"]}\n')
+            (root / 'slots/evaluation/vqa/vqa.jsonl').write_text('{"id":"other","patient":"1","question":"q","answer":["yes"],"semantic_type":"verify"}\n')
             summary_path = root / 'slots/evaluation/vqa/summary.json'
             summary = json.loads(summary_path.read_text())
             summary['predictions_sha256']['vqa'] = _sha256(root / 'slots/evaluation/vqa/vqa.jsonl')

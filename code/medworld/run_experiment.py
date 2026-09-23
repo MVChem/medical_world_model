@@ -15,6 +15,7 @@ from copy import deepcopy
 from .config import PROJECT, load_config
 from .architecture import architecture, baseline_label, normalize_baseline, uses_slot_branch, uses_temporal
 from .launch_distributed import gpu_status, atomic
+from .evaluation.protocol import FUTURE_TASKS, training_tasks
 
 
 def registry(run, state, outcome=None, summary="Classification, segmentation and VQA training/evaluation."):
@@ -86,6 +87,12 @@ def evaluation_jobs(run, cfg=None):
                      'args': ['--checkpoint', str(run / 'final.pt'), '--out', str(run / 'evaluation' / name),
                               '--task', task, '--split', split,
                               '--vqa-per-type', str(testing['vqa_per_type']), '--vqa-seed', str(testing['vqa_seed'])]})
+    if cfg['future_enabled']:
+        for task in testing['future_tasks']:
+            jobs.append({'id': task, 'module': 'medworld.evaluation.evaluate_future',
+                         'log': f'evaluation/{task}.log',
+                         'args': ['--checkpoint', str(run / 'final.pt'),
+                                  '--out', str(run / 'evaluation' / task), '--task', task, '--split', 'test']})
     return jobs
 
 
@@ -97,23 +104,23 @@ def arm_config(cfg, use_slots, steps=None):
     return normalize_baseline(result)
 
 
-def plan_updates(run, total_hours, calibration_seconds):
+def plan_updates(run, total_hours, calibration_seconds, tasks=('classification', 'segmentation', 'vqa')):
     """Estimate a common update budget; never stop one formal arm on time."""
     import math
     rates = {}
     for name in ('slots', 'baseline'):
         records = [json.loads(line) for line in (run / f'calibration_{name}/metrics.jsonl').read_text().splitlines()]
-        warm = records[3:]
-        if len(warm) < 6 or set(r['task'] for r in warm) != {'classification', 'segmentation', 'vqa'}:
-            raise ValueError('Calibration must cover all three tasks after warmup')
-        elapsed = (records[-1]['wall_unix'] - records[2]['wall_unix']) / len(warm)
+        warm = records[len(tasks):]
+        if len(warm) < 2 * len(tasks) or set(r['task'] for r in warm) != set(tasks):
+            raise ValueError('Calibration must cover all training tasks twice after one warmup cycle')
+        elapsed = (records[-1]['wall_unix'] - records[len(tasks) - 1]['wall_unix']) / len(warm)
         if not math.isfinite(elapsed) or elapsed <= 0:
             raise ValueError('Invalid calibration timing')
         rates[name] = elapsed
     remaining = total_hours * 3600 - calibration_seconds
     # Allow 10% for startup, checkpoints and validation; retain complete task cycles.
-    steps = int(remaining * .9 / sum(rates.values()) / 3) * 3
-    if steps < 3:
+    steps = int(remaining * .9 / sum(rates.values()) / len(tasks)) * len(tasks)
+    if steps < len(tasks):
         raise ValueError('Training budget is too short after calibration; use explicit steps instead')
     return {'mode': 'calibrated_equal_steps', 'requested_total_hours': total_hours,
             'calibration_seconds': calibration_seconds, 'seconds_per_step': rates,
@@ -153,6 +160,8 @@ def write_report(run, cfg, budgets, no_slots_rows, qwen_rows, skipped):
     qwen = {(r['task'], r['metric']): r['qwen'] for r in qwen_rows}
     rows = []
     for folder, summary in summaries.items():
+        if folder in FUTURE_TASKS:
+            continue
         task = 'segmentation' if folder == 'segmentation_human' else folder
         keys = {'classification': ('macro_auroc', 'macro_ap'), 'segmentation': ('mean_dice', 'mean_iou'),
                 'vqa': ('exact_match', 'micro_f1')}[task]
@@ -221,9 +230,11 @@ def run_experiment(cfg, run, gpus):
     # Freeze all arms before training so later workspace edits cannot alter the comparison.
     freeze_experiment(run, qwen_enabled)
     atomic(run / 'config.json', cfg)
-    registry(run, 'training', summary='Slots first; optional equal-step no-slots training and native Qwen tests.')
+    registry(run, 'training', summary=('Eight-task Qwen9B paired training, followed by both tables and native tests.'
+                                      if cfg['future_enabled'] else
+                                      'Slots first; equal-step raw baseline and native Qwen tests.'))
     env = dict(os.environ, PYTHONPATH=str(run / 'source'), MEDWORLD_PROJECT_ROOT=str(PROJECT),
-               PYTHONUNBUFFERED='1', HF_HUB_OFFLINE='1', PYTORCH_ALLOC_CONF='expandable_segments:True')
+               PYTHONUNBUFFERED='1', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', PYTORCH_ALLOC_CONF='expandable_segments:True')
     child = None
     outcome = 'Failed; see pipeline_status.json and original run logs.'
     skipped = {}
@@ -232,15 +243,18 @@ def run_experiment(cfg, run, gpus):
     def interrupted(*_):
         raise KeyboardInterrupt
 
-    def train_arm(name, settings):
+    def train_arm(name, settings, defer_evaluation=False):
         nonlocal child
         config = run / f'{name}_config.json'
         atomic(config, settings)
         atomic(run / 'pipeline_status.json', {'phase': name, 'heartbeat_unix': time.time(),
                'active_run': name, 'active_status': f'{name}/status.json'})
         with (run / f'{name}.log').open('a') as log:
-            child = subprocess.Popen([sys.executable, '-m', 'medworld.launch_distributed', '--config', str(config),
-                                      '--out', str(run / name), '--gpus', gpus], cwd=PROJECT, env=env,
+            command = [sys.executable, '-m', 'medworld.launch_distributed', '--config', str(config),
+                       '--out', str(run / name), '--gpus', gpus]
+            if defer_evaluation:
+                command.append('--skip-evaluation')
+            child = subprocess.Popen(command, cwd=PROJECT, env=env,
                                      stdout=log, stderr=subprocess.STDOUT)
             if child.wait():
                 raise RuntimeError(f'{name} training/evaluation failed; see {name}.log')
@@ -250,7 +264,7 @@ def run_experiment(cfg, run, gpus):
             raise ValueError(f'{name} training did not complete successfully')
         if not settings['total_hours'] and state['step'] != settings['steps']:
             raise ValueError(f'{name} optimizer update count differs from the target')
-        if settings['testing']['enabled']:
+        if settings['testing']['enabled'] and not defer_evaluation:
             pipeline = json.loads((run / name / 'pipeline_status.json').read_text())
             if not pipeline.get('evaluation_complete'):
                 raise ValueError(f'{name} tests did not complete')
@@ -264,35 +278,56 @@ def run_experiment(cfg, run, gpus):
         target_steps = cfg['steps'] if not cfg['total_hours'] else None
         if cfg['total_hours'] and cfg['baselines']['no_slots']:
             calibration_start = time.monotonic()
+            tasks = training_tasks(cfg)
+            calibration_steps = 3 * len(tasks)
             for name, use_slots in (('slots', True), ('baseline', False)):
-                probe = arm_config(cfg, use_slots, 9)
+                probe = arm_config(cfg, use_slots, calibration_steps)
                 probe['testing']['enabled'] = False
-                probe.update(validate_every=10, validation_samples=1, save_every=10)
+                probe.update(validate_every=calibration_steps + 1, validation_samples=1, save_every=calibration_steps + 1)
                 train_arm(f'calibration_{name}', probe)
-            plan = plan_updates(run, cfg['total_hours'], time.monotonic() - calibration_start)
+            plan = plan_updates(run, cfg['total_hours'], time.monotonic() - calibration_start, tasks)
             target_steps = plan['target_steps_per_arm']
         else:
             plan = {'mode': 'equal_steps' if target_steps is not None else 'single_arm_time',
                     'requested_total_hours': cfg['total_hours'], 'target_steps_per_arm': target_steps}
         atomic(run / 'budget_plan.json', plan)
         # Formal arms start from the same original initialization, never probe weights.
-        budgets = {'slots': train_arm('slots', arm_config(cfg, True, target_steps))}
+        defer_evaluation = cfg['future_enabled'] and cfg['testing']['enabled']
+        budgets = {'slots': train_arm('slots', arm_config(cfg, True, target_steps), defer_evaluation)}
         atomic(run / 'training_budget.json', {'total_hours': cfg['total_hours'], 'arms': budgets})
         no_slots_rows, qwen_rows = [], []
         if cfg['baselines']['no_slots']:
-            budgets['no_slots'] = train_arm('baseline', arm_config(cfg, False, target_steps))
+            budgets['no_slots'] = train_arm('baseline', arm_config(cfg, False, target_steps), defer_evaluation)
             if budgets['no_slots']['steps'] != budgets['slots']['steps']:
                 raise ValueError('No-slots and slots optimizer update counts must match exactly')
             atomic(run / 'training_budget.json', {'total_hours': cfg['total_hours'], 'arms': budgets})
-            if cfg['testing']['enabled']:
-                from .evaluation.compare_run import compare
-                no_slots_rows = compare(run / 'baseline', run / 'slots', run / 'no_slots_comparison')
         else:
             skipped['no_slots'] = 'disabled by baselines.no_slots'
+        if defer_evaluation:
+            # Finish the shared training budget before running full report generation.
+            for name in ['slots'] + (['baseline'] if cfg['baselines']['no_slots'] else []):
+                registry(run, 'evaluating', summary='Both trained arms finished; full Table 1/2 evaluation.')
+                atomic(run / 'pipeline_status.json', {'phase': 'evaluating_' + name,
+                       'active_run': name, 'active_status': f'{name}/pipeline_status.json',
+                       'heartbeat_unix': time.time()})
+                with (run / f'{name}_evaluation.log').open('a') as log:
+                    child = subprocess.Popen([sys.executable, '-m', 'medworld.evaluate_run',
+                                              '--run', str(run / name), '--gpus', gpus],
+                                             cwd=PROJECT, env=env, stdout=log, stderr=subprocess.STDOUT)
+                    if child.wait():
+                        raise RuntimeError(f'{name} evaluation failed; see {name}_evaluation.log')
+        if cfg['baselines']['no_slots'] and cfg['testing']['enabled']:
+            from .evaluation.compare_run import compare
+            no_slots_rows = compare(run / 'baseline', run / 'slots', run / 'no_slots_comparison')
         if qwen_enabled:
             jobs = [{'id': 'qwen', 'module': 'medworld_zero_shot_eval.evaluate', 'log': 'qwen.log',
                      'args': ['--config', str(run / 'slots/config.json'), '--model', spec['id'],
                               '--tasks', *qwen_tasks, '--out', str(run / 'qwen')]}]
+            if cfg['future_enabled']:
+                jobs.append({'id': 'qwen_future', 'module': 'medworld_zero_shot_eval.future_evaluate',
+                             'log': 'qwen_future.log',
+                             'args': ['--config', str(run / 'slots/config.json'), '--model', spec['id'],
+                                      '--tasks', *cfg['testing']['future_tasks'], '--out', str(run / 'qwen_future')]})
             registry(run, 'evaluating', summary='Native Qwen on matching selected tests after trained arms.')
             schedule(jobs, selectors, run, env)
             from .evaluation.compare_native import compare_native
@@ -304,6 +339,9 @@ def run_experiment(cfg, run, gpus):
                                'testing.enabled=false' if not cfg['testing']['enabled'] else
                                'no supported classification/VQA task selected')
         write_report(run, cfg, budgets, no_slots_rows, qwen_rows, skipped)
+        if cfg['future_enabled'] and cfg['testing']['enabled']:
+            from .evaluation.table_reports import write_tables
+            write_tables(run, cfg)
         atomic(run / 'pipeline_status.json', {'phase': 'complete', 'comparison': 'COMPARISON.md',
                'training': budgets, 'baselines': cfg['baselines'], 'skipped': skipped,
                'testing_enabled': cfg['testing']['enabled'], 'heartbeat_unix': time.time()})
@@ -311,6 +349,8 @@ def run_experiment(cfg, run, gpus):
         outcome += (' training; selected tests' if cfg['testing']['enabled'] else ' training; testing disabled')
         outcome += (' and native Qwen comparison.' if qwen_enabled else '.')
     except BaseException as error:
+        if isinstance(error, KeyboardInterrupt):
+            outcome = 'Interrupted before pipeline completion; checkpoints and original run logs preserved.'
         if child is not None and child.poll() is None:
             child.terminate()
             try:

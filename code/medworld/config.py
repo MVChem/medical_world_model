@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from .downstream_tasks.registry import TASKS
 from .architecture import RAW_INPUT, architecture, normalize_baseline
+from .evaluation.protocol import FUTURE_TASKS
 
 PROJECT = Path(os.environ.get("MEDWORLD_PROJECT_ROOT", Path(__file__).resolve().parents[2])).resolve()
 DEFAULTS = {
@@ -14,7 +15,7 @@ DEFAULTS = {
     "vqa_data": "code/data/medworld_0922/vqa",
     "image_root": "code/data/medworld_0922/images",
     "slot_conditioning": True,
-    "testing": {"enabled": True, "tasks": list(TASKS), "human_segmentation": True, "reuse_completed": True, "vqa_per_type": 0, "vqa_seed": 42},
+    "testing": {"enabled": True, "tasks": list(TASKS), "future_tasks": list(FUTURE_TASKS), "human_segmentation": True, "reuse_completed": True, "vqa_per_type": 0, "vqa_seed": 42},
     "baselines": {"no_slots": True, "qwen": True},
     "decoder_width": 256, "decoder_depth": 2, "task_patch_size": 16,
     "segmentation_channels": 6,
@@ -42,6 +43,12 @@ DEFAULTS = {
     "prefetch_preprocessing": False,
     "batched_vision_attention": False,
     "decoded_image_cache": 0,
+    "future_enabled": False,
+    "future_data": "code/data/medworld_0923/table12_v1",
+    "future_source_bytes": 383,
+    "future_report_tokens": 2048,
+    "future_weight": 1.0,
+    "radgraph_assets": "code/data/medworld_evaluation/radgraph-xl",
 }
 
 
@@ -83,10 +90,18 @@ def load_config(path=None, overrides=None, root=None):
     if (not isinstance(tasks, list) or any(not isinstance(t, str) or t not in TASKS for t in tasks)
             or len(set(tasks)) != len(tasks) or (testing["enabled"] and not tasks)):
         raise ValueError("testing.tasks must list distinct supported tasks (nonempty when enabled)")
+    future_tasks = testing["future_tasks"]
+    if (not isinstance(future_tasks, list) or len(set(future_tasks)) != len(future_tasks)
+            or any(task not in FUTURE_TASKS for task in future_tasks)):
+        raise ValueError("testing.future_tasks must list distinct Table 1 tasks")
+    if type(cfg["future_enabled"]) is not bool:
+        raise ValueError("future_enabled must be boolean")
+    if cfg["future_enabled"] and testing["enabled"] and set(future_tasks) != set(FUTURE_TASKS):
+        raise ValueError("A completed two-table experiment must evaluate all five future tasks")
     integers = ("decoder_width", "decoder_depth", "task_patch_size", "lora_rank", "lora_alpha", "vision_pixels", "answer_tokens", "context_tokens",
                 "generation_tokens", "predictor_width", "predictor_depth", "batch_size",
                 "accumulation", "steps",
-                "save_every", "validate_every", "validation_samples", "prefetch_batches", "image_workers", "visual_consistency_views", "cpu_threads", "cpu_cores_per_rank")
+                "save_every", "validate_every", "validation_samples", "prefetch_batches", "image_workers", "visual_consistency_views", "cpu_threads", "cpu_cores_per_rank", "future_source_bytes", "future_report_tokens")
     for key in integers:
         if type(cfg[key]) is not int or cfg[key] <= 0:
             raise ValueError(f"{key} must be a positive integer")
@@ -96,6 +111,8 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError("vision_pixels must be divisible by task_patch_size")
     if cfg["answer_tokens"] < 2 or cfg["predictor_width"] % 8:
         raise ValueError("answer_tokens >= 2; predictor_width must be divisible by 8")
+    if cfg["future_source_bytes"] >= cfg["context_tokens"] and cfg["future_enabled"]:
+        raise ValueError("future_source_bytes must leave room for EOS within the shared raw report context")
     if type(cfg["seed"]) is not int or not 0 <= cfg["seed"] < 2**32:
         raise ValueError("seed must be in [0, 2**32)")
     if type(cfg["bidirectional"]) is not bool:
@@ -114,11 +131,11 @@ def load_config(path=None, overrides=None, root=None):
         raise ValueError("decoded_image_cache must be a nonnegative integer")
     sizes = cfg["task_batch_sizes"]
     if (not isinstance(sizes, dict)
-            or set(sizes) - (set(TASKS) | {"temporal"})
+            or set(sizes) - (set(TASKS) | set(FUTURE_TASKS) | {"temporal"})
             or any(type(value) is not int or value <= 0 for value in sizes.values())):
         raise ValueError("task_batch_sizes must map known tasks to positive per-rank batch sizes")
     for key in ("ema_momentum", "learning_rate", "lora_learning_rate", "max_grad_norm",
-                "latent_weight", "total_hours", "visual_consistency_weight"):
+                "latent_weight", "total_hours", "visual_consistency_weight", "future_weight"):
         value = cfg[key]
         if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value):
             raise ValueError(f"{key} must be finite")
@@ -126,7 +143,7 @@ def load_config(path=None, overrides=None, root=None):
             raise ValueError(f"Invalid {key}")
     if not 0 <= cfg["ema_momentum"] < 1:
         raise ValueError("ema_momentum must be in [0, 1)")
-    for key in ('qwen', 'jepa', 'prepared_data', 'temporal_data', 'vqa_data', 'image_root'):
+    for key in ('qwen', 'jepa', 'prepared_data', 'temporal_data', 'vqa_data', 'image_root', 'future_data', 'radgraph_assets'):
         p = Path(cfg[key]).expanduser()
         p = p if p.is_absolute() else root / p
         # Manifest identities use the configured project links, not symlink targets.

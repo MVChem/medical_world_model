@@ -35,12 +35,15 @@ def main():
         from ..downstream_tasks.segmentation import segmentation_metrics
         from ..downstream_tasks.segmentation.metrics import aggregate_segmentation
         from ..downstream_tasks.text.metrics import vqa_metrics
+        from .protocol import metric_protocol
+        from .selection import reference_manifest, segmentation_reference_sha256
         model, saved = load_model(a.checkpoint, device)
         data = UnifiedData(model.cfg)
         if data.fingerprint != saved['data_fingerprint']:
             raise ValueError('Evaluation data differs from training protocol')
         out.mkdir(parents=True)
-        summary = {'checkpoint_sha256': _sha256(Path(a.checkpoint)), 'data_fingerprint': data.fingerprint,
+        summary = {'metric_protocol': metric_protocol('table2'), 'references': {},
+                   'checkpoint_sha256': _sha256(Path(a.checkpoint)), 'data_fingerprint': data.fingerprint,
                    'predictions_sha256': {}, 'slot_conditioning': model.cfg['slot_conditioning'], 'split': a.split, 'limit': a.limit, 'tasks': {}}
         with torch.no_grad():
             for task in TASKS if a.task == 'all' else (a.task,):
@@ -64,6 +67,7 @@ def main():
                             row.update(labels=batch['labels'][0].tolist(), probabilities=prediction[0].float().cpu().tolist())
                         elif task == 'segmentation':
                             row.update(segmentation_metrics(prediction.cpu(), batch['targets'], batch['mask']))
+                            row['target_sha256'] = segmentation_reference_sha256(batch['targets'], batch['mask'])
                             for key, batch_key in [('dataset', 'segmentation_dataset'), ('volume_id', 'volume_id'),
                                                    ('target_names', 'target_names')]:
                                 row[key] = batch[batch_key][0]
@@ -84,6 +88,7 @@ def main():
                     metrics = vqa_metrics(records)
                 summary['predictions_sha256'][task] = _sha256(out / f'{task}.jsonl')
                 summary['tasks'][task] = {'n': count, **metrics}
+                summary['references'][task] = reference_manifest(task, records)
                 atomic_json(out / 'summary.json', summary)
     finally:
         if lock is not None:

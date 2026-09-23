@@ -2,8 +2,8 @@
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 
-from .datasets import TASKS
 from .architecture import uses_temporal
+from .evaluation.protocol import training_tasks
 
 
 def rank_slice(offset, batch_size, rank, world_size):
@@ -25,6 +25,7 @@ class BatchPrefetch:
         self.planned = dict(progress["offsets"])
         self.step = progress["step"]
         self.prepare = prepare
+        self.tasks = training_tasks(cfg)
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"data-rank{rank}")
         self.queue = deque()
         for _ in range(cfg.get("prefetch_batches", 2)):
@@ -37,7 +38,7 @@ class BatchPrefetch:
         return task, offset, size
 
     def _submit(self):
-        task = TASKS[self.step % len(TASKS)]
+        task = self.tasks[self.step % len(self.tasks)]
         requests = [(self._request(task), self._request("temporal") if uses_temporal(self.cfg) else None)
                     for _ in range(self.cfg["accumulation"])]
         marker = {"offsets": dict(self.planned)}

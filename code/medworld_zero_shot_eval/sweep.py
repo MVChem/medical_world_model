@@ -42,8 +42,7 @@ def main():
     from medworld.config import PROJECT, load_config
     root=PROJECT
     run=a.run.resolve(); run.mkdir(parents=True,exist_ok=True)
-    # Resolve legacy asset names before launching any child process. Keep the
-    # resolved configuration with the run so retries do not reuse stale paths.
+    # Freeze resolved paths and explicit test settings before launching workers.
     config_path = run / 'evaluation_config.json'
     config = load_config(a.config, root=root)
     atomic(config_path, config)

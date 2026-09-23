@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import signal
@@ -9,6 +10,7 @@ import time
 from .config import PROJECT, load_config
 from .launch_distributed import atomic
 from .run_experiment import evaluation_jobs, registry, schedule
+from .evaluation.protocol import FUTURE_TASKS, TABLE1_METRICS, validate_metric_protocol
 
 
 def completed_job(run, job, checkpoint_hash, fingerprint):
@@ -19,6 +21,7 @@ def completed_job(run, job, checkpoint_hash, fingerprint):
     summary = json.loads(summary_path.read_text())
     args = job['args']
     task, split = args[args.index('--task') + 1], args[args.index('--split') + 1]
+    validate_metric_protocol(summary, 'table1' if task in FUTURE_TASKS else 'table2')
     if task == 'vqa':
         for flag, key, default in [('--vqa-per-type', 'per_type', 0), ('--vqa-seed', 'seed', 42)]:
             expected = int(args[args.index(flag) + 1]) if flag in args else default
@@ -26,7 +29,8 @@ def completed_job(run, job, checkpoint_hash, fingerprint):
                 raise ValueError('VQA sampling protocol changed')
     predictions = directory / f'{task}.jsonl'
     if (summary.get('checkpoint_sha256') != checkpoint_hash or summary.get('data_fingerprint') != fingerprint
-            or summary.get('limit') is not None or summary.get('split') != split or task not in summary.get('tasks', {})):
+            or summary.get('limit') is not None or summary.get('partial')
+            or summary.get('split') != split or task not in summary.get('tasks', {})):
         raise ValueError(f'{job["id"]}: existing results use a different checkpoint/protocol')
     if not predictions.exists():
         raise ValueError(f'{job["id"]}: predictions are missing')
@@ -34,9 +38,47 @@ def completed_job(run, job, checkpoint_hash, fingerprint):
     if _sha256(predictions) != summary.get('predictions_sha256', {}).get(task):
         raise ValueError(f'{job["id"]}: prediction contents changed or lack integrity metadata')
     with predictions.open() as handle:
-        count = sum(1 for line in handle if line.strip())
+        records = [json.loads(line) for line in handle if line.strip()]
+    count = len(records)
     if count <= 0 or count != summary['tasks'][task]['n']:
         raise ValueError(f'{job["id"]}: incomplete predictions')
+    if task in FUTURE_TASKS:
+        from .evaluation.future_metrics import SCHEMA, reference_fingerprint, validate_radgraph_provenance
+        from .evaluation.future_common import scoring_protocol
+        fields = {'id', 'patient', 'target', 'prediction'} | ({'finding'} if task == 'progression' else set())
+        if any(set(row) != fields for row in records) or len({row['id'] for row in records}) != count:
+            raise ValueError('Future-task prediction records have missing fields or duplicate IDs')
+        references = [{key: value for key, value in row.items() if key != 'prediction'} for row in records]
+        reference_hash = reference_fingerprint(references)
+        scores = summary['tasks'][task]
+        if (scores.get('complete') is not True
+                or summary.get('references', {}).get(task) != {'n': count, 'references_sha256': reference_hash}):
+            raise ValueError('Future-task reference cohort or completion state changed')
+        protocol_path = directory / f'{task}_protocol.json'
+        if not protocol_path.is_file():
+            raise ValueError('Future-task scorer protocol file is missing')
+        cfg = load_config(run / 'config.json')
+        protocol = json.loads(protocol_path.read_text())
+        expected = scoring_protocol(task, references, cfg)
+        protocol_hash = hashlib.sha256(json.dumps(expected, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+        if (protocol != expected or scores.get('schema') != SCHEMA or scores.get('task') != task
+                or scores.get('unit') != expected['unit'] or scores.get('reference_sha256') != reference_hash
+                or scores.get('protocol_sha256') != protocol_hash):
+            raise ValueError('Future-task reference/scorer protocol differs from the current definition')
+        if task == 'future_report':
+            validate_radgraph_provenance(protocol['radgraph'])
+        data_protocol = json.loads((run / 'data_protocol.json').read_text())
+        future_metadata = data_protocol.get('future')
+        if (not isinstance(future_metadata, dict)
+                or summary.get('future_data_fingerprint') != hashlib.sha256(json.dumps(future_metadata, sort_keys=True).encode()).hexdigest()):
+            raise ValueError('Future-task data fingerprint differs from the training protocol')
+        value = scores.get(TABLE1_METRICS[task])
+        if (isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value)
+                or value < 0 or (task != 'remaining_los' and value > 1)):
+            raise ValueError('Future-task metric is incomplete or nonfinite')
+    else:
+        from .evaluation.selection import validate_references
+        validate_references(summary, task, records)
     return True
 
 
@@ -70,7 +112,7 @@ def evaluate_run(run, gpus):
     atomic(run / 'evaluation_plan.json', {'jobs': jobs, 'gpus': gpus, 'testing': cfg['testing'], 'reused': reused,
            'test_selection': 'final.pt; no test-based checkpoint selection'})
     env = dict(os.environ, MEDWORLD_PROJECT_ROOT=str(PROJECT), PYTHONPATH=str(source),
-               OMP_NUM_THREADS='4', MKL_NUM_THREADS='4', PYTHONUNBUFFERED='1', HF_HUB_OFFLINE='1',
+               OMP_NUM_THREADS='4', MKL_NUM_THREADS='4', PYTHONUNBUFFERED='1', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',
                PYTORCH_ALLOC_CONF='expandable_segments:True')
     registry(run, 'evaluating')
     outcome = 'Failed during configured evaluation; checkpoint preserved.'
